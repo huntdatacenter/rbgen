@@ -7,10 +7,16 @@ This implementation was sourced from the [qctool](https://bitbucket.org/gavinban
 Getting started
 =====
 
-Build using either `make` or the sequence
+The repository contains code for the bgen implementation as well as an example program, `bgen_to_vcf`, which uses the bgen API to convert a bgen file to vcf format.  To build these, either use make:
 
+```sh
+make
+```
+
+Or use the supplied waf build tool:
 ```sh
 ./waf-1.8.13 configure
 ./waf-1.8.13
 ```
 
+Results will appear under the `build/` directory.
