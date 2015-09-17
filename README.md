@@ -4,11 +4,12 @@ BGEN reference implementation
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++.
 This implementation was sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.
 
-This repository contains code for the bgen implementation as well as an example program, `bgen_to_vcf`, which uses the bgen API to convert a bgen file to vcf format.  To build these, either use make:
+This repository contains code for the bgen implementation as well as an example program, `bgen_to_vcf`, which uses the bgen API to convert a bgen file to vcf format.  
 
-Getting started
+Compilation
 =====
 
+To compile the code, either use make:
 ```sh
 make
 ```
@@ -20,3 +21,13 @@ Or use the supplied waf build tool:
 ```
 
 Results will appear under the `build/` directory.
+
+Testing
+=====
+
+If all goes well the command
+
+```sh
+./build/bgen_to_vcf example/example.bgen
+```
+should run and output vcf-formatted data to stdout.
