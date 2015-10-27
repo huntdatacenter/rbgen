@@ -291,38 +291,21 @@ namespace data {
 		if( version == "v10" ) {
 			return construct_snp_block_v10(
 				number_of_samples,
-				std::max( SNPID.size(), RSID.size() ) + 1,
-				SNPID,
-				RSID,
-				chromosome,
-				SNP_position,
-				a_allele,
-				b_allele,
+				std::max( SNPID.size(), RSID.size() ) + 1, SNPID, RSID,
+				chromosome, SNP_position, a_allele, b_allele,
 				get_probs
 			) ;
 		} else if( version == "v11" ) {
 			return construct_snp_block_v11(
 				number_of_samples,
-				SNPID,
-				RSID,
-				chromosome,
-				SNP_position,
-				a_allele,
-				b_allele,
+				SNPID, RSID, chromosome, SNP_position, a_allele, b_allele,
 				get_probs
 			) ;
 		} else if( version == "v12" ) {
 			return construct_snp_block_v12(
 				number_of_samples,
-				SNPID,
-				RSID,
-				chromosome,
-				SNP_position,
-				a_allele,
-				b_allele,
-				bits_per_probability,
-				get_probs,
-				type
+				SNPID, RSID, chromosome, SNP_position, a_allele, b_allele,
+				bits_per_probability, get_probs, type
 			) ;
 		} else {
 			assert(0) ;
@@ -456,14 +439,8 @@ void do_snp_block_read_test(
 	std::istringstream inStream ;
 	inStream.str(
 		data::construct_snp_block(
-			bgen_version,
-			number_of_individuals,
-			SNPID,
-			RSID,
-			chromosome,
-			SNP_position,
-			a,
-			b,
+			bgen_version, number_of_individuals,
+			SNPID, RSID, chromosome, SNP_position, a, b,
 			bits_per_probability,
 			std::bind( &get_input_probability, number_of_individuals, _1, _2, type ),
 			type
