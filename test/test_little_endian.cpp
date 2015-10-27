@@ -22,11 +22,15 @@ namespace {
 		genfile::bgen::read_little_endian_integer( buffer, end, &result ) ;
 		REQUIRE( result == value ) ;
 		// Test little endian property
-		REQUIRE( static_cast< unsigned char >( buffer[0] ) == static_cast< unsigned char>(value & 0xFF) ) ;
+		std::size_t const lsb = 0 ;
+		std::size_t const msb = sizeof(Integer)-1 ;
+		REQUIRE( static_cast< unsigned char >( buffer[lsb] ) == static_cast< unsigned char>(value & 0xFF) ) ;
+		REQUIRE( static_cast< unsigned char >( buffer[msb] ) == static_cast< unsigned char >( (value>>(msb*8)) & 0xFF) ) ;
 	}
 }
 
 TEST_CASE( "Test that integers can be written and recovered from a buffer." ) {
+	std::cout << "test_little_endian_integer_io\n" ;
 	char buffer[100] ;
 
 	test_rw<char>( 0 ) ;
