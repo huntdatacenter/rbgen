@@ -27,3 +27,11 @@ def build( bld ):
 		use = 'bgen zlib',
 		cxxflags = ['-std=c++11']
 	)
+
+	bld.program(
+		source = bld.path.ant_glob( 'test/*.cpp' ),
+		target = 'test_bgen',
+		use = 'bgen zlib',
+		cxxflags = ['-std=c++11'],
+		includes = 'test'
+	)
