@@ -17,15 +17,18 @@ namespace {
 	char buffer[100] ;
 	template< typename Integer >
 	void test_rw( Integer value ) {
-		Integer result ;
 		char const* end = genfile::bgen::write_little_endian_integer( buffer, buffer + 100, value ) ;
-		genfile::bgen::read_little_endian_integer( buffer, end, &result ) ;
-		REQUIRE( result == value ) ;
-		// Test little endian property
+
+		// Test most and least significant bytes stored in the right place
 		std::size_t const lsb = 0 ;
 		std::size_t const msb = sizeof(Integer)-1 ;
 		REQUIRE( static_cast< unsigned char >( buffer[lsb] ) == static_cast< unsigned char>(value & 0xFF) ) ;
 		REQUIRE( static_cast< unsigned char >( buffer[msb] ) == static_cast< unsigned char >( (value>>(msb*8)) & 0xFF) ) ;
+
+		// Test we can reconstruct it
+		Integer result ;
+		genfile::bgen::read_little_endian_integer( buffer, end, &result ) ;
+		REQUIRE( result == value ) ;
 	}
 }
 
