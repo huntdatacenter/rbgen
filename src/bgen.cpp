@@ -418,6 +418,10 @@ namespace genfile {
 					return ( n * n_choose_k(n - 1, k - 1) ) / k ;
 				}
 			
+				// Fill a data field, encoded as a 64-bit integer, with bytes
+				// from a buffer, until the data contains at least the given number of bits.
+				// (For this to work we require in general that bits <= 56
+				// (on an 8-bit byte machine).
 				char const* read_bits_from_buffer(
 					char const* buffer,
 					char const* const end,
@@ -425,37 +429,24 @@ namespace genfile {
 					int* size,
 					uint8_t const bits
 				) {
-					// fill data with up to 8 bytes.
+					assert( CHAR_BIT == 8 ) ;
+					assert( bits <= 64 - CHAR_BIT ) ;
 					while( (*size) < bits && buffer < end ) {
 						(*data) |= uint64_t( *(reinterpret_cast< unsigned char const* >( buffer++ ))) << (*size) ;
-						(*size) += sizeof( unsigned char ) * 8 ;
-	#if DEBUG_BGEN_FORMAT > 1
-						std::cerr << "genfile::impl::v12::fill_data(): size = " << (*size)
-							<< ", buffer = " << reinterpret_cast< void const* >( buffer )
-							<< ", data = "
-							<< string_utils::to_hex(
-								reinterpret_cast< unsigned char const* >( data ),
-								reinterpret_cast< unsigned char const* >( data ) + 8
-							) << ".\n" ;
-	#endif
+						(*size) += CHAR_BIT ;
 					}
 					assert( (*size) >= bits ) ;
 					return buffer ;
 				}
 			
+				// Consume the given number of bits from the the least significant end
+				// of a data field (encoded as a uint64_t) and interpret them as a
+				// floating-point number in the range 0...1
 				double parse_bit_representation(
 					uint64_t* data,
 					int* size,
 					int const bits
 				) {
-#if DEBUG_BGEN_FORMAT > 1
-					std::cerr << "genfile::impl::v12::consume_value(): size = " << (*size)
-						<< ", data = "
-						<< string_utils::to_hex(
-							reinterpret_cast< unsigned char const* >( data ),
-							reinterpret_cast< unsigned char const* >( data ) + 8
-						) << ".\n" ;
-#endif
 					uint64_t bitMask = (0xFFFFFFFFFFFFFFFF >> ( 64 - bits )) ;
 					double const result = ( *data & bitMask ) / double( bitMask ) ;
 					(*size) -= bits ;
@@ -497,20 +488,11 @@ namespace genfile {
 					std::size_t const upper = std::floor( total_fractional_part + 0.5 ) ;
 					std::sort( index, index + n, CompareFractionalPart( p, n ) ) ;
 
-	#if DEBUG_BGEN_FORMAT > 2
-		std::cerr << "round_probs_to_scaled_simplex(): number_of_bits = " << number_of_bits
-				<< ", scale = " << scale
-				<< ", total_fractional_part = " << total_fractional_part
-				<< ", upper = " << upper << ".\n" ;
-		std::cerr << "round_probs_to_scaled_simplex(): p1 = " << *p << ".\n" ;
-	#endif
-
-					for( std::size_t i = 0; i < n; ++i ) {
-						if( i < upper ) {
-							p[ index[i] ] = std::ceil( p[ index[i] ] ) ;
-						} else {
-							p[ index[i] ] = std::floor( p[ index[i] ] ) ;
-						}
+					for( std::size_t i = 0; i < upper; ++i ) {
+						p[ index[i] ] = std::ceil( p[ index[i] ] ) ;
+					}
+					for( std::size_t i = upper; i < n; ++i ) {
+						p[ index[i] ] = std::floor( p[ index[i] ] ) ;
 					}
 				}
 
@@ -528,14 +510,6 @@ namespace genfile {
 						*data |= storedValue << (*offset) ;
 						(*offset) += number_of_bits ;
 						if( (*offset) >= 32 ) {
-#if DEBUG_BGEN_FORMAT > 1
-							std::cerr << "genfile::bgen:impl::v12::write_scaled_probs(): data = " << std::hex << (*data)
-								<< ", buffer = " << reinterpret_cast< void* >( buffer )
-								<< std::dec << ", offset = " << (*offset)
-								<< ", number_of_bits = " << number_of_bits
-								<< ".\n";
-							std::cerr << "genfile::bgen:impl::v12::write_scaled_probs(): writing data.\n" ;
-#endif
 							assert( (buffer+4) <= end ) ;
 							buffer = std::copy(
 								reinterpret_cast< char const* >( data ),
@@ -544,12 +518,6 @@ namespace genfile {
 							) ;
 							(*offset) -= 32 ;
 							(*data) >>= 32 ;
-#if DEBUG_BGEN_FORMAT > 1
-							std::cerr << "genfile::bgen:impl::v12::write_scaled_probs(): after write, data = " << std::hex << (*data)
-								<< ", buffer = " << std::hex << reinterpret_cast< void* >( buffer )
-								<< ", last four bytes written: " << genfile::string_utils::to_hex( buffer-4, buffer ) << ".\n" ;
-#endif
-							
 						}
 					}
 					return buffer ;

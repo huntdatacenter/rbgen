@@ -163,44 +163,15 @@ namespace data {
 			}
 		}
 	}
-	
-	std::string construct_snp_block_v12(
+
+	std::string construct_snp_probability_data_block_v12(
 		uint32_t number_of_samples,
-		std::string SNPID,
-		std::string RSID,
-		std::string chromosome,
-		uint32_t SNP_position,
-		std::string a_allele,
-		std::string b_allele,
+		uint16_t number_of_alleles,
 		std::size_t const bits_per_probability,
 		std::function< double ( std::size_t i, std::size_t g ) > get_probs,
 		std::string const& type
 	) {
-		assert( bits_per_probability <= 64 ) ;
-
 		std::ostringstream oStream ;
-		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint16_t >( SNPID.size() )) ;
-		oStream.write( SNPID.data(), SNPID.size() ) ;
-		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint16_t >( RSID.size() )) ;
-		oStream.write( RSID.data(), RSID.size() ) ;
-		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint16_t >( chromosome.size() ) ) ;
-		oStream.write( chromosome.data(), chromosome.size() ) ;
-		genfile::bgen::write_little_endian_integer( oStream, SNP_position ) ;
-
-		uint16_t const number_of_alleles = 2 ;
-		genfile::bgen::write_little_endian_integer( oStream, number_of_alleles ) ;
-		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint32_t >( a_allele.size() )) ;
-		oStream.write( a_allele.data(), a_allele.size() ) ;
-		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint32_t >( b_allele.size() )) ;
-		oStream.write( b_allele.data(), b_allele.size() ) ;
-		
-		// Total size of probability data is:
-		uint32_t const stored_probability_size = (((number_of_samples*2*bits_per_probability)+7)/8) ;
-		// To this we must add space for the header block
-		uint32_t const buffer_size = 10 + number_of_samples + stored_probability_size ;
-		// And four bytes indicating the total length.
-		genfile::bgen::write_little_endian_integer( oStream, buffer_size ) ;
-
 		// Write number of samples and ploidies.
 		genfile::bgen::write_little_endian_integer( oStream, number_of_samples ) ;
 		genfile::bgen::write_little_endian_integer( oStream, number_of_alleles ) ;
@@ -262,9 +233,78 @@ namespace data {
 			assert(0) ;
 		}
 		std::size_t const numBytes = ((p-buffer)*8) + ((offset+7)/8) ;
-		REQUIRE( numBytes == stored_probability_size ) ;
+		uint32_t const expected_size = (((number_of_samples*2*bits_per_probability)+7)/8) ;
+		REQUIRE( numBytes == expected_size ) ;
 		oStream.write( &probability_data[0], numBytes ) ;
 		
+		return oStream.str() ;
+	}
+
+	std::string construct_variant_id_data_block_v12(
+		uint32_t number_of_samples,
+		std::string SNPID,
+		std::string RSID,
+		std::string chromosome,
+		uint32_t SNP_position,
+		std::vector< std::string > const alleles
+	) {
+		std::ostringstream oStream ;
+		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint16_t >( SNPID.size() )) ;
+		oStream.write( SNPID.data(), SNPID.size() ) ;
+		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint16_t >( RSID.size() )) ;
+		oStream.write( RSID.data(), RSID.size() ) ;
+		genfile::bgen::write_little_endian_integer( oStream, static_cast< uint16_t >( chromosome.size() ) ) ;
+		oStream.write( chromosome.data(), chromosome.size() ) ;
+		genfile::bgen::write_little_endian_integer( oStream, SNP_position ) ;
+
+		uint16_t const number_of_alleles = alleles.size() ;
+		genfile::bgen::write_little_endian_integer( oStream, number_of_alleles ) ;
+		for( std::size_t i = 0; i < alleles.size(); ++i ) {
+			genfile::bgen::write_little_endian_integer( oStream, static_cast< uint32_t >( alleles[i].size() )) ;
+			oStream.write( alleles[i].data(), alleles[i].size() ) ;
+		}
+
+		return oStream.str() ;
+	}
+	
+	std::string construct_snp_block_v12(
+		uint32_t number_of_samples,
+		std::string SNPID,
+		std::string RSID,
+		std::string chromosome,
+		uint32_t SNP_position,
+		std::string a_allele,
+		std::string b_allele,
+		std::size_t const bits_per_probability,
+		std::function< double ( std::size_t i, std::size_t g ) > get_probs,
+		std::string const& type
+	) {
+		assert( bits_per_probability <= 64 ) ;
+		std::ostringstream oStream ;
+
+		std::vector< std::string > alleles(2) ;
+		alleles[0] = a_allele ;
+		alleles[1] = b_allele ;
+
+		std::string const id_data = construct_variant_id_data_block_v12(
+			number_of_samples, SNPID, RSID, chromosome, SNP_position, alleles
+		) ;
+		oStream.write( id_data.data(), id_data.size() ) ;
+
+		// Total size of probability data is:
+		uint32_t const stored_probability_size = (((number_of_samples*2*bits_per_probability)+7)/8) ;
+		// To this we must add space for the header block
+		uint32_t const buffer_size = 10 + number_of_samples + stored_probability_size ;
+		// And four bytes indicating the total length.
+		genfile::bgen::write_little_endian_integer( oStream, buffer_size ) ;
+
+		std::string const prob_data = construct_snp_probability_data_block_v12(
+			number_of_samples, 2,
+			bits_per_probability,
+			get_probs,
+			type
+		) ;
+		oStream.write( prob_data.data(), prob_data.size() ) ;
 		return oStream.str() ;
 	}
 	
@@ -585,6 +625,72 @@ void do_snp_block_write_test(
 #endif
 		
 	REQUIRE( outStream.str() == expected ) ;
+}
+
+TEST_CASE( "Test that round_probs_to_scaled_simplex() works correctly", "[bgen]" ) {
+	std::cout << "test_round_probs\n" ;
+	double p[10] ;
+	std::size_t anIndex[10] ;
+
+	p[0] = 1; p[1] = 0; p[2] = 0 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	REQUIRE( p[0] == 1 ) ;
+	REQUIRE( p[1] == 0 ) ;
+	REQUIRE( p[2] == 0 ) ;
+
+	p[0] = 0; p[1] = 1; p[2] = 0 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	REQUIRE( p[0] == 0 ) ;
+	REQUIRE( p[1] == 1 ) ;
+	REQUIRE( p[2] == 0 ) ;
+
+	p[0] = 0; p[1] = 0; p[2] = 1 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	REQUIRE( p[0] == 0 ) ;
+	REQUIRE( p[1] == 0 ) ;
+	REQUIRE( p[2] == 1 ) ;
+	
+	p[0] = 1; p[1] = 0; p[2] = 0 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	REQUIRE( p[0] == 255 ) ;
+	REQUIRE( p[1] == 0 ) ;
+	REQUIRE( p[2] == 0 ) ;
+
+	p[0] = 0; p[1] = 1; p[2] = 0 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	REQUIRE( p[0] == 0 ) ;
+	REQUIRE( p[1] == 255 ) ;
+	REQUIRE( p[2] == 0 ) ;
+
+	p[0] = 0; p[1] = 0; p[2] = 1 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	REQUIRE( p[0] == 0 ) ;
+	REQUIRE( p[1] == 0 ) ;
+	REQUIRE( p[2] == 255 ) ;
+
+	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	REQUIRE( p[0] == 0 ) ;
+	REQUIRE( p[1] == 0 ) ;
+	REQUIRE( p[2] == 1 ) ;
+
+	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 2 ) ;
+	REQUIRE( p[0] == 1 ) ;
+	REQUIRE( p[1] == 1 ) ;
+	REQUIRE( p[2] == 1 ) ;
+
+	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 4 ) ;
+	REQUIRE( p[0] == 5 ) ;
+	REQUIRE( p[1] == 4 ) ;
+	REQUIRE( p[2] == 6 ) ;
+
+	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	REQUIRE( p[0] == 77 ) ;
+	REQUIRE( p[1] == 76 ) ;
+	REQUIRE( p[2] == 102 ) ;
 }
 
 

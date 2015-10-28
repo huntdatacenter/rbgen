@@ -486,7 +486,14 @@ namespace genfile {
 
 		namespace v12{
 			namespace impl {
-				// utility function to fill
+				// utility function to fill a 64-bit integer
+				// with bits from the buffer, consuming a specified number of
+				// bits at a time.
+				// arguments are:
+				// buffer, end - the buffer to read from
+				// data - the place to read bits into
+				// size - the current number of bits stored in data
+				// bits - the number of bits required.
 				char const* read_bits_from_buffer(
 					char const* buffer,
 					char const* const end,
@@ -579,7 +586,6 @@ namespace genfile {
 							<< ", data = " << bgen::impl::to_hex( buffer, end )
 							<< ".\n" ;
 	#endif
-
 						if( setter.set_sample( i ) ) {
 							setter.set_number_of_entries(
 								valueCount, 
@@ -587,10 +593,16 @@ namespace genfile {
 								eProbability
 							) ;
 							if( missing ) {
-								for( std::size_t h = 0; h < valueCount; ++h ) {
+								// Consume dummy zero values, emit missing values.
+								for( uint32_t h = 0; h < storedValueCount; ++h ) {
+									buffer = impl::read_bits_from_buffer( buffer, end, &data, &size, bits ) ;
+									double const value = impl::parse_bit_representation( &data, &size, bits ) ;
+								}
+								for( uint32_t h = 0; h < valueCount; ++h ) {
 									setter( genfile::MissingValue() ) ;
 								}
 							} else {
+								// Consume values and interpret them.
 								double sum = 0.0 ;
 								for( uint32_t h = 0; h < storedValueCount; ++h ) {
 									buffer = impl::read_bits_from_buffer( buffer, end, &data, &size, bits ) ;
@@ -661,29 +673,16 @@ namespace genfile {
 					v[2] = get_BB_probability(i) ;
 					double sum = v[0] + v[1] + v[2] ;
 					bool missing = ( sum == 0 ) ;
-					v[0] = v[0] / sum ;
-					v[1] = v[1] / sum ;
-					v[2] = v[2] / sum ;
+					if( !missing ) {
+						v[0] = v[0] / sum ;
+						v[1] = v[1] / sum ;
+						v[2] = v[2] / sum ;
+					}
 					uint8_t ploidy = 2 | ( missing ? 0x80 : 0 ) ;
 					*(ploidy_p++) = ploidy ;
 
-					if( !missing ) {
-						impl::round_probs_to_scaled_simplex( &v[0], &index[0], 3, number_of_bits ) ;
-						
-						buffer = impl::write_scaled_probs( &data, &offset, &v[0], 3, number_of_bits, buffer, end ) ;
-#if DEBUG_BGEN_FORMAT
-						double sum = v[0] + v[1] + v[2] ;
-						std::cerr << "genfile::bgen::impl::v12::write_uncompressed_snp_probability_data(): scaled probs are:"
-							<< v[0] << ", " << v[1] << ", " << v[2] << ".\n" ;
-						std::cerr << "genfile::bgen::impl::v12::write_uncompressed_snp_probability_data(): sum is:"
-							<< sum << ".\n" ;
-						std::cerr << "genfile::bgen::impl::v12::write_uncompressed_snp_probability_data(): after write, data = "
-							<< bgen::impl::to_hex(
-								reinterpret_cast< unsigned char const* >( &data ),
-								reinterpret_cast< unsigned char const* >( &data ) + 8
-							) << ".\n" ;
-#endif
-					}
+					impl::round_probs_to_scaled_simplex( &v[0], &index[0], 3, number_of_bits ) ;
+					buffer = impl::write_scaled_probs( &data, &offset, &v[0], 3, number_of_bits, buffer, end ) ;
 				}
 				// Get any leftover bytes.
 				if( offset > 0 ) {
