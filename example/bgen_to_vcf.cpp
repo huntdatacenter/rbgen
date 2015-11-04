@@ -32,6 +32,7 @@ struct ProbSetter {
 	
 	// Called once per sample to set the number of probabilities that are present.
 	void set_number_of_entries(
+		std::size_t ploidy,
 		std::size_t number_of_entries,
 		genfile::OrderType order_type,
 		genfile::ValueType value_type

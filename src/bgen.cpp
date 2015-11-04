@@ -409,15 +409,6 @@ namespace genfile {
 
 		namespace v12 {
 			namespace impl {
-				uint32_t n_choose_k( uint32_t n, uint32_t k ) {
-					if( k == 0 )  {
-						return 1 ;
-					} else if( k == 1 ) {
-						return n ;
-					}
-					return ( n * n_choose_k(n - 1, k - 1) ) / k ;
-				}
-			
 				// Fill a data field, encoded as a 64-bit integer, with bytes
 				// from a buffer, until the data contains at least the given number of bits.
 				// (For this to work we require in general that bits <= 56
@@ -502,7 +493,7 @@ namespace genfile {
 					double const* probs,
 					std::size_t const n,
 					int const number_of_bits,
-					char* buffer,
+					char* destination,
 					char* const end
 				) {
 					for( std::size_t i = 0; i < (n-1); ++i ) {
@@ -510,17 +501,17 @@ namespace genfile {
 						*data |= storedValue << (*offset) ;
 						(*offset) += number_of_bits ;
 						if( (*offset) >= 32 ) {
-							assert( (buffer+4) <= end ) ;
-							buffer = std::copy(
+							assert( (destination+4) <= end ) ;
+							destination = std::copy(
 								reinterpret_cast< char const* >( data ),
 								reinterpret_cast< char const* >( data ) + 4,
-								buffer
+								destination
 							) ;
 							(*offset) -= 32 ;
 							(*data) >>= 32 ;
 						}
 					}
-					return buffer ;
+					return destination ;
 				}
 			}
 		}

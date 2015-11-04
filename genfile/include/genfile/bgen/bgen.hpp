@@ -55,6 +55,21 @@ namespace genfile {
 		}
 #endif
 
+		namespace impl {
+			// n choose k implementation
+			// a faster implementation is of course possible, (e.g. table lookup)
+			// but this is not a bottleneck.
+			template< typename Integer >
+			Integer n_choose_k( Integer n, Integer k ) {
+				if( k == 0 )  {
+					return 1 ;
+				} else if( k == 1 ) {
+					return n ;
+				}
+				return ( n * n_choose_k(n - 1, k - 1) ) / k ;
+			}
+		}
+		
 		// class thrown when errors are detected
 		struct BGenError: public virtual std::exception {
 			~BGenError() throw() {}
@@ -221,6 +236,10 @@ namespace genfile {
 		// where N and K are convertible from std::size_t and represent the number of samples and number of alleles
 		// present for the variant.
 		//
+		// - setter.set_min_max_ploidy( a, b, c, d ) (OPTIONAL)
+		// if present this is called with a, b = minimum and maximum ploidy among samples
+		// and c,d = minimum and maximum number of probabilities per sample.
+		//
 		// - setter.set_sample( i )
 		// where i is convertible from std::size_t and represents the index of a sample between 0 and N-1.
 		// This function should return a value convertible to bool, representing a hint as to whether the setter
@@ -228,22 +247,35 @@ namespace genfile {
 		// If the return value is false, the implementation may choose not to report any data for this sample,
 		// whence the next call, if any, will be set_sample(i+1).
 		//
-		// - setter.set_number_of_entries( Z, order_type, value_type ) ;
-		// where Z is an unsigned integer reflecting the number of probability values comprising the data
-		// for this sample; order_type is of type genfile::OrderType and value_type is of type genfile::ValueType.
-		// This is called once per sample (for which set_sample is true)
+		// - setter.set_number_of_entries( P, Z, order_type, value_type ) ;
+		// - or setter.set_number_of_entries( Z, order_type, value_type ) ;
+		// where
+		// - P is an unsigned integer reflecting the ploidy of this sample at this variant
+		// - Z is an unsigned integer reflecting the number of probability values
+		// comprising the data for this sample
+		// order_type is of type genfile::OrderType and equal to either ePerUnorderedGenotype if unphased data is stored
+		// or ePerPhasedHaplotypePerAllele if phased data is stored.
+		// and value_type is of type genfile::ValueType and always equal to eProbability.
+		//
+		// This method is called once per sample (for which set_sample is true)
 		// and informs the setter the number of probability values present for this sample (depending on the
 		// ploidy, the number of alleles, and whether the data is phased.)  E.g. In the common case of a diploid sample
 		// at a biallelic variant, this will be called with Z=3.
-		// The order_type is ePerUnorderedGenotype or ePerPhasedHaplotypePerAllele depending on whether or
-		// not the data is phased.  For bgen <= 1.2, all data is interpreted as probabilities so the value_type
-		// is always eProbability.
+		//
+		// Users can implement either the first or second versions of this function (or both, in which case the
+		// first version will be called).
+		//
+		// For bgen <= 1.2, all data is interpreted as probabilities so the value_type is always eProbability.
+		// For bgen <= 1.1, all data is unphased so the order_type is ePerUnorderedGenotype.
 		//
 		// - setter( value ) ;
 		// where value is of type double or genfile::MissingValue.
 		// This is called Z times and reflects the probability data stored for this sample.
 		// Samples with missing data have Z missing values; those without missing data have
 		// Z double values.
+		//
+		// - setter.finalise()
+		// If this method is present it is called once at the end of the call.
 		//
 		template< typename Setter >
 		void parse_probability_data(
@@ -419,6 +451,90 @@ namespace genfile {
 			return true ;
 		}
 
+		namespace {
+			template< typename Setter >
+			struct has_set_min_max_ploidy {
+				template< typename U, void (U::*)( uint32_t, uint32_t, uint32_t, uint32_t ) > struct SFINAE {} ;
+				template<typename U> static uint8_t Test(SFINAE<U, &U::set_min_max_ploidy>*) ;
+				template<typename U> static uint32_t Test(...) ;
+				static const bool Yes = sizeof(Test<Setter>(0)) == sizeof(uint8_t) ;
+				static const bool No = sizeof(Test<Setter>(0)) == sizeof(uint16_t) ;
+			} ;
+			
+			template< typename Setter >
+			void call_set_min_max_ploidy(
+				Setter& setter,
+				uint32_t min_ploidy, uint32_t max_ploidy,
+				uint32_t numberOfAlleles,
+				bool phased,
+				std::true_type
+			) {
+				uint32_t min_count = phased
+					? (min_ploidy * numberOfAlleles)
+					: impl::n_choose_k( min_ploidy + numberOfAlleles - 1, numberOfAlleles - 1 ) ;
+				uint32_t max_count = phased
+					? (max_ploidy * numberOfAlleles)
+					: impl::n_choose_k( max_ploidy + numberOfAlleles - 1, numberOfAlleles - 1 ) ;
+				setter.set_min_max_ploidy(
+					min_ploidy, max_ploidy,
+					min_count, max_count
+				) ;
+			}
+
+			template< typename Setter >
+			void call_set_min_max_ploidy(
+				Setter& setter,
+				uint32_t min_ploidy, uint32_t max_ploidy,
+				uint32_t numberOfAlleles,
+				bool phased,
+				std::false_type
+			) {
+				// do nothing
+			}
+			
+			template< typename Setter >
+			void call_set_min_max_ploidy(
+				Setter& setter,
+				uint32_t min_ploidy, uint32_t max_ploidy,
+				uint32_t numberOfAlleles,
+				bool phased
+			) {
+				call_set_min_max_ploidy( setter, min_ploidy, max_ploidy, numberOfAlleles, phased,
+					std::integral_constant<bool, has_set_min_max_ploidy<Setter>::Yes>()
+				) ;
+			}
+			
+			template< typename Setter >
+			struct has_finalise {
+				template< typename U, void (U::*)() > struct SFINAE {} ;
+				template<typename U> static uint8_t Test(SFINAE<U, &U::finalise>*) ;
+				template<typename U> static uint32_t Test(...) ;
+				static const bool Yes = sizeof(Test<Setter>(0)) == sizeof(uint8_t) ;
+				static const bool No = sizeof(Test<Setter>(0)) == sizeof(uint16_t) ;
+			} ;
+			
+			template< typename Setter >
+			void call_finalise(
+				Setter& setter, std::true_type
+			) {
+				setter.finalise() ;
+			}
+
+			template< typename Setter >
+			void call_finalise(
+				Setter& setter, std::false_type
+			) {
+				// do nothing
+			}
+			
+			template< typename Setter >
+			void call_finalise(
+				Setter& setter
+			) {
+				call_finalise( setter, std::integral_constant<bool, has_finalise<Setter>::Yes>() ) ;
+			}
+		}
+
 		namespace v11 {
 			namespace impl {
 				template< typename FloatType >
@@ -469,11 +585,12 @@ namespace genfile {
 				Setter& setter
 			) {
 				setter.initialise( context.number_of_samples, 2 ) ;
-				
+				uint32_t const ploidy = 2 ;
+				call_set_min_max_ploidy( setter, 2ul, 2ul, 2ul, false ) ;
 				double const probability_conversion_factor = impl::get_probability_conversion_factor( context.flags ) ;
 				for ( uint32_t i = 0 ; i < context.number_of_samples ; ++i ) {
 					setter.set_sample( i ) ;
-					setter.set_number_of_entries( 3, ePerUnorderedGenotype, eProbability ) ;
+					setter.set_number_of_entries( ploidy, 3, ePerUnorderedGenotype, eProbability ) ;
 					assert( end >= buffer + 6 ) ;
 					for( std::size_t g = 0; g < 3; ++g ) {
 						uint16_t prob ;
@@ -481,6 +598,7 @@ namespace genfile {
 						setter( impl::convert_from_integer_representation( prob, probability_conversion_factor ) ) ;
 					}
 				}
+				call_finalise( setter ) ;
 			}
 		}
 
@@ -508,11 +626,6 @@ namespace genfile {
 					int const bits
 				) ;
 					
-				// n choose k implementation
-				// a faster implementation is of course possible, (e.g. table lookup)
-				// but this is not a bottleneck.
-				uint32_t n_choose_k( uint32_t n, uint32_t k ) ;
-
 				void round_probs_to_scaled_simplex( double* p, std::size_t* index, std::size_t const n, int const number_of_bits ) ;
 
 				// Write data encoding n probabilities, given in probs, that sum to 1,
@@ -523,7 +636,7 @@ namespace genfile {
 					double const* probs,
 					std::size_t const n,
 					int const number_of_bits,
-					char* buffer,
+					char* destination,
 					char* const end
 				) ;
 			}
@@ -548,7 +661,6 @@ namespace genfile {
 				if( numberOfSamples != context.number_of_samples ) {
 					throw BGenError() ;
 				}
-				setter.initialise( numberOfSamples, uint32_t( numberOfAlleles ) ) ;
 
 				// Keep a pointer to the ploidy and move buffer past the ploidy information
 				char const* ploidy_p = buffer ;
@@ -556,7 +668,7 @@ namespace genfile {
 				// Get the phased flag and number of bits
 				bool const phased = ((*buffer++) & 0x1 ) ;
 				int const bits = int( *reinterpret_cast< unsigned char const *>( buffer++ ) ) ;
-			
+				
 	#if DEBUG_BGEN_FORMAT
 				std::cerr << "parse_probability_data_v12(): numberOfSamples = " << numberOfSamples
 					<< ", phased = " << phased << ".\n" ;
@@ -564,6 +676,9 @@ namespace genfile {
 					<< bgen::impl::to_hex( buffer, end ) << ".\n" ;
 	#endif
 
+				setter.initialise( numberOfSamples, uint32_t( numberOfAlleles ) ) ;
+				call_set_min_max_ploidy( setter, uint32_t( ploidyExtent[0] ), uint32_t( ploidyExtent[1] ), numberOfAlleles, phased ) ;
+				
 				{
 					uint64_t data = 0 ;
 					int size = 0 ;
@@ -573,7 +688,7 @@ namespace genfile {
 						uint32_t const valueCount
 							= phased
 							? (ploidy * numberOfAlleles)
-							: ((numberOfAlleles == 2) ? (ploidy+1) : impl::n_choose_k( ploidy + numberOfAlleles - 1, numberOfAlleles - 1 )) ;
+							: genfile::bgen::impl::n_choose_k( uint32_t( ploidy + numberOfAlleles - 1 ), uint32_t( numberOfAlleles - 1 )) ;
 
 						uint32_t const storedValueCount = valueCount - ( phased ? ploidy : 1 ) ;
 					
@@ -588,7 +703,8 @@ namespace genfile {
 	#endif
 						if( setter.set_sample( i ) ) {
 							setter.set_number_of_entries(
-								valueCount, 
+								ploidy,
+								valueCount,
 								phased ? ePerPhasedHaplotypePerAllele : ePerUnorderedGenotype,
 								eProbability
 							) ;
@@ -633,7 +749,84 @@ namespace genfile {
 						}
 					}
 				}
+				call_finalise( setter ) ;
 			}
+#if 0
+			template< typename Setter >
+			struct ProbabilityDataWriter {
+				ProbabilityDataWriter( char* buffer, char* const end, int const number_of_bits ):
+					m_buffer( buffer ),
+					m_p( buffer ),
+					m_end( end ),
+					m_number_of_bits( number_of_bits ),
+					m_min_ploidy( 127 ),
+					m_max_ploidy( 0 ),
+					m_sample_i(0),
+					m_order_type( eUnknownOrderType )
+				{}
+				void initialise( uint32_t nSamples, uint16_t nAlleles ) {
+					m_p = write_little_endian_integer( m_buffer, end, nSamples ) ;
+					m_p = write_little_endian_integer( m_buffer, end, nAlleles ) ;
+					// skip the ploidy bytes, which we'll write later
+					m_p += nSamples+2 ;
+					
+				}
+				bool set_sample( std::size_t i ) {
+					assert( i == m_sample_i || i == m_sample_i+1 ) ;
+				}
+				void set_number_of_entries( std::size_t ploidy, std::size_t number_of_entries, OrderType const order_type, ValueType const value_type ) {
+					assert( ploidy < 64 ) ;
+					char ploidyChar( ploidy ) ;
+					*(m_buffer + 8 + m_sample_i) = ploidyChar ;
+					m_min_ploidy = std::min( m_min_ploidy, ploidyChar ) ;
+					m_max_ploidy = std::max( m_max_ploidy, ploidyChar ) ;
+					
+					assert( order_type == ePerUnorderedGenotype || order_type == ePerPhasedHaplotypePerAllele ) ;
+					if( m_sample_i == 0 ) {
+						m_order_type = order_type ;
+					} else {
+						assert( m_order_type == order_type ) ;
+					}
+					
+					assert( value_type == eProbability ) ;
+					m_number_of_entries = number_of_entries ;
+					m_entry_i = 0 ;
+				}
+				void operator()( genfile::MissingValue const value ) {
+					v[m_entry_i++] = 0.0 ;
+					bake() ;
+				}
+				void operator()( double const value ) {
+					v[m_entry_i++] = value ;
+					bake() ;
+				}
+				void bake() {
+					if( m_entry_i == m_number_of_entries ) {
+						impl::round_probs_to_scaled_simplex( &v[0], &index[0], m_number_of_entries, m_number_of_bits ) ;
+						buffer = impl::write_scaled_probs( &data, &offset, &v[0], 3, number_of_bits, buffer, end ) ;
+						
+					}
+				}
+				void finalise() {
+					*(m_buffer+6) = m_min_ploidy ;
+					*(m_buffer+6) = m_max_ploidy ;
+				}
+			private:
+				char* m_buffer ;
+				char* m_p ;
+				char* const m_end ;
+				int const m_number_of_bits ;
+				char m_min_ploidy ;
+				char m_max_ploidy ;
+				OrderType m_order_type ;
+				std::size_t m_sample_i ;
+				std::size_t m_number_of_entries ;
+				std::size_t m_entry_i ;
+				bool phased ;
+				double v[100] ;
+				std::size_t index[100] ;
+			} ;
+#endif
 
 			template< typename GenotypeProbabilityGetter >
 			char* write_uncompressed_snp_probability_data(
