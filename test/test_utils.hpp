@@ -7,6 +7,18 @@
 #include <string>
 
 std::string to_hex( std::string const& str ) ;
+template< typename Iterator, typename End >
+std::string to_hex( Iterator begin, End end ) {
+	std::ostringstream o ;
+	for( Iterator p = begin; p != end; ++p ) {
+		if( (p-begin) % 4 == 0 )
+			o << "|" ;
+		o << std::hex << std::setw(2) << std::setfill('0') << static_cast<int> ( static_cast<unsigned char>( *p ) ) ;
+	}
+	return o.str() ;
+}
+
+	
 
 template<typename ... Args>
 std::string format( std::string const& format, Args... args )

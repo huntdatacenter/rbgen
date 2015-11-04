@@ -11,12 +11,6 @@
 #include "test_utils.hpp"
 
 std::string to_hex( std::string const& str ) {
-	std::ostringstream o ;
-	for( std::size_t i = 0; i < str.size(); ++i ) {
-		if( i % 4 == 0 )
-			o << "|" ;
-		o << std::hex << std::setw(2) << std::setfill('0') << static_cast<int> ( static_cast<unsigned char>( str[i] ) ) ;
-	}
-	return o.str() ;
+	return to_hex( str.data(), str.data() + str.size() ) ;
 }
 

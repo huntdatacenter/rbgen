@@ -30,6 +30,7 @@ ProbSetCheck::ProbSetCheck(
 ProbSetCheck::~ProbSetCheck() throw() {
 	REQUIRE( m_sample_i + 1 == m_number_of_samples ) ;
 	REQUIRE( m_entry_i == m_number_of_entries ) ;
+	REQUIRE( m_state == eFinalised ) ;
 }
 
 void ProbSetCheck::initialise( std::size_t nSamples, std::size_t nAlleles ) {
@@ -37,6 +38,9 @@ void ProbSetCheck::initialise( std::size_t nSamples, std::size_t nAlleles ) {
 	REQUIRE( nSamples == m_number_of_samples ) ;
 	REQUIRE( nAlleles == 2 ) ;
 	m_state = eSetNumberOfSamples ;
+}
+
+void ProbSetCheck::set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) {
 }
 
 bool ProbSetCheck::set_sample( std::size_t i ) {
@@ -49,7 +53,7 @@ bool ProbSetCheck::set_sample( std::size_t i ) {
 	return true ;
 }
 
-void ProbSetCheck::set_number_of_entries( std::size_t n, genfile::OrderType const order_type, genfile::ValueType const value_type ) {
+void ProbSetCheck::set_number_of_entries( std::size_t ploidy, std::size_t n, genfile::OrderType const order_type, genfile::ValueType const value_type ) {
 #if DEBUG > 2
 	std::cerr << "ProbSetApiCheck::set_number_of_entries(): n = " << n
 		<< ", order_type = " << order_type << ".\n" ;
@@ -85,4 +89,14 @@ void ProbSetCheck::operator()( double const value ) {
 	//REQUIRE( value == Approx( m_get_expected_probs( m_sample_i, m_entry_i ) ) ;
 	++m_entry_i ;
 	m_state = eSetValue ;
+}
+
+void ProbSetCheck::finalise() {
+	bool correctState =
+		(m_number_of_samples == 0 && m_state == eSetNumberOfSamples )
+		||
+		(m_number_of_samples > 0 && m_state == eSetValue )
+	;
+	REQUIRE( correctState ) ;
+	m_state = eFinalised ;
 }

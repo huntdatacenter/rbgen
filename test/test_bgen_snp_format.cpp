@@ -680,16 +680,25 @@ TEST_CASE( "Test that round_probs_to_scaled_simplex() works correctly", "[bgen]"
 	REQUIRE( p[1] == 1 ) ;
 	REQUIRE( p[2] == 1 ) ;
 
+	// up, down, exact.
 	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
 	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 4 ) ;
 	REQUIRE( p[0] == 5 ) ;
 	REQUIRE( p[1] == 4 ) ;
 	REQUIRE( p[2] == 6 ) ;
 
-	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
+	// up, down, exact.
+	p[0] = 76.5/255.0; p[1] = 76.5/255.0; p[2] = 102.0/255.0 ;
 	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
 	REQUIRE( p[0] == 77 ) ;
 	REQUIRE( p[1] == 76 ) ;
+	REQUIRE( p[2] == 102 ) ;
+
+	// down, up, down.
+	p[0] = 76.2/255.0; p[1] = 76.9/255.0; p[2] = 101.9/255.0 ;
+	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	REQUIRE( p[0] == 76 ) ;
+	REQUIRE( p[1] == 77 ) ;
 	REQUIRE( p[2] == 102 ) ;
 }
 
@@ -761,5 +770,70 @@ TEST_CASE( "Test that valid variant data block containing phased data can be wri
 		do_snp_block_write_test( "v12", 1001, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
 	}
 #endif
+}
+
+TEST_CASE( "Test single sample", "[bgen][small]" ) {
+	std::cout << "test_single_sample\n" ;
+
+	std::vector< char > data( 1000 ) ;
+	std::vector< double > values{ 0.0, 0.0, 0.0 } ;
+	std::function< double( std::size_t ) > get_AA = [&]( std::size_t i ) { return values[i*3] ; } ;
+	std::function< double( std::size_t ) > get_AB = [&]( std::size_t i ) { return values[i*3+1] ; } ;
+	std::function< double( std::size_t ) > get_BB = [&]( std::size_t i ) { return values[i*3+2] ; } ;
+
+	genfile::bgen::Context context ;
+	context.number_of_samples = 1 ;
+	context.flags = genfile::bgen::e_v12Layout ;
+
+	enum { ePloidy = 8, eNumberOfBits = 10, eData = 11 } ;
+
+	std::vector< unsigned char > expected{
+		0x1,0x0,0x0,0x0,		// sample count
+		0x2,0x0,				// allele count
+		0x2,0x2,				// min/max ploidy
+		0x82, 					// ploidy
+		0x0, 0x0,				// phased, # bits to be filled in below
+		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0		// data (padded to maximum size).
+	} ;
+
+	for( unsigned char number_of_bits = 1; number_of_bits < 32; ++number_of_bits ) {
+		expected[ eNumberOfBits ] = number_of_bits ;
+		std::size_t expected_size = 11 + ((( number_of_bits * 2 ) + 7 ) / 8 ) ;
+	
+		char const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
+			&data[0], &data[0] + data.size(),
+			context,
+			get_AA, get_AB, get_BB,
+			number_of_bits
+		) ;
+		std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+		std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+		REQUIRE( ( end - &data[0] ) == expected_size ) ;
+		REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+	}
+
+	for( std::size_t g = 0; g < 3; ++g ) {
+		values[0] = values[1] = values[2] = 0 ;
+		values[g] = 1.0 ;
+		expected[ ePloidy ] = 0x2 ;
+		unsigned char number_of_bits = 8 ;
+		{
+			expected[ eNumberOfBits ] = number_of_bits ;
+			expected[ eData ] = expected[ eData + 1 ] = expected[ eData + 2 ] = 0x0 ;
+			expected[ eData + g ] = 0xff ;
+			std::size_t expected_size = 11 + ((( number_of_bits * 2 ) + 7 ) / 8 ) ;
+	
+			char const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
+				&data[0], &data[0] + data.size(),
+				context,
+				get_AA, get_AB, get_BB,
+				number_of_bits
+			) ;
+			std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+			std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+			REQUIRE( ( end - &data[0] ) == expected_size ) ;
+			REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+		}
+	}
 }
 

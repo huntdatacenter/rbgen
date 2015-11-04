@@ -18,7 +18,7 @@
 */
 struct ProbSetCheck {
 	typedef std::function< double( std::size_t i, std::size_t g ) > GetExpectedProbs ;
-	enum State { eNone, eSetNumberOfSamples, eSetSample, eSetNumberOfEntries, eSetValue } ;
+	enum State { eNone, eSetNumberOfSamples, eSetSample, eSetNumberOfEntries, eSetValue, eFinalised } ;
 
 	ProbSetCheck(
 		std::size_t n,
@@ -28,11 +28,13 @@ struct ProbSetCheck {
 	~ProbSetCheck() throw() ;
 
 	void initialise( std::size_t nSamples, std::size_t nAlleles ) ;
+	void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) ;
 	bool set_sample( std::size_t i ) ;
-	void set_number_of_entries( std::size_t n, genfile::OrderType const order_type, genfile::ValueType const value_type ) ;
+	void set_number_of_entries( std::size_t ploidy, std::size_t n, genfile::OrderType const order_type, genfile::ValueType const value_type ) ;
 	void operator()( genfile::MissingValue const value ) ;
 	void operator()( double const value ) ;
-
+	void finalise() ;
+	
 private:
 	std::size_t m_number_of_samples ;
 	GetExpectedProbs m_get_expected_probs ;
