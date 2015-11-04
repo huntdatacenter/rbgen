@@ -40,15 +40,15 @@ TEST_CASE( "Test that integers can be written and recovered from a buffer." ) {
 	test_rw<char>( 1 ) ;
 	test_rw<char>( 127 ) ;
 	test_rw<char>( -128 ) ;
-	test_rw<char>( std::numeric_limits<uint16_t>::max() ) ;
-	test_rw<char>( std::numeric_limits<uint16_t>::min() ) ;
+	test_rw<char>( std::numeric_limits<char>::max() ) ;
+	test_rw<char>( std::numeric_limits<char>::min() ) ;
 
 	test_rw<unsigned char>( 0 ) ;
 	test_rw<unsigned char>( 1 ) ;
 	test_rw<unsigned char>( 127 ) ;
 	test_rw<unsigned char>( 255 ) ;
-	test_rw<unsigned char>( std::numeric_limits<uint16_t>::max() ) ;
-	test_rw<unsigned char>( std::numeric_limits<uint16_t>::min() ) ;
+	test_rw<unsigned char>( std::numeric_limits<unsigned char>::max() ) ;
+	test_rw<unsigned char>( std::numeric_limits<unsigned char>::min() ) ;
 
 	test_rw<uint16_t>( 0 ) ;
 	test_rw<uint16_t>( 1 ) ;
