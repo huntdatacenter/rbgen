@@ -208,7 +208,7 @@ namespace genfile {
 		void read_genotype_data_block(
 			std::istream& aStream,
 			Context const& context,
-			std::vector< char >* buffer1
+			std::vector< byte_t >* buffer1
 		) ;
 
 		// Low-level function which uncompresses probability data stored in the genotype data block
@@ -223,8 +223,8 @@ namespace genfile {
 		// simply copies the source buffer to the target buffer.
 		void uncompress_probability_data(
 			Context const& context,
-			std::vector< char > const& buffer1,
-			std::vector< char >* buffer2
+			std::vector< byte_t > const& buffer1,
+			std::vector< byte_t >* buffer2
 		) ;
 
 		// template< typename Setter >
@@ -279,8 +279,8 @@ namespace genfile {
 		//
 		template< typename Setter >
 		void parse_probability_data(
-			char const* buffer,
-			char const* const end,
+			byte_t const* buffer,
+			byte_t const* const end,
 			Context const& context,
 			Setter& setter
 		) ;
@@ -296,8 +296,8 @@ namespace genfile {
 			std::istream& aStream,
 			Context const& context,
 			Setter& setter,
-			std::vector< char >* buffer1,
-			std::vector< char >* buffer2
+			std::vector< byte_t >* buffer1,
+			std::vector< byte_t >* buffer2
 		) ;
 	}
 }	
@@ -310,11 +310,11 @@ namespace genfile {
 	namespace bgen {
 		// Read an integer stored in little-endian format into an integer stored in memory.
 		template< typename IntegerType >
-		char const* read_little_endian_integer( char const* buffer, char const* const end, IntegerType* integer_ptr ) {
+		byte_t const* read_little_endian_integer( byte_t const* buffer, byte_t const* const end, IntegerType* integer_ptr ) {
 			assert( end >= buffer + sizeof( IntegerType )) ;
 			*integer_ptr = 0 ;
 			for( std::size_t byte_i = 0; byte_i < sizeof( IntegerType ); ++byte_i ) {
-				(*integer_ptr) |= IntegerType( *reinterpret_cast< unsigned char const* >( buffer++ )) << ( 8 * byte_i ) ;
+				(*integer_ptr) |= IntegerType( *reinterpret_cast< byte_t const* >( buffer++ )) << ( 8 * byte_i ) ;
 			}
 			return buffer ;
 		}
@@ -323,11 +323,12 @@ namespace genfile {
 		// The stream is assumed to have sizeof( Integertype ) readable bytes.
 		template< typename IntegerType >
 		void read_little_endian_integer( std::istream& in_stream, IntegerType* integer_ptr ) {
-			char buffer[ sizeof( IntegerType ) ] ;
-			in_stream.read( buffer, sizeof( IntegerType )) ;
-			if( in_stream ) {
-				read_little_endian_integer( buffer, buffer + sizeof( IntegerType ), integer_ptr ) ;
+			byte_t buffer[ sizeof( IntegerType ) ] ;
+			in_stream.read( reinterpret_cast< char* >( buffer ), sizeof( IntegerType )) ;
+			if( !in_stream ) {
+				throw BGenError() ;
 			}
+			read_little_endian_integer( buffer, buffer + sizeof( IntegerType ), integer_ptr ) ;
 		}
 
 		template< typename IntegerType >
@@ -336,12 +337,15 @@ namespace genfile {
 			read_little_endian_integer( in_stream, length_ptr ) ;
 			std::vector< char >buffer ( length ) ;
 			in_stream.read( &buffer[0], length ) ;
+			if( !in_stream ) {
+				throw BGenError() ;
+			}
 			string_ptr->assign( buffer.begin(), buffer.end() ) ;
 		}
 
 		// Write an integer to the buffer in little-endian format.
 		template< typename IntegerType >
-		char* write_little_endian_integer( char* buffer, char* const end, IntegerType const integer ) {
+		byte_t* write_little_endian_integer( byte_t* buffer, byte_t* const end, IntegerType const integer ) {
 			assert( end >= buffer + sizeof( IntegerType )) ;
 			for( std::size_t byte_i = 0; byte_i < sizeof( IntegerType ); ++byte_i ) {
 				*buffer++ = ( integer >> ( 8 * byte_i ) ) & 0xff ;
@@ -353,9 +357,9 @@ namespace genfile {
 		// The stream is assumed to have sizeof( Integertype ) bytes writeable.
 		template< typename IntegerType >
 		void write_little_endian_integer( std::ostream& out_stream, IntegerType const integer ) {
-			char buffer[ sizeof( IntegerType ) ] ;
+			byte_t buffer[ sizeof( IntegerType ) ] ;
 			write_little_endian_integer( buffer, buffer + sizeof( IntegerType ), integer ) ;
-			out_stream.write( buffer, sizeof( IntegerType )) ;
+			out_stream.write( reinterpret_cast< char const* >( buffer ), sizeof( IntegerType )) ;
 		}
 		
 		template< typename IntegerType >
@@ -417,21 +421,29 @@ namespace genfile {
 			std::string allele ;
 			uint32_t const layout = context.flags & e_Layout ;
 			
+			// If we can't read a valid first field we return false; this will indicate EOF.
+			// Any other fail to read is an error and an exception will be thrown.
 			if( layout == e_v11Layout || layout == e_v10Layout ) {
 				uint32_t number_of_samples ;
-				read_little_endian_integer( aStream, &number_of_samples ) ;
-				if( !aStream ) {
+				try {
+					read_little_endian_integer( aStream, &number_of_samples ) ;
+				} catch( BGenError const& ) {
 					return false ;
 				}
 				if( number_of_samples != context.number_of_samples ) {
 					throw BGenError() ;
 				}
+				read_length_followed_by_data( aStream, &SNPID_size, SNPID ) ;
+			} else if( layout == e_v12Layout ) {
+				try {
+					read_length_followed_by_data( aStream, &SNPID_size, SNPID ) ;
+				} catch( BGenError const& ) {
+					return false ;
+				}
+			} else {
+				assert(0) ;
 			}
-			std::string chromosome_string ;
-			read_length_followed_by_data( aStream, &SNPID_size, SNPID ) ;
-			if( layout == e_v12Layout && !aStream ) {
-				return false ;
-			}
+
 			read_length_followed_by_data( aStream, &RSID_size, RSID ) ;
 			read_length_followed_by_data( aStream, &chromosome_size, chromosome ) ;
 			read_little_endian_integer( aStream, SNP_position ) ;
@@ -555,9 +567,9 @@ namespace genfile {
 			}
 
 			template< typename GenotypeProbabilityGetter >
-			char* write_uncompressed_snp_probability_data(
-				char* buffer,
-				char* const end,
+			byte_t* write_uncompressed_snp_probability_data(
+				byte_t* buffer,
+				byte_t* const end,
 				Context const& context,
 				GenotypeProbabilityGetter get_AA_probability,
 				GenotypeProbabilityGetter get_AB_probability,
@@ -579,11 +591,14 @@ namespace genfile {
 
 			template< typename Setter >
 			void parse_probability_data(
-				char const* buffer,
-				char const* const end,
+				byte_t const* buffer,
+				byte_t const* const end,
 				Context const& context,
 				Setter& setter
 			) {
+				if( end != buffer + 6*context.number_of_samples ) {
+					throw BGenError() ;
+				}
 				setter.initialise( context.number_of_samples, 2 ) ;
 				uint32_t const ploidy = 2 ;
 				call_set_min_max_ploidy( setter, 2ul, 2ul, 2ul, false ) ;
@@ -612,9 +627,9 @@ namespace genfile {
 				// data - the place to read bits into
 				// size - the current number of bits stored in data
 				// bits - the number of bits required.
-				char const* read_bits_from_buffer(
-					char const* buffer,
-					char const* const end,
+				byte_t const* read_bits_from_buffer(
+					byte_t const* buffer,
+					byte_t const* const end,
 					uint64_t* data,
 					int* size,
 					uint8_t const bits
@@ -630,29 +645,32 @@ namespace genfile {
 
 				// Write data encoding n probabilities, given in probs, that sum to 1,
 				// starting at the given offset in data, to the given buffer.
-				char* write_scaled_probs(
+				byte_t* write_scaled_probs(
 					uint64_t* data,
 					std::size_t* offset,
 					double const* probs,
 					std::size_t const n,
 					int const number_of_bits,
-					char* destination,
-					char* const end
+					byte_t* destination,
+					byte_t* const end
 				) ;
 			}
 
 			template< typename Setter >
 			void parse_probability_data(
-				char const* buffer,
-				char const* const end,
+				byte_t const* buffer,
+				byte_t const* const end,
 				Context const& context,
 				Setter& setter
 			) {
 				uint32_t numberOfSamples ;
 				uint16_t numberOfAlleles ;
-				unsigned char ploidyExtent[2] ;
+				byte_t ploidyExtent[2] ;
 				enum { ePhased = 1, eUnphased = 0 } ;
 				
+				if( end < buffer + 8 ) {
+					throw BGenError() ;
+				}
 				buffer = read_little_endian_integer( buffer, end, &numberOfSamples ) ;
 				buffer = read_little_endian_integer( buffer, end, &numberOfAlleles ) ;
 				buffer = read_little_endian_integer( buffer, end, &ploidyExtent[0] ) ;
@@ -661,13 +679,16 @@ namespace genfile {
 				if( numberOfSamples != context.number_of_samples ) {
 					throw BGenError() ;
 				}
-
+				if( end < buffer + numberOfSamples + 2 ) {
+					throw BGenError() ;
+				}
+				
 				// Keep a pointer to the ploidy and move buffer past the ploidy information
-				char const* ploidy_p = buffer ;
+				byte_t const* ploidy_p = buffer ;
 				buffer += numberOfSamples ;
 				// Get the phased flag and number of bits
 				bool const phased = ((*buffer++) & 0x1 ) ;
-				int const bits = int( *reinterpret_cast< unsigned char const *>( buffer++ ) ) ;
+				int const bits = int( *reinterpret_cast< byte_t const *>( buffer++ ) ) ;
 				
 	#if DEBUG_BGEN_FORMAT
 				std::cerr << "parse_probability_data_v12(): numberOfSamples = " << numberOfSamples
@@ -683,8 +704,8 @@ namespace genfile {
 					uint64_t data = 0 ;
 					int size = 0 ;
 					for( uint32_t i = 0; i < numberOfSamples; ++i, ++ploidy_p ) {
-						uint32_t const ploidy = uint32_t(*reinterpret_cast< unsigned char const* >( ploidy_p ) & 0x3F) ;
-						bool const missing = (*reinterpret_cast< unsigned char const* >( ploidy_p ) & 0x80) ;
+						uint32_t const ploidy = uint32_t(*ploidy_p & 0x3F) ;
+						bool const missing = (*ploidy_p & 0x80) ;
 						uint32_t const valueCount
 							= phased
 							? (ploidy * numberOfAlleles)
@@ -712,7 +733,7 @@ namespace genfile {
 								// Consume dummy zero values, emit missing values.
 								for( uint32_t h = 0; h < storedValueCount; ++h ) {
 									buffer = impl::read_bits_from_buffer( buffer, end, &data, &size, bits ) ;
-									double const value = impl::parse_bit_representation( &data, &size, bits ) ;
+									(void) impl::parse_bit_representation( &data, &size, bits ) ;
 								}
 								for( uint32_t h = 0; h < valueCount; ++h ) {
 									setter( genfile::MissingValue() ) ;
@@ -754,7 +775,7 @@ namespace genfile {
 #if 0
 			template< typename Setter >
 			struct ProbabilityDataWriter {
-				ProbabilityDataWriter( char* buffer, char* const end, int const number_of_bits ):
+				ProbabilityDataWriter( byte_t* buffer, byte_t* const end, int const number_of_bits ):
 					m_buffer( buffer ),
 					m_p( buffer ),
 					m_end( end ),
@@ -812,9 +833,9 @@ namespace genfile {
 					*(m_buffer+6) = m_max_ploidy ;
 				}
 			private:
-				char* m_buffer ;
-				char* m_p ;
-				char* const m_end ;
+				byte_t* m_buffer ;
+				byte_t* m_p ;
+				byte_t* const m_end ;
 				int const m_number_of_bits ;
 				char m_min_ploidy ;
 				char m_max_ploidy ;
@@ -829,9 +850,9 @@ namespace genfile {
 #endif
 
 			template< typename GenotypeProbabilityGetter >
-			char* write_uncompressed_snp_probability_data(
-				char* buffer,
-				char* const end,
+			byte_t* write_uncompressed_snp_probability_data(
+				byte_t* buffer,
+				byte_t* const end,
 				Context const& context,
 				GenotypeProbabilityGetter get_AA_probability,
 				GenotypeProbabilityGetter get_AB_probability,
@@ -850,7 +871,7 @@ namespace genfile {
 				buffer = write_little_endian_integer( buffer, end, numberOfAlleles ) ;
 				buffer = write_little_endian_integer( buffer, end, ploidy ) ;
 				buffer = write_little_endian_integer( buffer, end, ploidy ) ;
-				char* ploidy_p = buffer ;
+				byte_t* ploidy_p = buffer ;
 				buffer += context.number_of_samples ;
 				buffer = write_little_endian_integer( buffer, end, uint8_t( 0 ) ) ;
 				buffer = write_little_endian_integer( buffer, end, uint8_t( number_of_bits ) ) ;
@@ -886,8 +907,8 @@ namespace genfile {
 #endif
 					assert( (buffer+nBytes) <= end ) ;
 					buffer = std::copy(
-						reinterpret_cast< char const* >( &data ),
-						reinterpret_cast< char const* >( &data ) + nBytes,
+						reinterpret_cast< byte_t const* >( &data ),
+						reinterpret_cast< byte_t const* >( &data ) + nBytes,
 						buffer
 					) ;
 				}
@@ -897,8 +918,8 @@ namespace genfile {
 		
 		template< typename Setter >
 		void parse_probability_data(
-			char const* buffer,
-			char const* const end,
+			byte_t const* buffer,
+			byte_t const* const end,
 			Context const& context,
 			Setter& setter
 		) {
@@ -914,8 +935,8 @@ namespace genfile {
 			std::istream& aStream,
 			Context const& context,
 			Setter& setter,
-			std::vector< char >* buffer1,
-			std::vector< char >* buffer2
+			std::vector< byte_t >* buffer1,
+			std::vector< byte_t >* buffer2
 		) {
 			read_genotype_data_block( aStream, context, buffer1 ) ;
 			uncompress_probability_data( context, *buffer1, buffer2 ) ;
@@ -928,9 +949,9 @@ namespace genfile {
 		}
 
 		template< typename GenotypeProbabilityGetter >
-		char* write_uncompressed_snp_probability_data(
-			char* buffer,
-			char* const bufferEnd,
+		byte_t* write_uncompressed_snp_probability_data(
+			byte_t* buffer,
+			byte_t* const bufferEnd,
 			Context const& context,
 			GenotypeProbabilityGetter get_AA_probability,
 			GenotypeProbabilityGetter get_AB_probability,
@@ -968,8 +989,8 @@ namespace genfile {
 			GenotypeProbabilityGetter get_AB_probability,
 			GenotypeProbabilityGetter get_BB_probability,
 			int const number_of_bits,
-			std::vector< char >* buffer,
-			std::vector< char >* compression_buffer
+			std::vector< byte_t >* buffer,
+			std::vector< byte_t >* compression_buffer
 		) {
 			uint32_t const layout = context.flags & e_Layout ;
 			// Write the data to a buffer, which we then compress and write to the stream
@@ -979,7 +1000,7 @@ namespace genfile {
 					: ( 10 + context.number_of_samples + ((( context.number_of_samples * number_of_bits * 2 )+7) / 8) ) ;
 
 			buffer->resize( uncompressed_data_size ) ;
-			char* p = write_uncompressed_snp_probability_data(
+			byte_t* p = write_uncompressed_snp_probability_data(
 				&(*buffer)[0],
 				&(*buffer)[0] + uncompressed_data_size,
 				context,
@@ -1007,7 +1028,7 @@ namespace genfile {
 				}
 
 				// and write the data
-				aStream.write( &(*compression_buffer)[0], compression_buffer_size ) ;
+				aStream.write( reinterpret_cast< char const* >( &(*compression_buffer)[0] ), compression_buffer_size ) ;
 	#else
 				assert(0) ;
 	#endif
@@ -1015,7 +1036,7 @@ namespace genfile {
 				if( layout == e_v12Layout ) {
 					write_little_endian_integer( aStream, uint32_t( uncompressed_data_size )) ;
 				}
-				aStream.write( &(*buffer)[0], uncompressed_data_size ) ;
+				aStream.write( reinterpret_cast< char const* >( &(*buffer)[0] ), uncompressed_data_size ) ;
 			}
 		}
 	}

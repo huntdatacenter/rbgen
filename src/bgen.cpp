@@ -370,7 +370,7 @@ namespace genfile {
 		void read_genotype_data_block(
 			std::istream& aStream,
 			Context const& context,
-			std::vector< char >* buffer
+			std::vector< byte_t >* buffer
 		) {
 			uint32_t payload_size = 0 ;
 			if( (context.flags & e_Layout) == e_v12Layout || (context.flags & e_CompressedSNPBlocks) ) {
@@ -379,18 +379,18 @@ namespace genfile {
 				payload_size = 6 * context.number_of_samples ;
 			}
 			buffer->resize( payload_size ) ;
-			aStream.read( &(*buffer)[0], payload_size ) ;
+			aStream.read( reinterpret_cast< char* >( &(*buffer)[0] ), payload_size ) ;
 		}
 
 		void uncompress_probability_data(
 			Context const& context,
-			std::vector< char > const& compressed_data,
-			std::vector< char >* buffer
+			std::vector< byte_t > const& compressed_data,
+			std::vector< byte_t >* buffer
 		) {
 			// compressed_data contains the (compressed or uncompressed) probability data.
 			if( context.flags & bgen::e_CompressedSNPBlocks ) {
-				char const* begin = &compressed_data[0] ;
-				char const* const end = &compressed_data[0] + compressed_data.size() ;
+				byte_t const* begin = &compressed_data[0] ;
+				byte_t const* const end = &compressed_data[0] + compressed_data.size() ;
 				uint32_t uncompressed_data_size = 0 ;
 				if( (context.flags & e_Layout) == e_v11Layout ) {
 					uncompressed_data_size = 6 * context.number_of_samples ;
@@ -413,9 +413,9 @@ namespace genfile {
 				// from a buffer, until the data contains at least the given number of bits.
 				// (For this to work we require in general that bits <= 56
 				// (on an 8-bit byte machine).
-				char const* read_bits_from_buffer(
-					char const* buffer,
-					char const* const end,
+				byte_t const* read_bits_from_buffer(
+					byte_t const* buffer,
+					byte_t const* const end,
 					uint64_t* data,
 					int* size,
 					uint8_t const bits
@@ -423,10 +423,12 @@ namespace genfile {
 					assert( CHAR_BIT == 8 ) ;
 					assert( bits <= 64 - CHAR_BIT ) ;
 					while( (*size) < bits && buffer < end ) {
-						(*data) |= uint64_t( *(reinterpret_cast< unsigned char const* >( buffer++ ))) << (*size) ;
+						(*data) |= uint64_t( *(reinterpret_cast< byte_t const* >( buffer++ ))) << (*size) ;
 						(*size) += CHAR_BIT ;
 					}
-					assert( (*size) >= bits ) ;
+					if( (*size) < bits ) {
+						throw BGenError() ;
+					}
 					return buffer ;
 				}
 			
@@ -487,14 +489,14 @@ namespace genfile {
 					}
 				}
 
-				char* write_scaled_probs(
+				byte_t* write_scaled_probs(
 					uint64_t* data,
 					std::size_t* offset,
 					double const* probs,
 					std::size_t const n,
 					int const number_of_bits,
-					char* destination,
-					char* const end
+					byte_t* destination,
+					byte_t* const end
 				) {
 					for( std::size_t i = 0; i < (n-1); ++i ) {
 						uint64_t const storedValue = uint64_t( probs[i] ) ;
@@ -503,8 +505,8 @@ namespace genfile {
 						if( (*offset) >= 32 ) {
 							assert( (destination+4) <= end ) ;
 							destination = std::copy(
-								reinterpret_cast< char const* >( data ),
-								reinterpret_cast< char const* >( data ) + 4,
+								reinterpret_cast< byte_t const* >( data ),
+								reinterpret_cast< byte_t const* >( data ) + 4,
 								destination
 							) ;
 							(*offset) -= 32 ;
