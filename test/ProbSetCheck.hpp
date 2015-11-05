@@ -27,6 +27,8 @@ struct ProbSetCheck {
 
 	~ProbSetCheck() throw() ;
 
+	void expect_fail() ;
+
 	void initialise( std::size_t nSamples, std::size_t nAlleles ) ;
 	void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) ;
 	bool set_sample( std::size_t i ) ;
@@ -45,4 +47,5 @@ private:
 	std::set< std::pair< std::size_t, std::size_t > > m_set_values ;
 
 	State m_state ;
+	bool m_expect_fail ;
 } ;

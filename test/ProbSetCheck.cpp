@@ -24,14 +24,19 @@ ProbSetCheck::ProbSetCheck(
 	m_sample_i( std::numeric_limits< std::size_t >::max() ),
 	m_number_of_entries( std::numeric_limits< std::size_t >::max() ),
 	m_entry_i( std::numeric_limits< std::size_t >::max() ),
-	m_state( eNone )
+	m_state( eNone ),
+	m_expect_fail( false )
 {}
 
 ProbSetCheck::~ProbSetCheck() throw() {
-	REQUIRE( m_sample_i + 1 == m_number_of_samples ) ;
-	REQUIRE( m_entry_i == m_number_of_entries ) ;
-	REQUIRE( m_state == eFinalised ) ;
+	if( !m_expect_fail ) {
+		REQUIRE( m_sample_i + 1 == m_number_of_samples ) ;
+		REQUIRE( m_entry_i == m_number_of_entries ) ;
+		REQUIRE( m_state == eFinalised ) ;
+	}
 }
+
+void ProbSetCheck::expect_fail() { m_expect_fail = true ; }
 
 void ProbSetCheck::initialise( std::size_t nSamples, std::size_t nAlleles ) {
 	REQUIRE( m_state == eNone ) ;
