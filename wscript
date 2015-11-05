@@ -9,7 +9,7 @@ def options( opt ):
 	
 def configure( cfg ):
 	cfg.load( 'compiler_cxx')
-	cfg.env.CFLAGS = [ '-g' ]
+	cfg.env.CXXFLAGS = [ '-g' ]
 #	cfg.env.CFLAGS = [ '-O3' ]
 	cfg.check_cxx( lib='z', uselib_store='zlib', msg = 'zlib' )
 
