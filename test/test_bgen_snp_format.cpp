@@ -21,7 +21,7 @@
 
 using namespace std::placeholders ;
 
-// #define DEBUG 3
+#define DEBUG 3
 
 // The following section contains a simple snp block writer.
 namespace data {
@@ -488,8 +488,7 @@ void do_snp_block_read_test(
 	) ;
 #if DEBUG
 	std::cerr << "do_snp_block_read_test(): bgen_version=" << bgen_version << ".\n" ;
-	std::cerr << "do_snp_block_read_test():        data is: " << genfile::string_utils::to_hex( inStream.str() ) << "\n" ;
-	std::cerr << "do_snp_block_read_test(): data (char) is: " << genfile::string_utils::to_hex_char( inStream.str() ) << "\n" ;
+	std::cerr << "do_snp_block_read_test():        data is: " << to_hex( inStream.str() ) << "\n" ;
 #endif
 	
 	std::string SNPID2 ;
@@ -499,7 +498,7 @@ void do_snp_block_read_test(
 	std::string a2 ;
 	std::string b2 ;
 
-	std::vector< char > buffer1, buffer2 ;
+	std::vector< genfile::byte_t > buffer1, buffer2 ;
 
 	genfile::bgen::read_snp_identifying_data(
 		inStream,
@@ -590,8 +589,8 @@ void do_snp_block_write_test(
 		b
 	) ;
 
-	std::vector< char > buffer ;
-	std::vector< char > buffer2 ;
+	std::vector< genfile::byte_t > buffer ;
+	std::vector< genfile::byte_t > buffer2 ;
 	genfile::bgen::write_snp_probability_data( 
 		outStream,
 		context,
@@ -618,10 +617,8 @@ void do_snp_block_write_test(
 	) ;
 
 #if DEBUG	
-	std::cerr << "          actual: " << genfile::string_utils::to_hex( outStream.str() ) << "\n" ;
-	std::cerr << "   actual (char): " << genfile::string_utils::to_hex_char( outStream.str() ) << "\n" ;
-	std::cerr << "        expected: " << genfile::string_utils::to_hex( expected ) << "\n" ;
-	std::cerr << " expected (char): " << genfile::string_utils::to_hex_char( expected ) << "\n" ;
+	std::cerr << "          actual: " << to_hex( outStream.str() ) << "\n" ;
+	std::cerr << "        expected: " << to_hex( expected ) << "\n" ;
 #endif
 		
 	REQUIRE( outStream.str() == expected ) ;
@@ -775,19 +772,19 @@ TEST_CASE( "Test that valid variant data block containing phased data can be wri
 TEST_CASE( "Test single sample", "[bgen][small]" ) {
 	std::cout << "test_single_sample\n" ;
 
-	std::vector< char > data( 1000 ) ;
+	std::vector< genfile::byte_t > data( 1000 ) ;
 	std::vector< double > values{ 0.0, 0.0, 0.0 } ;
 	std::function< double( std::size_t ) > get_AA = [&]( std::size_t i ) { return values[i*3] ; } ;
 	std::function< double( std::size_t ) > get_AB = [&]( std::size_t i ) { return values[i*3+1] ; } ;
 	std::function< double( std::size_t ) > get_BB = [&]( std::size_t i ) { return values[i*3+2] ; } ;
 
 	genfile::bgen::Context context ;
-	context.number_of_samples = 1 ;
 	context.flags = genfile::bgen::e_v12Layout ;
+	context.number_of_samples = 1 ;
 
 	enum { ePloidy = 8, eNumberOfBits = 10, eData = 11 } ;
 
-	std::vector< unsigned char > expected{
+	std::vector< genfile::byte_t > expected{
 		0x1,0x0,0x0,0x0,		// sample count
 		0x2,0x0,				// allele count
 		0x2,0x2,				// min/max ploidy
@@ -800,14 +797,16 @@ TEST_CASE( "Test single sample", "[bgen][small]" ) {
 		expected[ eNumberOfBits ] = number_of_bits ;
 		std::size_t expected_size = 11 + ((( number_of_bits * 2 ) + 7 ) / 8 ) ;
 	
-		char const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
+		genfile::byte_t const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
 			&data[0], &data[0] + data.size(),
 			context,
 			get_AA, get_AB, get_BB,
 			number_of_bits
 		) ;
+#if DEBUG
 		std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
 		std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+#endif
 		REQUIRE( ( end - &data[0] ) == expected_size ) ;
 		REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
 	}
@@ -823,17 +822,125 @@ TEST_CASE( "Test single sample", "[bgen][small]" ) {
 			expected[ eData + g ] = 0xff ;
 			std::size_t expected_size = 11 + ((( number_of_bits * 2 ) + 7 ) / 8 ) ;
 	
-			char const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
+			genfile::byte_t const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
 				&data[0], &data[0] + data.size(),
 				context,
 				get_AA, get_AB, get_BB,
 				number_of_bits
 			) ;
+#if DEBUG
 			std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
 			std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+#endif
 			REQUIRE( ( end - &data[0] ) == expected_size ) ;
 			REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
 		}
+	}
+}
+
+TEST_CASE( "Test two samples", "[bgen][small]" ) {
+	std::cout << "test_two_samples\n" ;
+
+	std::vector< genfile::byte_t > data( 1000 ) ;
+	std::vector< double > values{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 } ;
+	std::function< double( std::size_t ) > get_AA = [&]( std::size_t i ) { return values[i*3] ; } ;
+	std::function< double( std::size_t ) > get_AB = [&]( std::size_t i ) { return values[i*3+1] ; } ;
+	std::function< double( std::size_t ) > get_BB = [&]( std::size_t i ) { return values[i*3+2] ; } ;
+
+	genfile::bgen::Context context ;
+	context.flags = genfile::bgen::e_v12Layout ;
+	context.number_of_samples = 2 ;
+
+	std::vector< genfile::byte_t > expected{
+		0x2,0x0,0x0,0x0,		// sample count
+		0x2,0x0,				// allele count
+		0x2,0x2,				// min/max ploidy
+		0x82, 0x82,				// ploidy
+		0x0, 0x0,				// phased, # bits to be filled in below
+		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,		// data (padded to maximum size).
+		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0		// ditto.
+	} ;
+	enum { ePloidy = 8, eNumberOfBits = 11, eData = 12 } ;
+
+	for( std::size_t g = 0; g < 4; ++g ) {
+		values[0] = values[1] = values[2] = 0 ;
+		values[g] = ( g == 3 ? 0.0 : 1.0 ) ;
+		expected[ ePloidy ] = (g == 3) ? 0x82 : 0x2 ;
+		expected[ eData ] = expected[ eData + 1 ] = 0x0 ;
+		if( g < 2 ) {
+			expected[ eData + g ] = 0xFF ;
+		}
+		for( std::size_t g2 = 0; g2 < 3; ++g2 ) {
+			values[3] = values[4] = values[5] = 0 ;
+			values[g2+3] = ( g2 == 3 ? 0.0 : 1.0 ) ;
+			expected[ ePloidy+1 ] = (g2 == 3) ? 0x82 : 0x2 ;
+			expected[ eData + 2 ] = expected[ eData + 3 ] = 0x0 ;
+			if( g2 < 2 ) {
+				expected[ eData + 2 + g2 ] = 0xFF ;
+			}
+			unsigned char number_of_bits = 8 ;
+			{
+				expected[ eNumberOfBits ] = number_of_bits ;
+				std::size_t expected_size = 12 + ((( number_of_bits * 4 ) + 7 ) / 8 ) ;
+				genfile::byte_t const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
+					&data[0], &data[0] + data.size(),
+					context,
+					get_AA, get_AB, get_BB,
+					number_of_bits
+				) ;
+	#if DEBUG
+				std::cerr << "test_two_samples(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+				std::cerr << "test_two_samples(): (bits=" << int( number_of_bits ) << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+	#endif
+				REQUIRE( ( end - &data[0] ) == expected_size ) ;
+				REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+			}
+		}
+	}
+}
+
+TEST_CASE( "Test truncated data", "[bgen]" ) {
+	std::cout << "test_truncated\n" ;
+
+	std::vector< char > data( 1000 ) ;
+	std::vector< double > values{ 0.0, 0.0, 1.0, 1.0, 0.0, 0.0 } ;
+	std::function< double( std::size_t ) > get_AA = [&]( std::size_t i ) { return values[i*3] ; } ;
+	std::function< double( std::size_t ) > get_AB = [&]( std::size_t i ) { return values[i*3+1] ; } ;
+	std::function< double( std::size_t ) > get_BB = [&]( std::size_t i ) { return values[i*3+2] ; } ;
+
+	genfile::bgen::Context context ;
+	context.number_of_samples = 2 ;
+	context.flags = genfile::bgen::e_v12Layout ;
+
+	enum { ePloidy = 8, eNumberOfBits = 10, eData = 11 } ;
+
+	std::vector< unsigned char > expected{
+		0x2,0x0,0x0,0x0,		// sample count
+		0x2,0x0,				// allele count
+		0x2,0x2,				// min/max ploidy
+		0x02, 0x02,				// ploidy
+		0x0, 0x8,				// phased, # bits to be filled in below
+		0x0, 0x0, 0xFF, 0x0		// data (padded to maximum size).
+	} ;
+
+	// Check that truncated data fails...
+	for( std::size_t i = 1; i < expected.size(); ++i ) {
+#if 1 //DEBUG
+		std::cerr << "test_malformed(): i = " << i << ": " << to_hex( &expected[0], &expected[0] + expected.size() - i ) << "\n" ;
+#endif
+		ProbSetCheck setter(
+			2,
+			[&values]( std::size_t i, std::size_t g ) { return values[ i*3 + g ] ; }
+		) ;
+		setter.expect_fail() ;
+		REQUIRE_THROWS(
+			genfile::bgen::parse_probability_data(
+				&expected[0],
+				&expected[0] + expected.size() - i,
+				context,
+				setter
+			)
+		) ;
 	}
 }
 

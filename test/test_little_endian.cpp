@@ -14,10 +14,10 @@
 #include "genfile/bgen/bgen.hpp"
 
 namespace {
-	char buffer[100] ;
+	genfile::byte_t buffer[100] ;
 	template< typename Integer >
 	void test_rw( Integer value ) {
-		char const* end = genfile::bgen::write_little_endian_integer( buffer, buffer + 100, value ) ;
+		genfile::byte_t const* end = genfile::bgen::write_little_endian_integer( buffer, buffer + 100, value ) ;
 
 		// Test most and least significant bytes stored in the right place
 		std::size_t const lsb = 0 ;
@@ -34,7 +34,7 @@ namespace {
 
 TEST_CASE( "Test that integers can be written and recovered from a buffer." ) {
 	std::cout << "test_little_endian_integer_io\n" ;
-	char buffer[100] ;
+	genfile::byte_t buffer[100] ;
 
 	test_rw<char>( 0 ) ;
 	test_rw<char>( 1 ) ;
