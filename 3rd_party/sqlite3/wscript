@@ -1,0 +1,10 @@
+def build( bld ):
+	bld.stlib(
+		target = 'sqlite3',
+		source = [ 'sqlite3/sqlite3.c' ],
+		features = [ 'c' ],
+		includes = './',
+		defines = 'SQLITE_ENABLE_COLUMN_METADATA SQLITE_ENABLE_STAT4',
+		#uselib = 'DL',
+		export_includes = './'
+	)
