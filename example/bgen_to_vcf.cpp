@@ -113,7 +113,7 @@ struct BgenParser {
 			<< ", "
 			<< ( m_context.flags & genfile::bgen::e_CompressedSNPBlocks ? "compressed" : "uncompressed" ) << ")"
 			<< " with " 
-			<< m_context.number_of_samples << " samples and "
+			<< m_context.number_of_samples << " " << ( m_have_sample_ids ? "named" : "anonymous" ) << " samples and "
 			<< m_context.number_of_variants << " variants.\n" ;
 		return o ;
 	}
