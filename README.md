@@ -26,7 +26,6 @@ Or use the supplied waf build tool:
 ./waf-1.8.13 configure
 ./waf-1.8.13
 ```
-
 Results will appear under the `build/` directory.
 
 It's also possible to supply an installation prefix
@@ -36,7 +35,6 @@ It's also possible to supply an installation prefix
 ```
 
 This will install the example and test applications into the specified directory.
-
 
 Testing
 =====
