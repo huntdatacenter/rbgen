@@ -748,7 +748,7 @@ namespace genfile {
 									sum += value ;
 	#if DEBUG_BGEN_FORMAT
 									std::cerr << "parse_probability_data_v12(): i = " << i << ", h = " << h << ", size = " << size << ", bits = " << bits << ", parsed value = " << value
-										<< ", sum = " << std::setprecision( 10 ) << sum << ".\n" ;
+										<< ", sum = " << sum << ".\n" ;
 	#endif
 								
 									if(
@@ -772,82 +772,136 @@ namespace genfile {
 				}
 				call_finalise( setter ) ;
 			}
-#if 0
+
 			template< typename Setter >
 			struct ProbabilityDataWriter {
-				ProbabilityDataWriter( byte_t* buffer, byte_t* const end, int const number_of_bits ):
+				enum {
+					eMinPloidyByte = 7, eMaxPloidyByte = 8,
+					ePloidyBytes = 9,
+					eNumberOfBits = 10, eData = 11
+				} ;
+				
+				ProbabilityDataWriter( byte_t* buffer, byte_t* const end, uint8_t const number_of_bits ):
 					m_buffer( buffer ),
 					m_p( buffer ),
 					m_end( end ),
 					m_number_of_bits( number_of_bits ),
-					m_min_ploidy( 127 ),
-					m_max_ploidy( 0 ),
 					m_sample_i(0),
-					m_order_type( eUnknownOrderType )
-				{}
+					m_order_type( eUnknownOrderType ),
+					m_data(0)
+				{
+					m_ploidyExtent[0] = 63 ;
+					m_ploidyExtent[1] = 0 ;
+				}
+
 				void initialise( uint32_t nSamples, uint16_t nAlleles ) {
-					m_p = write_little_endian_integer( m_buffer, end, nSamples ) ;
-					m_p = write_little_endian_integer( m_buffer, end, nAlleles ) ;
+					m_p = write_little_endian_integer( m_p, m_end, nSamples ) ;
+					m_p = write_little_endian_integer( m_p, m_end, nAlleles ) ;
 					// skip the ploidy bytes, which we'll write later
+					m_number_of_samples = nSamples ;
 					m_p += nSamples+2 ;
-					
+					m_data = 0 ;
+					m_offset = 0 ;
+					if( m_number_of_samples == 0 ) {
+						m_ploidyExtent[0] = 0 ;
+					}
 				}
+
 				bool set_sample( std::size_t i ) {
-					assert( i == m_sample_i || i == m_sample_i+1 ) ;
+					// ensure samples are visited in order.
+					assert(( m_sample_i == 0 && i == 0 ) || ( i == m_sample_i + 1 )) ;
 				}
-				void set_number_of_entries( std::size_t ploidy, std::size_t number_of_entries, OrderType const order_type, ValueType const value_type ) {
+
+				void set_number_of_entries(
+					uint32_t ploidy,
+					uint32_t number_of_entries,
+					OrderType const order_type,
+					ValueType const value_type
+				) {
 					assert( ploidy < 64 ) ;
-					char ploidyChar( ploidy ) ;
-					*(m_buffer + 8 + m_sample_i) = ploidyChar ;
-					m_min_ploidy = std::min( m_min_ploidy, ploidyChar ) ;
-					m_max_ploidy = std::max( m_max_ploidy, ploidyChar ) ;
+					uint8_t ploidyByte( ploidy & 0xFF ) ;
+					*(m_buffer+8+m_sample_i) = ploidyByte ;
+					m_ploidyExtent[0] = std::min( m_ploidyExtent[0], ploidyByte ) ;
+					m_ploidyExtent[1] = std::max( m_ploidyExtent[1], ploidyByte ) ;
 					
 					assert( order_type == ePerUnorderedGenotype || order_type == ePerPhasedHaplotypePerAllele ) ;
 					if( m_sample_i == 0 ) {
 						m_order_type = order_type ;
+						// write phased flag.
+						m_buffer[8 + m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
+						m_buffer[9 + m_number_of_samples] = m_number_of_bits ;
 					} else {
-						assert( m_order_type == order_type ) ;
+						if( m_order_type != order_type ) {
+							throw BGenError() ;
+						}
 					}
-					
-					assert( value_type == eProbability ) ;
+					if( value_type != eProbability ) {
+						throw BGenError() ;
+					}
 					m_number_of_entries = number_of_entries ;
 					m_entry_i = 0 ;
+					m_missing = false ;
 				}
+
 				void operator()( genfile::MissingValue const value ) {
-					v[m_entry_i++] = 0.0 ;
-					bake() ;
-				}
-				void operator()( double const value ) {
-					v[m_entry_i++] = value ;
-					bake() ;
-				}
-				void bake() {
+					assert( m_entry_i < m_number_of_entries ) ;
+					m_values[m_entry_i++] = 0.0 ;
 					if( m_entry_i == m_number_of_entries ) {
-						impl::round_probs_to_scaled_simplex( &v[0], &index[0], m_number_of_entries, m_number_of_bits ) ;
-						buffer = impl::write_scaled_probs( &data, &offset, &v[0], 3, number_of_bits, buffer, end ) ;
-						
+						bake() ;
+					}
+					m_missing = true ;
+				}
+
+				void operator()( double const value ) {
+					assert( !m_missing ) ; // either all or no values must be missing.
+					assert( m_entry_i < m_number_of_entries ) ;
+					m_values[m_entry_i++] = value ;
+					if( m_entry_i == m_number_of_entries ) {
+						bake() ;
 					}
 				}
+
 				void finalise() {
-					*(m_buffer+6) = m_min_ploidy ;
-					*(m_buffer+6) = m_max_ploidy ;
+					m_buffer[eMinPloidyByte] = m_ploidyExtent[0] ;
+					m_buffer[eMaxPloidyByte] = m_ploidyExtent[1] ;
 				}
+
 			private:
 				byte_t* m_buffer ;
 				byte_t* m_p ;
 				byte_t* const m_end ;
-				int const m_number_of_bits ;
-				char m_min_ploidy ;
-				char m_max_ploidy ;
+				uint8_t const m_number_of_bits ;
+				uint8_t m_ploidyExtent[2] ;
 				OrderType m_order_type ;
+				std::size_t m_number_of_samples ;
 				std::size_t m_sample_i ;
 				std::size_t m_number_of_entries ;
 				std::size_t m_entry_i ;
-				bool phased ;
-				double v[100] ;
+				bool m_missing ;
+				bool m_phased ;
+				double m_values[100] ;
 				std::size_t index[100] ;
+				uint64_t m_data ;
+				std::size_t m_offset ;
+				
+			private:
+				void bake() {
+					if( m_missing ) {
+						m_p = impl::write_scaled_probs(
+							&m_data, &m_offset, &m_values[0],
+							m_number_of_entries, m_number_of_bits, m_p, m_end
+						) ;
+						// flag this sample as missing.
+						m_buffer[ePloidyBytes + m_sample_i] |= 0x80 ;
+					} else {
+						impl::round_probs_to_scaled_simplex(&m_values[0], &index[0], m_number_of_entries, m_number_of_bits ) ;
+						m_p = impl::write_scaled_probs(
+							&m_data, &m_offset, &m_values[0],
+							m_number_of_entries, m_number_of_bits, m_p, m_end
+						) ;
+					}
+				}
 			} ;
-#endif
 
 			template< typename GenotypeProbabilityGetter >
 			byte_t* write_uncompressed_snp_probability_data(
@@ -886,16 +940,16 @@ namespace genfile {
 					v[1] = get_AB_probability(i) ;
 					v[2] = get_BB_probability(i) ;
 					double sum = v[0] + v[1] + v[2] ;
-					bool missing = ( sum == 0 ) ;
+					bool missing = ( v[0] == 0.0 && v[1] == 0.0 && v[2] == 0.0 ) ;
+					uint8_t ploidy = 2 | ( missing ? 0x80 : 0 ) ;
+					*(ploidy_p++) = ploidy ;
 					if( !missing ) {
+						assert( sum >= 0.99 & sum < 1.01 ) ;
 						v[0] = v[0] / sum ;
 						v[1] = v[1] / sum ;
 						v[2] = v[2] / sum ;
+						impl::round_probs_to_scaled_simplex( &v[0], &index[0], 3, number_of_bits ) ;
 					}
-					uint8_t ploidy = 2 | ( missing ? 0x80 : 0 ) ;
-					*(ploidy_p++) = ploidy ;
-
-					impl::round_probs_to_scaled_simplex( &v[0], &index[0], 3, number_of_bits ) ;
 					buffer = impl::write_scaled_probs( &data, &offset, &v[0], 3, number_of_bits, buffer, end ) ;
 				}
 				// Get any leftover bytes.
