@@ -24,6 +24,8 @@ namespace genfile {
 		eAlleleIndex = 2,
 		eDosage = 3
 	} ;
+
+	typedef uint8_t byte_t ;
 }
 
 #endif

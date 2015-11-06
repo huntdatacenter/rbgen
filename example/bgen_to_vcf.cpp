@@ -23,6 +23,15 @@ struct ProbSetter {
 		m_result->resize( number_of_samples ) ;
 	}
 	
+	// If present with this signature, called once after initialise()
+	// to set the minimum and maximum ploidy and numbers of probabilities among samples in the data.
+	// This enables us to set up storage for the data ahead of time.
+	void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) {
+		for( std::size_t i = 0; i < m_result->size(); ++i ) {
+			m_result->at( i ).reserve( max_entries ) ;
+		}
+	}
+	
 	// Called once per sample to determine whether we want data for this sample
 	bool set_sample( std::size_t i ) {
 		m_sample_i = i ;
@@ -32,6 +41,7 @@ struct ProbSetter {
 	
 	// Called once per sample to set the number of probabilities that are present.
 	void set_number_of_entries(
+		std::size_t ploidy,
 		std::size_t number_of_entries,
 		genfile::OrderType order_type,
 		genfile::ValueType value_type
@@ -48,6 +58,11 @@ struct ProbSetter {
 	void operator()( genfile::MissingValue value ) {
 		// Here we encode missing probabilities with -1
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = -1 ;
+	}
+
+	// If present with this signature, called once after all data has been set.
+	void finalise() {
+		// nothing to do in this implementation.
 	}
 
 private:
@@ -198,7 +213,7 @@ private:
 	std::vector< std::string > m_sample_ids ;
 	
 	// Buffers, these are used as working space by bgen implementation.
-	std::vector< char > m_buffer1, m_buffer2 ;
+	std::vector< genfile::byte_t > m_buffer1, m_buffer2 ;
 } ;
 
 // This example program reads data from a bgen file specified as the first argument
@@ -235,8 +250,10 @@ int main( int argc, char** argv ) {
 			std::cout << chromosome << '\t'
 				<< position << '\t'
 				<< rsid << '\t' ;
-			for( std::size_t i = 0; i < alleles.size(); ++i ) {
-				std::cout << ( i > 0 ? "," : "" ) << alleles[i] ;
+			assert( alleles.size() > 0 ) ;
+			std::cout << alleles[0] << '\t' ;
+			for( std::size_t i = 1; i < alleles.size(); ++i ) {
+				std::cout << ( i > 1 ? "," : "" ) << alleles[i] ;
 			}
 			std::cout << "\t.\t.\t.\tGP" ;
 		
