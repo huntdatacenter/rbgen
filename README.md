@@ -42,8 +42,8 @@ Testing
 If all goes well the command
 
 ```sh
-./build/bgen_to_vcf example/example.bgen
-./build/bgen_to_vcf example/example.bgen_v12
+./build/example/bgen_to_vcf example/example.bgen
+./build/example/bgen_to_vcf example/example.bgen_v12
 ```
 should run and output vcf-formatted data to stdout.
 
