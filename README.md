@@ -39,13 +39,19 @@ This will install the example and test applications into the specified directory
 Testing
 =====
 
-If all goes well the command
-
+BGEN's tests can be run by typing 
 ```sh
-./build/example/bgen_to_vcf example/example.bgen
-./build/example/bgen_to_vcf example/example.bgen_v12
+./build/test/test_bgen
 ```
-should run and output vcf-formatted data to stdout.
+
+If all goes well a message like `All tests passed` should be printed.
+
+The example program provided reads a bgen file (v1.1 or v1.2) and outputs it as a VCF file to stdout.  You can try running it
+by typing
+```sh
+./build/example/bgen_to_vcf example/example.v11.bgen
+```
+which should output vcf-formatted data to stdout.
 
 More information
 =====
