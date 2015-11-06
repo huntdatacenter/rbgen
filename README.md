@@ -49,4 +49,4 @@ should run and output vcf-formatted data to stdout.
 
 More information
 =====
-See the [changelog](https://bitbucket.org/gavinband/bgen/src/CHANGELOG.md), the [source code](https://bitbucket.org/gavinband/bgen/src) or the [Wiki](https://bitbucket.org/gavinband/bgen/wiki/Home).
+See the [changelog](https://bitbucket.org/gavinband/bgen/src/master/CHANGELOG.md), the [source code](https://bitbucket.org/gavinband/bgen/src) or the [Wiki](https://bitbucket.org/gavinband/bgen/wiki/Home).
