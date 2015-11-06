@@ -33,4 +33,4 @@ should run and output vcf-formatted data to stdout.
 
 More information
 =====
-SEe the source code or the [Wiki](https://bitbucket.org/gavinband/bgen/wiki/Home).
+See the [source code](https://bitbucket.org/gavinband/bgen/src) or the [Wiki](https://bitbucket.org/gavinband/bgen/wiki/Home).
