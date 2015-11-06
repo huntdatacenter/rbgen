@@ -55,7 +55,7 @@ History
 ====
 6 Nov 2015
 ----
-Major changes in revision 218f28a0cda6:
+Major changes in revision 8762b40dedae:
 
 1. I’ve changed the behaviour of BGEN v1.2 with respect to samples with missing data: they are now stored with dummy zero probabilities.  The spec is now in 'beta' which means I don’t have any other planned changes to make; unless major issues are uncovered this will be the final version of the format.
 
@@ -67,6 +67,8 @@ Major changes in revision 218f28a0cda6:
 3. I’ve also got rid of the max_id_size option to write_snp_identifying_data().  (This is now not needed because writing BGEN v1.0 files is no longer supported.)
 
 4. I’ve also added some test code (using the [catch framework](https://github.com/philsquared/catch), which seems pretty good).  Tests are not exhaustive but hopefully a start.
+
+5. I've removed some code warnings - thanks to Robert V. Baron of [Mega2](https://watson.hgen.pitt.edu/docs/mega2_html/mega2.html) for testing this code.
 
 23 Sep 2015
 ----
