@@ -21,7 +21,7 @@
 
 using namespace std::placeholders ;
 
-#define DEBUG 3
+// #define DEBUG 1
 
 // The following section contains a simple snp block writer.
 namespace data {
@@ -171,27 +171,30 @@ namespace data {
 		std::function< double ( std::size_t i, std::size_t g ) > get_probs,
 		std::string const& type
 	) {
+		uint8_t buffer[10000] ;
+		uint8_t* p = buffer ;
+		uint8_t* end = buffer + 10000 ;
 		std::ostringstream oStream ;
 		// Write number of samples and ploidies.
-		genfile::bgen::write_little_endian_integer( oStream, number_of_samples ) ;
-		genfile::bgen::write_little_endian_integer( oStream, number_of_alleles ) ;
-		genfile::bgen::write_little_endian_integer( oStream, uint8_t( 2 ) ) ;
-		genfile::bgen::write_little_endian_integer( oStream, uint8_t( 2 ) ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, number_of_samples ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, number_of_alleles ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, uint8_t( 2 ) ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, uint8_t( 2 ) ) ;
 		for( std::size_t i = 0; i < number_of_samples; ++i ) {
 			uint8_t ploidy = 2 ;
-			genfile::bgen::write_little_endian_integer( oStream, ploidy ) ;
+			p = genfile::bgen::write_little_endian_integer( p, end, ploidy ) ;
 		}
 
 		uint8_t const phased = ( type == "phased" ) ? 1 : 0 ;
-		genfile::bgen::write_little_endian_integer( oStream, phased ) ;
-		genfile::bgen::write_little_endian_integer( oStream, uint8_t( bits_per_probability ) ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, phased ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, uint8_t( bits_per_probability ) ) ;
 
 		uint64_t const two_to_the_bits = ( uint64_t( 1 ) << bits_per_probability ) ;
 		double scale = two_to_the_bits - 1 ;
 		std::vector< char > probability_data( std::ceil( 2.0 * number_of_samples * bits_per_probability / 64.0 ) * 8, 0 ) ;
-		uint64_t* const buffer = reinterpret_cast< uint64_t* >( &probability_data[0] ) ;
-		uint64_t* const end = reinterpret_cast< uint64_t* const >( &probability_data[0] + probability_data.size() ) ;
-		uint64_t* p = buffer ;
+		uint64_t* const probBuffer = reinterpret_cast< uint64_t* >( &probability_data[0] ) ;
+		uint64_t* const probEnd = reinterpret_cast< uint64_t* const >( &probability_data[0] + probability_data.size() ) ;
+		uint64_t* probP = probBuffer ;
 		std::size_t offset = 0 ;
 		if( type == "unphased" ) {
 			// Construct and write probability data.
@@ -202,14 +205,19 @@ namespace data {
 					probs[1] = get_probs( i, 1 ) ;
 					probs[2] = get_probs( i, 2 ) ;
 					
-					round_probs_to_simplex( &probs[0], 3, bits_per_probability ) ;
+					bool missing = ( probs[0] == 0.0 && probs[1] == 0.0 && probs[2] == 0.0 ) ;
+					if( missing ) {
+						*(buffer+8+i) |= 0x80 ;
+					} else {
+						round_probs_to_simplex( &probs[0], 3, bits_per_probability ) ;
+					}
 #if DEBUG
 					std::cerr << format(
 						"sample %d of %d, bits_per_probability = %d, two_to_the_bits=%d, scale = %f, AA=%f, AB=%f, sum = %f\n",
 						i, number_of_samples, bits_per_probability, two_to_the_bits, scale, probs[0], probs[1], (probs[0]+probs[1])
 					) ;
 #endif
-					write_probs( &p, &offset, end, probs, 3, bits_per_probability ) ;
+					write_probs( &probP, &offset, probEnd, probs, 3, bits_per_probability ) ;
 				}
 			}
 		} else if( type == "phased" ) {
@@ -226,18 +234,17 @@ namespace data {
 						i, number_of_samples, hap, bits_per_probability, two_to_the_bits, scale, probs[0], probs[1], (probs[0]+probs[1])
 					) ;
 #endif
-					write_probs( &p, &offset, end, &probs[0], 2, bits_per_probability ) ;
+					write_probs( &probP, &offset, probEnd, &probs[0], 2, bits_per_probability ) ;
 				}
 			}
 		} else {
 			assert(0) ;
 		}
-		std::size_t const numBytes = ((p-buffer)*8) + ((offset+7)/8) ;
+		std::size_t const numBytes = ((probP-probBuffer)*8) + ((offset+7)/8) ;
 		uint32_t const expected_size = (((number_of_samples*2*bits_per_probability)+7)/8) ;
 		REQUIRE( numBytes == expected_size ) ;
-		oStream.write( &probability_data[0], numBytes ) ;
-		
-		return oStream.str() ;
+		p = std::copy( &probability_data[0], &probability_data[0] + numBytes, p ) ;
+		return std::string( buffer, p ) ;
 	}
 
 	std::string construct_variant_id_data_block_v12(
@@ -399,14 +406,20 @@ double get_input_probability(
 			x = 1.0 - double((i+1) % number_of_samples) / double(number_of_samples-1) ;
 		}
 	} else {
-		x = double(i) / double(number_of_samples-1) ;
 		assert( g < 3 ) ;
-		if( g == 1 ) {
-			// values of second prob are 1 minus 1/3rd of first prob.
-			x = 0.25 * ( 1.0 - x ) ;
-		} else if( g == 2 ) {
-			// values of second prob are 1 minus 2/3rd of first prob.
-			x = 0.75 * ( 1.0 - x ) ;
+		if( i % 13 == 0 ) {
+			// Every 13th sample is missing
+			x = 0.0 ;
+		}
+		else {
+			x = double(i) / double(number_of_samples-1) ;
+			if( g == 1 ) {
+				// values of second prob are 1 minus 1/3rd of first prob.
+				x = 0.25 * ( 1.0 - x ) ;
+			} else if( g == 2 ) {
+				// values of second prob are 1 minus 2/3rd of first prob.
+				x = 0.75 * ( 1.0 - x ) ;
+			}
 		}
 	}
 	return x ;
@@ -620,7 +633,8 @@ void do_snp_block_write_test(
 	std::cerr << "          actual: " << to_hex( outStream.str() ) << "\n" ;
 	std::cerr << "        expected: " << to_hex( expected ) << "\n" ;
 #endif
-		
+
+	REQUIRE( to_hex( outStream.str() ) == to_hex( expected ) ) ;
 	REQUIRE( outStream.str() == expected ) ;
 }
 
