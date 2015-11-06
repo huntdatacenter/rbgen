@@ -77,30 +77,35 @@ void ProbSetCheck::set_number_of_entries( std::size_t ploidy, std::size_t n, gen
 	m_state = eSetNumberOfEntries ;
 }
 
-void ProbSetCheck::operator()( genfile::MissingValue const value ) {
-	REQUIRE( m_entry_i < m_number_of_entries ) ;
+void ProbSetCheck::set_value( uint32_t value_i, genfile::MissingValue const value ) {
+	REQUIRE( value_i < m_number_of_entries ) ;
+	REQUIRE( value_i == m_entry_i++ ) ;
+	bool const correctEntry = (
+		(value_i == 0 && m_state == eSetNumberOfEntries)
+		 || (value_i > 0 && m_state == eSetValue)
+	) ;
+	REQUIRE( correctEntry ) ;
 	bool missingData = (
 		m_get_expected_probs( m_sample_i, 0 ) == 0.0
 		&& m_get_expected_probs( m_sample_i, 1 ) == 0.0
 		&& m_get_expected_probs( m_sample_i, 2 ) == 0.0
 	) ;
 	REQUIRE( missingData == true ) ;
-	++m_entry_i ;
 	m_state = eSetValue ;
 }
 
-void ProbSetCheck::operator()( double const value ) {
-	REQUIRE( m_entry_i < m_number_of_entries ) ;
+void ProbSetCheck::set_value( uint32_t value_i, double const value ) {
+	REQUIRE( value_i < m_number_of_entries ) ;
+	REQUIRE( value_i == m_entry_i++ ) ;
 	bool const correctEntry = (
-		(m_entry_i == 0 && m_state == eSetNumberOfEntries)
-		 || (m_entry_i > 0 && m_state == eSetValue)
+		(value_i == 0 && m_state == eSetNumberOfEntries)
+		 || (value_i > 0 && m_state == eSetValue)
 	) ;
 	REQUIRE( correctEntry ) ;
 #if DEBUG > 2
 	std::cerr << format( "ProbabilitySetter: sample %d, entry %d of %d.\n", m_sample_i, m_entry_i, m_number_of_entries ) ;
 #endif
 	//REQUIRE( value == Approx( m_get_expected_probs( m_sample_i, m_entry_i ) ) ;
-	++m_entry_i ;
 	m_state = eSetValue ;
 }
 

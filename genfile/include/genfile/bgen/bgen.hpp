@@ -121,7 +121,7 @@ namespace genfile {
 		// Read a sample identifier block from the given stream.
 		// The setter object passed in must be a unary function or
 		// function object that takes a string.  It must be callable as
-		// setter( value ) ;
+		// setter.set_value( value ) ;
 		// where value is of type std::string.  It will be called once for
 		// each sample identifier in the block, in the order they occur.
 		template< typename SampleSetter >
@@ -268,7 +268,7 @@ namespace genfile {
 		// For bgen <= 1.2, all data is interpreted as probabilities so the value_type is always eProbability.
 		// For bgen <= 1.1, all data is unphased so the order_type is ePerUnorderedGenotype.
 		//
-		// - setter( value ) ;
+		// - setter.set_value( i, value ) ;
 		// where value is of type double or genfile::MissingValue.
 		// This is called Z times and reflects the probability data stored for this sample.
 		// Samples with missing data have Z missing values; those without missing data have
@@ -610,7 +610,7 @@ namespace genfile {
 					for( std::size_t g = 0; g < 3; ++g ) {
 						uint16_t prob ;
 						buffer = read_little_endian_integer( buffer, end, &prob ) ;
-						setter( impl::convert_from_integer_representation( prob, probability_conversion_factor ) ) ;
+						setter.set_value( g, impl::convert_from_integer_representation( prob, probability_conversion_factor ) ) ;
 					}
 				}
 				call_finalise( setter ) ;
@@ -736,15 +736,16 @@ namespace genfile {
 									(void) impl::parse_bit_representation( &data, &size, bits ) ;
 								}
 								for( uint32_t h = 0; h < valueCount; ++h ) {
-									setter( genfile::MissingValue() ) ;
+									setter.set_value( h, genfile::MissingValue() ) ;
 								}
 							} else {
 								// Consume values and interpret them.
 								double sum = 0.0 ;
+								uint32_t reportedValueCount = 0 ;
 								for( uint32_t h = 0; h < storedValueCount; ++h ) {
 									buffer = impl::read_bits_from_buffer( buffer, end, &data, &size, bits ) ;
 									double const value = impl::parse_bit_representation( &data, &size, bits ) ;
-									setter( value ) ;
+									setter.set_value( reportedValueCount++, value ) ;
 									sum += value ;
 	#if DEBUG_BGEN_FORMAT
 									std::cerr << "parse_probability_data_v12(): i = " << i << ", h = " << h << ", size = " << size << ", bits = " << bits << ", parsed value = " << value
@@ -756,7 +757,7 @@ namespace genfile {
 										|| ((!phased) && (h+1) == storedValueCount )
 									) {
 										assert( sum <= 1.00000001 ) ;
-										setter( 1.0 - sum ) ;
+										setter.set_value( reportedValueCount++, 1.0 - sum ) ;
 										sum = 0.0 ;
 									}
 								}
