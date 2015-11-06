@@ -30,3 +30,7 @@ If all goes well the command
 ./build/bgen_to_vcf example/example.bgen_v12
 ```
 should run and output vcf-formatted data to stdout.
+
+More information
+=====
+SEe the source code or the [Wiki](https://bitbucket.org/gavinband/bgen/wiki/Home).
