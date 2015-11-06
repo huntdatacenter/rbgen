@@ -8,19 +8,19 @@
 #include "genfile/MissingValue.hpp"
 
 namespace genfile {
-	std::ostream& operator<<( std::ostream& o, MissingValue const& v ) {
+	std::ostream& operator<<( std::ostream& o, MissingValue const& ) {
 		return o << "NA" ;
 	}
 	
-	bool MissingValue::operator==( MissingValue const& other ) const {
+	bool MissingValue::operator==( MissingValue const& ) const {
 		return true ;
 	}
 
-	bool MissingValue::operator<( MissingValue const& other ) const {
+	bool MissingValue::operator<( MissingValue const& ) const {
 		return false ;
 	}
 
-	bool MissingValue::operator<=( MissingValue const& other ) const {
+	bool MissingValue::operator<=( MissingValue const& ) const {
 		return true ;
 	}
 }

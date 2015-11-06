@@ -487,7 +487,6 @@ void do_snp_block_read_test(
 	} else {
 		context.flags = e_v10Layout ;
 	}
-	
 
 	std::istringstream inStream ;
 	inStream.str(
@@ -593,7 +592,6 @@ void do_snp_block_write_test(
 	genfile::bgen::write_snp_identifying_data( 
 		outStream,
 		context,
-		std::max( SNPID.size(), RSID.size() ) + 1,
 		SNPID,
 		RSID,
 		chromosome,
