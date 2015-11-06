@@ -51,11 +51,11 @@ struct ProbSetter {
 		m_entry_i = 0 ;
 	}
 
-	void operator()( double value ) {
+	void set_value( uint32_t, double value ) {
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = value ;
 	}
 
-	void operator()( genfile::MissingValue value ) {
+	void set_value( uint32_t, genfile::MissingValue value ) {
 		// Here we encode missing probabilities with -1
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = -1 ;
 	}

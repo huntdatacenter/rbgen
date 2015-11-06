@@ -33,8 +33,8 @@ struct ProbSetCheck {
 	void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) ;
 	bool set_sample( std::size_t i ) ;
 	void set_number_of_entries( std::size_t ploidy, std::size_t n, genfile::OrderType const order_type, genfile::ValueType const value_type ) ;
-	void operator()( genfile::MissingValue const value ) ;
-	void operator()( double const value ) ;
+	void set_value( uint32_t value_i, genfile::MissingValue const value ) ;
+	void set_value( uint32_t value_i, double const value ) ;
 	void finalise() ;
 	
 private:
