@@ -39,13 +39,17 @@ This will install the example and test applications into the specified directory
 Testing
 =====
 
+We've supplied example files named `example.v11.bgen` (A BGEN v1.1-formatted file) and `example.<n>bits.bgen` (A BGEN v1.2-formatted file with <n> bits per probability) 
 If all goes well the command
 
 ```sh
-./build/bgen_to_vcf example/example.bgen
-./build/bgen_to_vcf example/example.bgen_v12
+./build/bgen_to_vcf example/example.v11.bgen
 ```
-should run and output vcf-formatted data to stdout.
+and
+```sh
+./build/bgen_to_vcf example/example.<n>bits.bgen
+```
+should each run and output vcf-formatted data to stdout.
 
 More information
 =====
