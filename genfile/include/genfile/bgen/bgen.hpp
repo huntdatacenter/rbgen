@@ -181,7 +181,6 @@ namespace genfile {
 		void write_snp_identifying_data(
 			std::ostream& aStream,
 			Context const& context,
-			unsigned char max_id_size,
 			std::string SNPID,
 			std::string RSID,
 			std::string chromosome,
