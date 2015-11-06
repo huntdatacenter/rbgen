@@ -1,0 +1,8 @@
+def build( bld ):
+	bld.stlib(
+		target = 'appcontext',
+		source = bld.path.ant_glob( 'src/*.cpp' ),
+		use = 'boost',
+		includes='./include',
+		export_includes = './include'	
+	)
