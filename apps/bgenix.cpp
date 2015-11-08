@@ -22,7 +22,7 @@ namespace bfs = boost::filesystem ;
 #define DEBUG 1
 
 namespace globals {
-	std::string const program_name = "bgen-index" ;
+	std::string const program_name = "bgenix" ;
 	std::string const program_version = bgen_revision ;
 }
 
@@ -41,21 +41,40 @@ public:
 				"Path of bgen file to operate on."
 			)
 			.set_takes_single_value()
+			.set_takes_value_by_position(1)
 		;
 
 		options[ "-clobber" ]
 			.set_description(
-				"Specify that cat-bgen should overwrite existing output file if it exists."
+				"Specify that cat-bgen should overwrite existing index file if it exists."
 			)
 		;
 		
 		options.declare_group( "Variant selection options" ) ;
 		options[ "-incl-range" ]
+			.set_description(
+				"Include variants in the specified genomic interval in the output. "
+				" The argument must be of the form <chr>:<pos1>-<pos2> where <chr> is a chromosome identifier "
+				" and pos1 and pos2 are positions with pos2 >= pos1. "
+				" At most one of pos1 and pos2 can also be omitted, in which case the range extends to the start or"
+				" end of the chromosome as appropriate. "
+				" Position ranges are treated as closed (i.e. <pos1> and <pos2> are included in the range.)"
+			)
+			.set_takes_value_by_position(2)
 			.set_takes_values_until_next_option()
 		;
+
 		options[ "-incl-rsids" ]
+			.set_description(
+				"Include variants with the specified rsid in the output. "
+			)
 			.set_takes_values_until_next_option()
 		;
+		
+		options.declare_group( "Output options" ) ;
+		options[ "-list" ]
+			.set_description( "Don't output a bgen file; just list variants instead." ) ;
+		
 	}
 } ;
 
@@ -214,7 +233,7 @@ private:
 		transaction.reset() ;
 
 		db::Connection::StatementPtr insert_variant_stmt = connection->get_statement(
-			"INSERT INTO Variant ( SNPID, rsid, chromosome, position, number_of_alleles, allele1, allele2, file_start_position, file_end_position ) "
+			"INSERT INTO Variant ( SNPID, rsid, chromosome, position, number_of_alleles, allele1, allele2, file_start_position, size_in_bytes ) "
 			"VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ? )"
 		) ;
 
@@ -253,7 +272,7 @@ private:
 				.bind( 6, alleles[0] )
 				.bind( 7, alleles[1] )
 				.bind( 8, file_pos )
-				.bind( 9, file_end_pos )
+				.bind( 9, file_end_pos - file_pos )
 				.step()
 			;
 			insert_variant_stmt->reset() ;
@@ -276,15 +295,15 @@ private:
 	void setup_index_file( db::Connection& connection ) {
 		connection.run_statement(
 			"CREATE TABLE Variant ("
-			"  SNPID TEXT NOT NULL,"
-			"  rsid TEXT NOT NULL,"
 			"  chromosome TEXT NOT NULL,"
 			"  position INT NOT NULL,"
+			"  SNPID TEXT NOT NULL,"
+			"  rsid TEXT NOT NULL,"
 			"  number_of_alleles INT NOT NULL,"
 			"  allele1 TEXT NOT NULL,"
 			"  allele2 TEXT NULL,"
-			"  file_start_position INT NOT NULL,"
-			"  file_end_position INT NOT NULL,"
+			"  file_start_position INT NOT NULL," // 
+			"  size_in_bytes INT NOT NULL,"       // We put these first to minimise cost of retrieval
 			"  PRIMARY KEY (chromosome, position, rsid )"
 			") WITHOUT ROWID"
 		) ;
@@ -316,7 +335,6 @@ private:
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read-write" ) ;
 
 		std::string const& sql = get_select_sql() ;
-		std::cerr << boost::format( "%s: finding variants using sql: \"%s\"...\n" ) % globals::program_name % sql ;
 		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
 
 		std::vector< std::pair< uint32_t, uint32_t > > positions ;
@@ -325,10 +343,10 @@ private:
 			std::size_t batch_i = 0 ;
 			for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
 				int64_t const pos = stmt->get< int64_t >( 0 ) ;
-				int64_t const end_pos = stmt->get< int64_t >( 1 ) ;
+				int64_t const size = stmt->get< int64_t >( 1 ) ;
 				assert( pos >= 0 ) ;
-				assert( end_pos >= 0 ) ;
-				positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( end_pos ))) ;
+				assert( size >= 0 ) ;
+				positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( size ))) ;
 			}
 		}
 		
@@ -355,8 +373,10 @@ private:
 		for( std::size_t i = 0; i < positions.size(); ++i ) {
 			bgen_file.seekg( positions[i].first ) ;
 			std::istreambuf_iterator< char > inIt( bgen_file ) ;
-			std::copy_n( inIt, positions[i].second - positions[i].first, outIt ) ;
+			std::copy_n( inIt, positions[i].second, outIt ) ;
 		}
+		
+		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
 	}
 	
 	boost::tuple< std::string, uint32_t, uint32_t > parse_range( std::string const& spec ) const {
@@ -388,7 +408,7 @@ private:
 	}
 
 	std::string get_select_sql() const {
-		std::string result = "SELECT file_start_position, file_end_position FROM Variant WHERE " ;
+		std::string result = "SELECT file_start_position, size_in_bytes FROM Variant WHERE " ;
 		std::string inclusion = "((1==0)" ;
 		if( options().check( "-incl-range" )) {
 			auto elts = options().get_values< std::string >( "-incl-range" ) ;
