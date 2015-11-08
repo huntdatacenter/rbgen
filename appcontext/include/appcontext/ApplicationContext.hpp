@@ -44,7 +44,7 @@ namespace appcontext {
 
 		virtual ~ApplicationContext() ;
 		OptionProcessor& options() const ;
-		virtual UIContext& get_ui_context() const ;
+		virtual UIContext& ui() const ;
 
 		std::string const& application_name() const ;
 
@@ -58,7 +58,7 @@ namespace appcontext {
 		std::string const m_application_name ;
 		std::string const m_application_version ;
 		std::auto_ptr< OptionProcessor > m_options ;
-		std::auto_ptr< UIContext > m_ui_context ;
+		std::auto_ptr< UIContext > m_ui ;
 	} ;
 }
 

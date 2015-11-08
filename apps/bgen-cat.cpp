@@ -86,14 +86,14 @@ public:
 		)
 	{
 		if( !options().check( "-clobber" ) && boost::filesystem::exists( options().get< std::string >( "-og" ) ) ) {
-			get_ui_context().logger() << "Output file \"" <<  options().get< std::string >( "-og" ) << "\" exists.  Use -clobber if you want me to overwrite it.\n" ;
+			ui().logger() << "Output file \"" <<  options().get< std::string >( "-og" ) << "\" exists.  Use -clobber if you want me to overwrite it.\n" ;
 			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 		}
 		
 		std::vector< std::string > inputFilenames = options().get_values< std::string >( "-g" ) ;
 		
 		if( inputFilenames.size() == 0 ) {
-			get_ui_context().logger() << "No input files specified; quitting.\n" ;
+			ui().logger() << "No input files specified; quitting.\n" ;
 			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 		}
 		
@@ -109,7 +109,7 @@ public:
 		
 		std::ofstream outputStream( options().get< std::string > ( "-og" ).c_str(), std::ios::binary ) ;
 		genfile::bgen::Context result = concatenate( inputFilenames, inputStreams, outputStream ) ;
-		get_ui_context().logger() << boost::format( "Finished writing \"%s\" (%d samples, %d variants).\n" )
+		ui().logger() << boost::format( "Finished writing \"%s\" (%d samples, %d variants).\n" )
 			% options().get< std::string > ( "-og" ) % result.number_of_samples % result.number_of_variants ;
 	}
 
@@ -132,7 +132,7 @@ private:
 			bgen::read_offset( inputFiles[0], &offset ) ;
 			bgen::read_header_block( inputFiles[0], &resultContext ) ;
 
-			get_ui_context().logger() << boost::format( "Adding file \"%s\" (%d of %d, %d variants)...\n" )
+			ui().logger() << boost::format( "Adding file \"%s\" (%d of %d, %d variants)...\n" )
 				% inputFilenames[0] % 1 % inputFiles.size() % resultContext.number_of_variants ;
 
 			if( options().check( "-omit-sample-identifier-block" )) {
@@ -164,11 +164,11 @@ private:
 			bgen::read_offset( inputFiles[i], &offset ) ;
 			bgen::read_header_block( inputFiles[i], &context ) ;
 
-			get_ui_context().logger() << boost::format( "Adding file \"%s\" (%d of %d, %d variants)...\n" )
+			ui().logger() << boost::format( "Adding file \"%s\" (%d of %d, %d variants)...\n" )
 				% inputFilenames[i] % (i+1) % inputFiles.size() % context.number_of_variants ;
 
 			if( context.number_of_samples != resultContext.number_of_samples ) {
-				get_ui_context().logger()
+				ui().logger()
 					<< boost::format( "Error: input file #%d ( \"%s\" ) has the wrong number of samples (%d, expected %d).  Quitting.\n" )
 						% (i+1) % inputFilenames[i] % context.number_of_samples % resultContext.number_of_samples
 				;
@@ -176,7 +176,7 @@ private:
 			}
 			
 			if( context.flags != resultContext.flags ) {
-				get_ui_context().logger()
+				ui().logger()
 					<< boost::format( "Error: iInput file #%d ( \"%s\" ) has the wrong flags (%x, expected %x).  Quitting.\n" )
 						% (i+1) % inputFilenames[i] % context.flags % resultContext.flags ;
 				throw appcontext::HaltProgramWithReturnCode( -1 ) ;
