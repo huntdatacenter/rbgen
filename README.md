@@ -7,11 +7,13 @@ originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) imple
 Branches
 ========
 
-This repo follows the standard branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.
+This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.
 
-Code can be cloned using mercurial like this:
+One way to check out the master branch in mercurial is:
 
-`hg clone https://gavinband@bitbucket.org/gavinband/bgen`
+```sh
+hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
+```
 
 Compilation
 =====
@@ -54,8 +56,7 @@ which should output vcf-formatted data to stdout.  We've provided example bgen f
 
 Development
 =====
-
-The intention is that development goes on in the default branch, with 'releasable' code in the master branch.  Unfortunately I've failed to be disciplined enough to stick to that - see c.f. commit be06585e337b and onwards, accidentally committed to master branch because I wasn't paying attention - but we'll see how it goes.
+The intention is that development takes place on the `default` branch, or on feature branches branched off from default.  I've sometimes failed to be disciplined enough to stick to that - see c.f. commit be06585e337b and onwards, accidentally committed to master branch because I wasn't paying attention - but that's the intention and we'll see how it goes.
 
 More information
 =====
