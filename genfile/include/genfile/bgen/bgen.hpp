@@ -463,6 +463,7 @@ namespace genfile {
 		}
 
 		namespace {
+			// TODO: make this C++-03 compatible.
 			template< typename Setter >
 			struct has_set_min_max_ploidy {
 				template< typename U, void (U::*)( uint32_t, uint32_t, uint32_t, uint32_t ) > struct SFINAE {} ;
