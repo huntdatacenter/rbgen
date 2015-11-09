@@ -245,7 +245,7 @@ private:
 		BgenProcessor processor( bgen_filename ) ;
 
 		ui().logger()
-			<< boost::format( "%s: Opened \"%s\" with %d variants...\n" ) % processor.number_of_variants() % bgen_filename % processor.number_of_variants() ;
+			<< boost::format( "%s: Opened \"%s\" with %d variants...\n" ) % globals::program_name % bgen_filename % processor.number_of_variants() ;
 		
 		std::string chromosome, rsid, SNPID ;
 		uint32_t position ;
