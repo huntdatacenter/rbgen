@@ -18,5 +18,5 @@ def build( bld ):
 		includes = './',
 		export_includes = './', 
 		uselib = 'ZLIB BZIP2 RT',
-		cxxflags = [ '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', '-Wno-keyword-macro', '-Wno-unused-const-variable' ]
+		cxxflags = [ '-std=c++11', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', '-Wno-keyword-macro', '-Wno-unused-const-variable' ]
 	)
