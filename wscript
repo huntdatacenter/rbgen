@@ -12,8 +12,8 @@ def options( opt ):
 def configure( cfg ):
 	cfg.load( 'compiler_c')
 	cfg.load( 'compiler_cxx')
-	cfg.env.CXXFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedef', '-Wno-c++11-long-long' ]
-	cfg.env.CFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedef', '-Wno-c++11-long-long' ]
+	cfg.env.CXXFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long' ]
+	cfg.env.CFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long' ]
 	if cfg.options.mode == 'release':
 		cfg.env.CXXFLAGS += [ '-O3' ]
 		cfg.env.CFLAGS = [ '-O3' ]
@@ -45,7 +45,7 @@ def build( bld ):
 		source = bld.path.ant_glob( 'src/*.cpp' ),
 		target = 'bgen',
 		includes = 'genfile/include',
-		cxxflags = [ '-std=c++11' ], # TODO: remove need for this.
+		cxxflags = [ '-std=c++0x' ],
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps' ] )
