@@ -1,4 +1,5 @@
-
+import platform
+ 
 srcdir="."
 APPNAME = "bgen"
 VERSION = "1.2"
@@ -20,8 +21,13 @@ def configure( cfg ):
 		cfg.env.CXXFLAGS += [ '-g' ]
 		cfg.env.CFLAGS = [ '-g' ]
 	else:
-		raise Exception( "Unknown value for --mode" )
+		raise Exception( "Unknown value for --mode, please specify --mode=debug or --mode=release" )
+
 	cfg.check_cxx( lib='z', uselib_store='zlib', msg = 'zlib' )
+	if platform.system() != "Darwin":
+		cfg.check_cxx( lib='rt', uselib_store='rt', msg = 'rt' )
+		cfg.check_cxx( lib='pthread', uselib_store='pthread', msg = 'pthread' )
+		cfg.check_cxx( lib='dl', uselib_store='dl', msg = 'dl' )
 
 def build( bld ):
 	print "Creating %s build..." % bld.options.mode
@@ -39,6 +45,7 @@ def build( bld ):
 		source = bld.path.ant_glob( 'src/*.cpp' ),
 		target = 'bgen',
 		includes = 'genfile/include',
+		cxxflags = [ '-std=c++11' ], # TODO: remove need for this.
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps' ] )
