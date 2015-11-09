@@ -1,5 +1,21 @@
 History
 ====
+10 Nov 2015
+----
+
+Major changes:
+
+1. I've implemented two new tools
+    - cat-bgen, which can be used to concatenate BGEN files.
+    - bgenix, which can be used to index BGEN files and efficiently retrieve specified data.
+
+2. For this purpose I've imported several extra pieces of code
+    - appcontext/ and db/ sublibs from qctool
+    - sqlite3 3.9.2
+    - boost 1.55.0
+
+These changes were erroneously applied first to the master branch (they were intended for default first).
+
 6 Nov 2015
 ----
 Major changes in revision 8762b40dedae:
