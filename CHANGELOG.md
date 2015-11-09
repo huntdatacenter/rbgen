@@ -3,7 +3,7 @@ History
 10 Nov 2015
 ----
 
-Major changes:
+Major changes in revision ff11254f9505:
 
 1. I've implemented two new tools
     - cat-bgen, which can be used to concatenate BGEN files.
