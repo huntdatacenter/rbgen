@@ -7,7 +7,7 @@ VERSION = "1.2"
 def options( opt ):
 	opt.load( 'compiler_cxx' )
 	opt.load( 'compiler_c' )
-	opt.add_option( '--mode', action = 'store', default = 'debug', dest = 'mode' )
+	opt.add_option( '--mode', action = 'store', default = 'release', dest = 'mode' )
 	
 def configure( cfg ):
 	cfg.load( 'compiler_c')
@@ -45,7 +45,7 @@ def build( bld ):
 		source = bld.path.ant_glob( 'src/*.cpp' ),
 		target = 'bgen',
 		includes = 'genfile/include',
-		cxxflags = [ '-std=c++0x' ],
+		cxxflags = [ '-std=c++11' ],
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps' ] )
