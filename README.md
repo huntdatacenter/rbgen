@@ -4,6 +4,11 @@ BGEN reference implementation
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++, 
 originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  A utility program, `bgen_to_vcf`, is also provided as an example; as the name suggests it converts a BGEN file to VCF.
 
+License
+========
+This code is released under the Bosst Software License.  See the file LICENSE_1_0.txt for details.  Note that, in addition to code I've written, this repository also contains code from third parties (including code from the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries) which are released under their respective licenses.
+
+
 Branches
 ========
 
