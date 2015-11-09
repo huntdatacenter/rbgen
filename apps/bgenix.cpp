@@ -334,7 +334,6 @@ private:
 	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read-write" ) ;
 
-		std::string const& sql = get_select_sql() ;
 		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
 
 		std::vector< std::pair< uint32_t, uint32_t > > positions ;
