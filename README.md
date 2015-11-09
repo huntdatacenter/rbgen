@@ -60,9 +60,6 @@ by typing
 ```
 which should output vcf-formatted data to stdout.  We've provided example bgen files in the `example/` subdirectory.
 
-Development
-=====
-The intention is that development takes place on the `default` branch, or on feature branches branched off from default.  I've sometimes failed to be disciplined enough to stick to that - see c.f. commit be06585e337b and onwards, accidentally committed to master branch because I wasn't paying attention - but that's the intention and we'll see how it goes.
 
 More information
 =====
