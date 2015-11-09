@@ -6,6 +6,8 @@
 #ifndef GENFILE_TYPES_HPP
 #define GENFILE_TYPES_HPP
 
+#include <stdint.h>
+
 namespace genfile {
 	enum OrderType {
 		eUnknownOrderType = 0,
