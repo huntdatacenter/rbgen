@@ -6,9 +6,9 @@ originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) imple
 
 License
 ========
-This code is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
+This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
 
-** Note ** In addition to code I've written, this repository also contains code from  the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries.  The former is [available in the public domain](http://www.sqlite.org/copyright.html) and the latter under the boost software license.  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
+This repository also contains code from  the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries.  The former is [available in the public domain](http://www.sqlite.org/copyright.html) and the latter under the boost software license.  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
 
 Branches
 ========
