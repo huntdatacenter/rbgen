@@ -4,6 +4,12 @@ BGEN reference implementation
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++, 
 originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  A utility program, `bgen_to_vcf`, is also provided as an example; as the name suggests it converts a BGEN file to VCF.
 
+License
+========
+This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
+
+This repository also contains code from  the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries.  The former is [available in the public domain](http://www.sqlite.org/copyright.html) and the latter under the boost software license.  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
+
 Branches
 ========
 
@@ -54,9 +60,6 @@ by typing
 ```
 which should output vcf-formatted data to stdout.  We've provided example bgen files in the `example/` subdirectory.
 
-Development
-=====
-The intention is that development takes place on the `default` branch, or on feature branches branched off from default.  I've sometimes failed to be disciplined enough to stick to that - see c.f. commit be06585e337b and onwards, accidentally committed to master branch because I wasn't paying attention - but that's the intention and we'll see how it goes.
 
 More information
 =====
