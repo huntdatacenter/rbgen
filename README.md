@@ -6,7 +6,7 @@ originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) imple
 
 License
 ========
-This code is released under the Bosst Software License.  See the file `LICENSE_1_0.txt` for details.  Note that, in addition to code I've written, this repository also contains code from third parties (including code from the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries) which are released under their respective licenses.
+This code is released under the [Boost Software License](http://www.boost.org/users/license.html).  See the file `LICENSE_1_0.txt` for details.  Note that, in addition to code I've written, this repository also contains code from third parties (including code from the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries) which are released under their respective licenses.
 
 
 Branches
