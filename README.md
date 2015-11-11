@@ -55,10 +55,12 @@ which should output vcf-formatted data to stdout.  We've provided example bgen f
 Apps
 =====
 
-The following programs are built with the BGEN repository - click on the names to see the wiki pages.
+The following programs are currently built with the BGEN repository.
 
 * [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
+
+Click on the names to see the wiki pages.
 
 More information
 =====
