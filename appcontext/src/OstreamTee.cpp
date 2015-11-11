@@ -20,7 +20,7 @@ namespace appcontext {
 		m_streams[ name ] = &stream ;
 	}
 
-	void OstreamTee::add_stream( std::string const& name, std::auto_ptr< std::ostream > stream ) {
+	void OstreamTee::add_stream( std::string const& name, std::unique_ptr< std::ostream > stream ) {
 		m_managed_streams.push_back( stream.release() ) ;
 		m_streams[ name ] = m_managed_streams.back() ;
 	}

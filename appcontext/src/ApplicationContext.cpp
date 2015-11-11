@@ -17,7 +17,7 @@
 namespace appcontext {
 	ApplicationContext::ApplicationContext(
 		std::string const& application_name,
-		std::auto_ptr< OptionProcessor > options,
+		std::unique_ptr< OptionProcessor > options,
 		int argc,
 		char** argv,
 		std::string const& log_option,
@@ -25,7 +25,7 @@ namespace appcontext {
 	 ):
 		m_application_name( application_name ),
 		m_application_version( "" ),
-		m_options( options ),
+		m_options( std::move( options ) ),
 		m_ui( new appcontext::CmdLineUIContext )
 	{
 		process_options( argc, argv, log_option, checker ) ;
@@ -35,7 +35,7 @@ namespace appcontext {
 	ApplicationContext::ApplicationContext(
 		std::string const& application_name,
 		std::string const& application_version,
-		std::auto_ptr< OptionProcessor > options,
+		std::unique_ptr< OptionProcessor > options,
 		int argc,
 		char** argv,
 		std::string const& log_option,
@@ -43,7 +43,7 @@ namespace appcontext {
 	 ):
 		m_application_name( application_name ),
 		m_application_version( application_version ),
-		m_options( options ),
+		m_options( std::move( options ) ),
 		m_ui( new appcontext::CmdLineUIContext )
 	{
 		process_options( argc, argv, log_option, checker ) ;
@@ -117,11 +117,11 @@ namespace appcontext {
 				ui().logger().add_stream( "log", open_file_for_output( filename )) ;
 			}
 			else {
-				ui().logger().add_stream( "log", std::auto_ptr< std::ostream >( new null_ostream )) ;
+				ui().logger().add_stream( "log", std::unique_ptr< std::ostream >( new null_ostream )) ;
 			}
 		}
 		else {
-			ui().logger().add_stream( "log", std::auto_ptr< std::ostream >( new null_ostream )) ;
+			ui().logger().add_stream( "log", std::unique_ptr< std::ostream >( new null_ostream )) ;
 		}
 	}
 

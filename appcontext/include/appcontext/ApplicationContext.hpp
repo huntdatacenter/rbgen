@@ -25,7 +25,7 @@ namespace appcontext {
 	public:
 		ApplicationContext(
 			std::string const& application_name,
-			std::auto_ptr< OptionProcessor > options,
+			std::unique_ptr< OptionProcessor > options,
 			int argc,
 			char** argv,
 			std::string const& log_filename,
@@ -35,7 +35,7 @@ namespace appcontext {
 		ApplicationContext(
 			std::string const& application_name,
 			std::string const& application_revision,
-			std::auto_ptr< OptionProcessor > options,
+			std::unique_ptr< OptionProcessor > options,
 			int argc,
 			char** argv,
 			std::string const& log_filename,
@@ -57,8 +57,8 @@ namespace appcontext {
 	
 		std::string const m_application_name ;
 		std::string const m_application_version ;
-		std::auto_ptr< OptionProcessor > m_options ;
-		std::auto_ptr< UIContext > m_ui ;
+		std::unique_ptr< OptionProcessor > m_options ;
+		std::unique_ptr< UIContext > m_ui ;
 	} ;
 }
 
