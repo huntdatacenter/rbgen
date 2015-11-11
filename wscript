@@ -45,7 +45,6 @@ def build( bld ):
 		source = bld.path.ant_glob( 'src/*.cpp' ),
 		target = 'bgen',
 		includes = 'genfile/include',
-		cxxflags = [ '-std=c++11' ],
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps' ] )

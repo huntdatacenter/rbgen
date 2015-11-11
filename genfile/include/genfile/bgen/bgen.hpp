@@ -473,13 +473,16 @@ namespace genfile {
 				static const bool No = sizeof(Test<Setter>(0)) == sizeof(uint16_t) ;
 			} ;
 			
+			template<bool C>
+			struct tag {} ;
+			
 			template< typename Setter >
 			void call_set_min_max_ploidy(
 				Setter& setter,
 				uint32_t min_ploidy, uint32_t max_ploidy,
 				uint32_t numberOfAlleles,
 				bool phased,
-				std::true_type
+				tag< true > const&
 			) {
 				uint32_t min_count = phased
 					? (min_ploidy * numberOfAlleles)
@@ -499,7 +502,7 @@ namespace genfile {
 				uint32_t min_ploidy, uint32_t max_ploidy,
 				uint32_t numberOfAlleles,
 				bool phased,
-				std::false_type
+				tag< false > const&
 			) {
 				// do nothing
 			}
@@ -511,8 +514,8 @@ namespace genfile {
 				uint32_t numberOfAlleles,
 				bool phased
 			) {
-				call_set_min_max_ploidy( setter, min_ploidy, max_ploidy, numberOfAlleles, phased,
-					std::integral_constant<bool, has_set_min_max_ploidy<Setter>::Yes>()
+				call_set_min_max_ploidy( setter, min_ploidy, max_ploidy, numberOfAlleles, phased, 
+					tag< has_set_min_max_ploidy<Setter>::Yes >()
 				) ;
 			}
 			
@@ -527,14 +530,14 @@ namespace genfile {
 			
 			template< typename Setter >
 			void call_finalise(
-				Setter& setter, std::true_type
+				Setter& setter, tag< true > const&
 			) {
 				setter.finalise() ;
 			}
 
 			template< typename Setter >
 			void call_finalise(
-				Setter& setter, std::false_type
+				Setter& setter, tag< false > const&
 			) {
 				// do nothing
 			}
@@ -543,7 +546,7 @@ namespace genfile {
 			void call_finalise(
 				Setter& setter
 			) {
-				call_finalise( setter, std::integral_constant<bool, has_finalise<Setter>::Yes>() ) ;
+				call_finalise( setter, tag<has_finalise<Setter>::Yes>() ) ;
 			}
 		}
 
