@@ -34,7 +34,7 @@ Or use the supplied waf build tool:
 ./waf-1.8.13 configure
 ./waf-1.8.13
 ```
-Results will appear under the `build/` directory.  For compilation problems see [the wiki](https://bitbucket.org/gavinband/bgen/wiki/Troubleshooting_compilation).
+Results will appear under the `build/` directory.  For more detail on compilation see [the wiki](https://bitbucket.org/gavinband/bgen/wiki/Troubleshooting_compilation).
 
 It's also possible to supply an installation prefix
 ```sh
