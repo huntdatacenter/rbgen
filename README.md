@@ -36,14 +36,6 @@ Or use the supplied waf build tool:
 ```
 Results will appear under the `build/` directory.  For more detail on compilation see [the wiki](https://bitbucket.org/gavinband/bgen/wiki/Troubleshooting_compilation).
 
-It's also possible to supply an installation prefix
-```sh
-./waf-1.8.13 configure --prefix /my/installation/dir
-./waf-1.8.13 install
-```
-
-This will install the example and test applications into the specified directory.
-
 Testing
 =====
 
