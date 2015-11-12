@@ -850,6 +850,7 @@ TEST_CASE( "Test single sample", "[bgen][small]" ) {
 	}
 }
 
+
 TEST_CASE( "Test two samples", "[bgen][small]" ) {
 	std::cout << "test_two_samples\n" ;
 
@@ -937,7 +938,7 @@ TEST_CASE( "Test truncated data", "[bgen]" ) {
 
 	// Check that truncated data fails...
 	for( std::size_t i = 1; i < expected.size(); ++i ) {
-#if 1 //DEBUG
+#if DEBUG
 		std::cerr << "test_malformed(): i = " << i << ": " << to_hex( &expected[0], &expected[0] + expected.size() - i ) << "\n" ;
 #endif
 		ProbSetCheck setter(
