@@ -863,9 +863,10 @@ namespace genfile {
 					if(
 						(m_order_type == ePerUnorderedGenotype && m_entry_i == m_number_of_entries)
 						||
-						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == (m_ploidy * m_number_of_alleles) )
+						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == m_number_of_alleles)
 					) {
 						bake( &m_values[0], m_entry_i ) ;
+						std::cerr << "Baked; m_entry_i=" << m_entry_i << ", m_offset=" << m_offset << ".\n" ;
 						m_entry_i = 0 ;
 					}
 				}
@@ -880,7 +881,7 @@ namespace genfile {
 					if(
 						(m_order_type == ePerUnorderedGenotype && m_entry_i == m_number_of_entries)
 						||
-						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == (m_ploidy * m_number_of_alleles) )
+						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == m_number_of_alleles )
 					) {
 						bake( &m_values[0], m_entry_i ) ;
 						m_entry_i = 0 ;

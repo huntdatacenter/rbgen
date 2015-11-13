@@ -21,7 +21,7 @@
 
 using namespace std::placeholders ;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 // The following section contains a simple snp block writer.
 namespace data {
@@ -839,62 +839,71 @@ TEST_CASE( "Test single sample (biallelic)", "[bgen][biallelic]" ) {
 		expected[6] = expected[7] = ploidy ;
 		expected[8] = ploidy ;
 		for( unsigned char number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
-			std::size_t const numberOfValues = (ploidy+1) ;
 			expected[ eNumberOfBits ] = number_of_bits ;
-			for( std::size_t g = 0; g <= numberOfValues; ++g ) { // g=numberOfValues => missing.
-				// For a biallelic (K=2) variant the number of probability values
-				// is ploidy+1.
-				// `cos it is the (K-1)th entry of the ploidy+K-1th row of Pascal's triangle.
-				std::size_t expected_size = 11 + ((( number_of_bits * (numberOfValues-1) ) + 7 ) / 8 ) ;
+			for( uint8_t phased = 0; phased < 2; ++phased ) {
+				expected[9] = phased ;
+				std::size_t const numberOfValues = phased ? (2*ploidy) : (ploidy+1) ;
+				for( std::size_t g = 0; g <= numberOfValues; ++g ) { // g=numberOfValues => missing.
+					// For a biallelic (K=2) variant the number of probability values
+					// is ploidy+1.
+					// `cos it is the (K-1)th entry of the ploidy+K-1th row of Pascal's triangle.
+					std::size_t expected_size = (
+						11 + ((( number_of_bits * (phased ? ploidy : (numberOfValues-1)) ) + 7 ) / 8 )
+					) ;
 
-#if DEBUG
-				std::cerr << "test_single_sample(): ploidy=" << int( ploidy ) << ", bits=" << int( number_of_bits ) << ", g=" << g << ", numberOfValues=" << numberOfValues << ".\n" ;
-#endif				
-
-				// Now we need to set the expected genotype.
-				// We do it with a trick as follows.
-				expected[8] = ploidy ;
-				std::fill( &expected[0] + eData, &expected[0] + expected.size(), uint8_t(0) ) ;
-				if( g < (numberOfValues-1) ) {
-					std::size_t bit = g * number_of_bits ;
-					std::size_t byte = bit / 8 ;
-					bit = bit % 8 ;
-					// Create a bitmask with the right number of bits.
-					uint64_t mask = ( uint64_t( 0xFFFFFFFF ) >> ( 32 - number_of_bits )) << bit ;
-
-#if DEBUG
-					std::cerr << "test_single_sample(): setting byte " << eData + byte << " to "  << std::hex << mask << std::dec << ".\n" ;
-#endif
-					for( std::size_t i = 0; i < number_of_bits*ploidy; i += 8 ) {
-						expected[ eData + byte + (i/8) ] = mask & 0xFF ;
-						mask >>= 8 ;
-					}
-				} else if( g == numberOfValues ) {
-					expected[8] |= 0x80 ;
-				}
-				{
-					genfile::bgen::v12::ProbabilityDataWriter writer( &data[0], &data[0] + data.size(), number_of_bits ) ;
-					writer.initialise( 1, number_of_alleles ) ;
-					writer.set_sample( 0 ) ;
-					writer.set_number_of_entries( ploidy, ploidy+1, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-					for( std::size_t i = 0; i < numberOfValues; ++i ) {
-						if( g == numberOfValues ) {
-							writer.set_value( i, genfile::MissingValue() ) ;
-						} else if( i == g ) {
-							writer.set_value( i, 1.0 ) ;
-						} else {
-							writer.set_value( i, 0.0 ) ;
-						}
-					}
-					writer.finalise() ;
-					end = writer.end_of_data() ;
-				}
 	#if DEBUG
-				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
-				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+					std::cerr << "test_single_sample(): ploidy=" << int( ploidy ) << ", phased=" << int( phased ) << ", bits=" << int( number_of_bits ) << ", g=" << g << ", numberOfValues=" << numberOfValues << ".\n" ;
+	#endif				
+
+					// Now we need to set the expected genotype.
+					// We do it with a trick as follows.
+					expected[8] = ploidy ;
+					std::fill( &expected[0] + eData, &expected[0] + expected.size(), uint8_t(0) ) ;
+					if( g < (numberOfValues-1) ) {
+						std::size_t bit = g * number_of_bits ;
+						std::size_t byte = bit / 8 ;
+						bit = bit % 8 ;
+						// Create a bitmask with the right number of bits.
+						uint64_t mask = ( uint64_t( 0xFFFFFFFF ) >> ( 32 - number_of_bits )) << bit ;
+
+	#if DEBUG
+						std::cerr << "test_single_sample(): setting byte " << eData + byte << " to "  << std::hex << mask << std::dec << ".\n" ;
 	#endif
-				REQUIRE( ( end - &data[0] ) == expected_size ) ;
-				REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+						for( std::size_t i = 0; i < number_of_bits*ploidy; i += 8 ) {
+							expected[ eData + byte + (i/8) ] = mask & 0xFF ;
+							mask >>= 8 ;
+						}
+					} else if( g == numberOfValues ) {
+						expected[8] |= 0x80 ;
+					}
+					{
+						genfile::bgen::v12::ProbabilityDataWriter writer( &data[0], &data[0] + data.size(), number_of_bits ) ;
+						writer.initialise( 1, number_of_alleles ) ;
+						writer.set_sample( 0 ) ;
+						writer.set_number_of_entries(
+							ploidy, numberOfValues,
+							( phased ? genfile::ePerPhasedHaplotypePerAllele : genfile::ePerUnorderedGenotype ),
+							genfile::eProbability
+						) ;
+						for( std::size_t i = 0; i < numberOfValues; ++i ) {
+							if( g == numberOfValues ) {
+								writer.set_value( i, genfile::MissingValue() ) ;
+							} else if( i == g ) {
+								writer.set_value( i, 1.0 ) ;
+							} else {
+								writer.set_value( i, 0.0 ) ;
+							}
+						}
+						writer.finalise() ;
+						end = writer.end_of_data() ;
+					}
+		#if DEBUG
+					std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+					std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
+		#endif
+					REQUIRE( ( end - &data[0] ) == expected_size ) ;
+					REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+				}
 			}
 		}
 	}
