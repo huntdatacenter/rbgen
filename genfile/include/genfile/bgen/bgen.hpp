@@ -809,7 +809,10 @@ namespace genfile {
 					m_offset = 0 ;
 					if( m_number_of_samples == 0 ) {
 						m_ploidyExtent[0] = 0 ;
+						m_order_type = ePerUnorderedGenotype ;
 					}
+					m_buffer[8+m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
+					m_buffer[9+m_number_of_samples] = m_number_of_bits ;
 				}
 
 				bool set_sample( std::size_t i ) {

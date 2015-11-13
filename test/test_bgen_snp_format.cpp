@@ -178,10 +178,10 @@ namespace data {
 		// Write number of samples and ploidies.
 		p = genfile::bgen::write_little_endian_integer( p, end, number_of_samples ) ;
 		p = genfile::bgen::write_little_endian_integer( p, end, number_of_alleles ) ;
-		p = genfile::bgen::write_little_endian_integer( p, end, uint8_t( 2 ) ) ;
-		p = genfile::bgen::write_little_endian_integer( p, end, uint8_t( 2 ) ) ;
+		uint8_t const ploidy = (number_of_samples > 0) ? 2 : 0 ;
+		p = genfile::bgen::write_little_endian_integer( p, end, ploidy ) ;
+		p = genfile::bgen::write_little_endian_integer( p, end, ploidy ) ;
 		for( std::size_t i = 0; i < number_of_samples; ++i ) {
-			uint8_t ploidy = 2 ;
 			p = genfile::bgen::write_little_endian_integer( p, end, ploidy ) ;
 		}
 
