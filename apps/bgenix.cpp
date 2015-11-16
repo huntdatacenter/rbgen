@@ -100,12 +100,15 @@ struct BgenProcessor {
 		// Skip anything else until the first variant
 		m_stream->seekg( m_offset + 4 ) ;
 
+		// We update track of the start and end of each variant
+		m_current_variant_position = ( m_offset + 4 ) ;
+
 		// We keep track of state (though it's not really needed for this implementation.)
 		m_state = e_ReadyForVariant ;
 	}
 
-	std::streampos file_position() const {
-		return m_stream->tellg() ;
+	std::streampos current_position() const {
+		return m_current_variant_position ;
 	}
 
 	uint32_t number_of_variants() const {
@@ -146,6 +149,7 @@ struct BgenProcessor {
 	// to fetch the next variant from the file.
 	void ignore_probs() {
 		genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
+		m_current_variant_position = m_stream->tellg() ;
 		m_state = e_ReadyForVariant ;
 	}
 
@@ -166,6 +170,9 @@ private:
 	// repeatedly.
 	enum State { e_NotOpen = 0, e_Open = 1, e_ReadyForVariant = 2, e_ReadyForProbs = 3, eComplete = 4 } ;
 	State m_state ;
+	
+	// To avoid issues with tellg() and failbit, we store the stream position at suitable points
+	std::streampos m_current_variant_position ;
 } ;
 
 struct IndexBgenApplication: public appcontext::ApplicationContext
@@ -258,11 +265,12 @@ private:
 		{
 			auto progress_context = ui().get_progress_context( "Building BGEN index" ) ;
 			std::size_t variant_count = 0;
-			int64_t file_pos = int64_t( processor.file_position() ) ;
+			int64_t file_pos = int64_t( processor.current_position() ) ;
 			while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
 				processor.ignore_probs() ;
-				int64_t file_end_pos = int64_t( processor.file_position() ) ;
+				int64_t file_end_pos = int64_t( processor.current_position() ) ;
 				assert( alleles.size() > 1 ) ;
+				assert( (file_end_pos - file_pos) > 0 ) ;
 				insert_variant_stmt
 					->bind( 1, SNPID )
 					.bind( 2, rsid )
