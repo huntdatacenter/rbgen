@@ -255,39 +255,48 @@ private:
 		
 		transaction = connection->open_transaction( 240 ) ;
 		
-		auto progress_context = ui().get_progress_context( "Building index" ) ;
-		
-		std::size_t variant_count = 0;
-		int64_t file_pos = int64_t( processor.file_position() ) ;
-		while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
-			processor.ignore_probs() ;
-			int64_t file_end_pos = int64_t( processor.file_position() ) ;
-			assert( alleles.size() > 1 ) ;
-			insert_variant_stmt
-				->bind( 1, SNPID )
-				.bind( 2, rsid )
-				.bind( 3, chromosome )
-				.bind( 4, position )
-				.bind( 5, uint32_t( alleles.size() ))
-				.bind( 6, alleles[0] )
-				.bind( 7, alleles[1] )
-				.bind( 8, file_pos )
-				.bind( 9, file_end_pos - file_pos )
-				.step()
-			;
-			insert_variant_stmt->reset() ;
+		{
+			auto progress_context = ui().get_progress_context( "Building BGEN index" ) ;
+			std::size_t variant_count = 0;
+			int64_t file_pos = int64_t( processor.file_position() ) ;
+			while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
+				processor.ignore_probs() ;
+				int64_t file_end_pos = int64_t( processor.file_position() ) ;
+				assert( alleles.size() > 1 ) ;
+				insert_variant_stmt
+					->bind( 1, SNPID )
+					.bind( 2, rsid )
+					.bind( 3, chromosome )
+					.bind( 4, position )
+					.bind( 5, uint32_t( alleles.size() ))
+					.bind( 6, alleles[0] )
+					.bind( 7, alleles[1] )
+					.bind( 8, file_pos )
+					.bind( 9, file_end_pos - file_pos )
+					.step()
+				;
+				insert_variant_stmt->reset() ;
 			
-			progress_context( ++variant_count, processor.number_of_variants() ) ;
+				progress_context( ++variant_count, processor.number_of_variants() ) ;
 			
-			// Make sure and commit every 10000 SNPs.
-			if( variant_count % chunk_size == 0 ) {
-//				ui().logger()
-//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
+				// Make sure and commit every 10000 SNPs.
+				if( variant_count % chunk_size == 0 ) {
+	//				ui().logger()
+	//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
 				
-				transaction.reset() ;
-				transaction = connection->open_transaction( 240 ) ;
+					transaction.reset() ;
+					transaction = connection->open_transaction( 240 ) ;
+				}
+				file_pos = file_end_pos ;
 			}
-			file_pos = file_end_pos ;
+		}
+		{
+			auto progress_context = ui().get_progress_context( "Creating indices" ) ;
+			progress_context( 0, 1 ) ;
+			connection->run_statement(
+				"CREATE INDEX VariantRsidIndex ON Variant( rsid )"
+			) ;
+			progress_context( 1, 1 ) ;
 		}
 		return connection ;
 	}
