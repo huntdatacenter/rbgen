@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sstream>
 #include <cassert>
+#include <cstring>
 #include <map>
 #include <set>
 #include <functional>
