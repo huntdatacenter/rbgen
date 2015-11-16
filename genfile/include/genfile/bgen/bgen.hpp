@@ -925,7 +925,6 @@ namespace genfile {
 				std::size_t m_number_of_entries ;
 				std::size_t m_entry_i ;
 				Missing m_missing ;
-				bool m_phased ;
 				double m_values[100] ;
 				std::size_t index[100] ;
 				uint64_t m_data ;
