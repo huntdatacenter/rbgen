@@ -866,7 +866,6 @@ namespace genfile {
 						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == m_number_of_alleles)
 					) {
 						bake( &m_values[0], m_entry_i ) ;
-						std::cerr << "Baked; m_entry_i=" << m_entry_i << ", m_offset=" << m_offset << ".\n" ;
 						m_entry_i = 0 ;
 					}
 				}
