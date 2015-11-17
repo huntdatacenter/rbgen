@@ -5,6 +5,7 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 #include <string>
+#include <memory>
 
 std::string to_hex( std::string const& str ) ;
 template< typename Iterator, typename End >

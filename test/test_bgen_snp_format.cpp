@@ -12,6 +12,7 @@
 #include <set>
 #include <functional>
 #include <cstdio>
+#include <cstring>
 #include "stdint.h"
 #include "catch.hpp"
 #include "test_utils.hpp"
