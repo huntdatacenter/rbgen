@@ -777,21 +777,21 @@ namespace genfile {
 				call_finalise( setter ) ;
 			}
 
-			template< typename Setter >
 			struct ProbabilityDataWriter {
 				enum {
-					eMinPloidyByte = 7, eMaxPloidyByte = 8,
-					ePloidyBytes = 9,
-					eNumberOfBits = 10, eData = 11
+					eMinPloidyByte = 6, eMaxPloidyByte = 7,
+					ePloidyBytes = 8
 				} ;
+				enum Missing { eNotSet = 0, eMissing = 1, eNotMissing = 2 } ;
 				
 				ProbabilityDataWriter( byte_t* buffer, byte_t* const end, uint8_t const number_of_bits ):
 					m_buffer( buffer ),
 					m_p( buffer ),
 					m_end( end ),
 					m_number_of_bits( number_of_bits ),
-					m_sample_i(0),
 					m_order_type( eUnknownOrderType ),
+					m_sample_i(0),
+					m_missing( eNotSet ),
 					m_data(0)
 				{
 					m_ploidyExtent[0] = 63 ;
@@ -801,19 +801,25 @@ namespace genfile {
 				void initialise( uint32_t nSamples, uint16_t nAlleles ) {
 					m_p = write_little_endian_integer( m_p, m_end, nSamples ) ;
 					m_p = write_little_endian_integer( m_p, m_end, nAlleles ) ;
-					// skip the ploidy bytes, which we'll write later
+					// skip the ploidy and other non-data bytes, which we'll write later
 					m_number_of_samples = nSamples ;
-					m_p += nSamples+2 ;
+					m_number_of_alleles = nAlleles ;
+					m_p += nSamples+4 ;
 					m_data = 0 ;
 					m_offset = 0 ;
 					if( m_number_of_samples == 0 ) {
 						m_ploidyExtent[0] = 0 ;
+						m_order_type = ePerUnorderedGenotype ;
 					}
+					m_buffer[8+m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
+					m_buffer[9+m_number_of_samples] = m_number_of_bits ;
 				}
 
 				bool set_sample( std::size_t i ) {
 					// ensure samples are visited in order.
 					assert(( m_sample_i == 0 && i == 0 ) || ( i == m_sample_i + 1 )) ;
+					m_sample_i = i ;
+					return true ;
 				}
 
 				void set_number_of_entries(
@@ -823,6 +829,7 @@ namespace genfile {
 					ValueType const value_type
 				) {
 					assert( ploidy < 64 ) ;
+					m_ploidy = ploidy ;
 					uint8_t ploidyByte( ploidy & 0xFF ) ;
 					*(m_buffer+8+m_sample_i) = ploidyByte ;
 					m_ploidyExtent[0] = std::min( m_ploidyExtent[0], ploidyByte ) ;
@@ -832,8 +839,9 @@ namespace genfile {
 					if( m_sample_i == 0 ) {
 						m_order_type = order_type ;
 						// write phased flag.
-						m_buffer[8 + m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
-						m_buffer[9 + m_number_of_samples] = m_number_of_bits ;
+
+						m_buffer[8+m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
+						m_buffer[9+m_number_of_samples] = m_number_of_bits ;
 					} else {
 						if( m_order_type != order_type ) {
 							throw BGenError() ;
@@ -844,31 +852,64 @@ namespace genfile {
 					}
 					m_number_of_entries = number_of_entries ;
 					m_entry_i = 0 ;
-					m_missing = false ;
+					m_missing = eNotSet ;
 				}
 
-				void operator()( genfile::MissingValue const value ) {
+				void set_value( uint32_t entry_i, genfile::MissingValue const value ) {
 					assert( m_entry_i < m_number_of_entries ) ;
+					assert( m_entry_i == 0 || m_missing == eMissing ) ;
 					m_values[m_entry_i++] = 0.0 ;
-					if( m_entry_i == m_number_of_entries ) {
-						bake() ;
+					m_missing = eMissing ;
+					if(
+						(m_order_type == ePerUnorderedGenotype && m_entry_i == m_number_of_entries)
+						||
+						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == m_number_of_alleles)
+					) {
+						bake( &m_values[0], m_entry_i ) ;
+						m_entry_i = 0 ;
 					}
-					m_missing = true ;
 				}
 
-				void operator()( double const value ) {
-					assert( !m_missing ) ; // either all or no values must be missing.
+				void set_value( uint32_t entry_i, double const value ) {
+					assert( m_missing == eNotSet || m_missing == eNotMissing ) ;
 					assert( m_entry_i < m_number_of_entries ) ;
 					m_values[m_entry_i++] = value ;
-					if( m_entry_i == m_number_of_entries ) {
-						bake() ;
+					if( value != 0.0 ) {
+						m_missing = eNotMissing ;
+					}
+					if(
+						(m_order_type == ePerUnorderedGenotype && m_entry_i == m_number_of_entries)
+						||
+						(m_order_type == ePerPhasedHaplotypePerAllele && m_entry_i == m_number_of_alleles )
+					) {
+						bake( &m_values[0], m_entry_i ) ;
+						m_entry_i = 0 ;
 					}
 				}
 
 				void finalise() {
+					// Write any remaining data
+					if( m_offset > 0 ) {
+						int const nBytes = (m_offset+7)/8 ;
+#if DEBUG_BGEN_FORMAT
+						std::cerr << "genfile::bgen::impl::v12::ProbabilityDataWriter::finalise()(): final offset = "
+							<< m_offset << ", number of bits = " << int( m_number_of_bits )
+								<< ", writing " << nBytes << " final bytes (space = " << (m_end-m_p)
+									<< ", ploidy extent = " << uint32_t( m_ploidyExtent[0] ) << " " << uint32_t( m_ploidyExtent[0] )
+									<< "\n";
+#endif
+						assert( (m_p+nBytes) <= m_end ) ;
+						m_p = std::copy(
+							reinterpret_cast< byte_t const* >( &m_data ),
+							reinterpret_cast< byte_t const* >( &m_data ) + nBytes,
+							m_p
+						) ;
+					}
 					m_buffer[eMinPloidyByte] = m_ploidyExtent[0] ;
 					m_buffer[eMaxPloidyByte] = m_ploidyExtent[1] ;
 				}
+				
+				byte_t* end_of_data() const { return m_p ; }
 
 			private:
 				byte_t* m_buffer ;
@@ -877,31 +918,37 @@ namespace genfile {
 				uint8_t const m_number_of_bits ;
 				uint8_t m_ploidyExtent[2] ;
 				OrderType m_order_type ;
-				std::size_t m_number_of_samples ;
+				uint32_t m_number_of_samples ;
+				uint32_t m_number_of_alleles ;
+				uint32_t m_ploidy ;
 				std::size_t m_sample_i ;
 				std::size_t m_number_of_entries ;
 				std::size_t m_entry_i ;
-				bool m_missing ;
-				bool m_phased ;
+				Missing m_missing ;
 				double m_values[100] ;
 				std::size_t index[100] ;
 				uint64_t m_data ;
 				std::size_t m_offset ;
 				
 			private:
-				void bake() {
-					if( m_missing ) {
+				void bake( double* values, std::size_t count ) {
+					if( m_missing == eMissing || m_missing == eNotSet ) {
+						// Have never seen a non-missing value.
 						m_p = impl::write_scaled_probs(
-							&m_data, &m_offset, &m_values[0],
-							m_number_of_entries, m_number_of_bits, m_p, m_end
+							&m_data, &m_offset, values,
+							count, m_number_of_bits, m_p, m_end
 						) ;
+#if DEBUG_BGEN_FORMAT
+					std::cerr << "genfile::bgen::impl::v12::ProbabilityDataWriter::bake()(): setting sample "
+						<< m_sample_i << " to missing (byte " << ( ePloidyBytes + m_sample_i ) << ").\n" ;
+#endif 
 						// flag this sample as missing.
 						m_buffer[ePloidyBytes + m_sample_i] |= 0x80 ;
 					} else {
-						impl::round_probs_to_scaled_simplex(&m_values[0], &index[0], m_number_of_entries, m_number_of_bits ) ;
+						impl::round_probs_to_scaled_simplex(values, &index[0], count, m_number_of_bits ) ;
 						m_p = impl::write_scaled_probs(
-							&m_data, &m_offset, &m_values[0],
-							m_number_of_entries, m_number_of_bits, m_p, m_end
+							&m_data, &m_offset, values,
+							count, m_number_of_bits, m_p, m_end
 						) ;
 					}
 				}
@@ -922,55 +969,20 @@ namespace genfile {
 #if DEBUG_BGEN_FORMAT
 				std::cerr << "genfile::bgen::impl::v12::write_uncompressed_snp_probability_data(): number_of_bits = " << number_of_bits << ", buffer = " << reinterpret_cast< void* >( buffer ) << ", (end-buffer) = " << (end-buffer) << ".\n" ;
 #endif
-				buffer = write_little_endian_integer( buffer, end, context.number_of_samples ) ;
-				// Write ploidy
+				ProbabilityDataWriter writer( buffer, end, number_of_bits ) ;
 				uint16_t const numberOfAlleles = 2 ;
 				uint8_t const ploidy = 2 ;
-				buffer = write_little_endian_integer( buffer, end, numberOfAlleles ) ;
-				buffer = write_little_endian_integer( buffer, end, ploidy ) ;
-				buffer = write_little_endian_integer( buffer, end, ploidy ) ;
-				byte_t* ploidy_p = buffer ;
-				buffer += context.number_of_samples ;
-				buffer = write_little_endian_integer( buffer, end, uint8_t( 0 ) ) ;
-				buffer = write_little_endian_integer( buffer, end, uint8_t( number_of_bits ) ) ;
-				// We use an array of three doubles to compute the rounded probabilities.
-				// We use a single 64-bit integer to marshall the data to be written.
-				double v[3] ;
-				std::size_t index[3] ;
-				uint64_t data = 0 ;
-				std::size_t offset = 0 ;
-				for( std::size_t i = 0; i < context.number_of_samples; ++i ) {
-					v[0] = get_AA_probability(i) ;
-					v[1] = get_AB_probability(i) ;
-					v[2] = get_BB_probability(i) ;
-					double sum = v[0] + v[1] + v[2] ;
-					bool missing = ( v[0] == 0.0 && v[1] == 0.0 && v[2] == 0.0 ) ;
-					uint8_t ploidy = 2 | ( missing ? 0x80 : 0 ) ;
-					*(ploidy_p++) = ploidy ;
-					if( !missing ) {
-						assert( sum >= 0.99 & sum < 1.01 ) ;
-						v[0] = v[0] / sum ;
-						v[1] = v[1] / sum ;
-						v[2] = v[2] / sum ;
-						impl::round_probs_to_scaled_simplex( &v[0], &index[0], 3, number_of_bits ) ;
+				writer.initialise( context.number_of_samples, numberOfAlleles ) ;
+				for( uint32_t i = 0; i < context.number_of_samples; ++i ) {
+					if( writer.set_sample(i) ) {
+						writer.set_number_of_entries( ploidy, 3, ePerUnorderedGenotype, eProbability ) ;
+						writer.set_value( 0, get_AA_probability( i ) ) ;
+						writer.set_value( 1, get_AB_probability( i ) ) ;
+						writer.set_value( 2, get_BB_probability( i ) ) ;
 					}
-					buffer = impl::write_scaled_probs( &data, &offset, &v[0], 3, number_of_bits, buffer, end ) ;
 				}
-				// Get any leftover bytes.
-				if( offset > 0 ) {
-					int const nBytes = (offset+7)/8 ;
-#if DEBUG_BGEN_FORMAT
-					std::cerr << "genfile::bgen::impl::v12::write_uncompressed_snp_probability_data(): final offset = "
-						<< offset << ", number of bits = " << number_of_bits << ", writing " << nBytes << " final bytes (space = " << (end-buffer) << ".\n" ;
-#endif
-					assert( (buffer+nBytes) <= end ) ;
-					buffer = std::copy(
-						reinterpret_cast< byte_t const* >( &data ),
-						reinterpret_cast< byte_t const* >( &data ) + nBytes,
-						buffer
-					) ;
-				}
-				return buffer ;
+				writer.finalise() ;
+				return writer.end_of_data() ;
 			}
 		}
 		
