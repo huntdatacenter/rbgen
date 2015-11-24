@@ -784,7 +784,7 @@ TEST_CASE( "Test that valid variant data block containing phased data can be wri
 }
 
 TEST_CASE( "Single sample (biallelic,unphased)", "[bgen][biallelic][unphased]" ) {
-	std::cout << "test_single_sample\n" ;
+	std::cout << "test_single_sample_biallelic_unphased\n" ;
 
 	std::vector< genfile::byte_t > data( 1000 ) ;
 
@@ -912,7 +912,7 @@ TEST_CASE( "Single sample (biallelic,unphased)", "[bgen][biallelic][unphased]" )
 }
 
 TEST_CASE( "Single sample (biallelic phased)", "[bgen][biallelic][phased]" ) {
-	std::cout << "test_single_sample\n" ;
+	std::cout << "test_single_sample_biallelic_phased\n" ;
 
 	std::vector< genfile::byte_t > data( 1000 ) ;
 
