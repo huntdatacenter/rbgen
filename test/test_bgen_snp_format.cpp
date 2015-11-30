@@ -22,7 +22,7 @@
 
 using namespace std::placeholders ;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 // The following section contains a simple snp block writer.
 namespace data {
@@ -713,46 +713,45 @@ TEST_CASE( "Test that round_probs_to_scaled_simplex() works correctly", "[bgen]"
 }
 
 
-TEST_CASE( "Test that valid variant data block containing unphased data can be read", "[bgen]" ) {
-	std::cout << "test_snp_block_input_unphased\n" ;
+TEST_CASE( "Test that valid v1.0 variant data block can be read", "[bgen][v10]" ) {
+	std::cout << "test_snp_block_input_v10\n" ;
 //	do_snp_block_read_test( "v10", 0, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
 	do_snp_block_read_test( "v10", 6, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
 	do_snp_block_read_test( "v10", 15, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
 	do_snp_block_read_test( "v10", 100, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
 	do_snp_block_read_test( "v10", 1001, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
+}
 
+TEST_CASE( "Test that valid v1.1 variant data block can be read", "[bgen][v11]" ) {
+	std::cout << "test_snp_block_input_v11\n" ;
 //	do_snp_block_read_test( "v11", 0, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
 	do_snp_block_read_test( "v11", 6, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
 	do_snp_block_read_test( "v11", 15, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
 	do_snp_block_read_test( "v11", 100, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
 	do_snp_block_read_test( "v11", 1001, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
+}
 
+TEST_CASE( "Test that valid v1.1 variant data block can be written", "[bgen][v11]" ) {
+	std::cout << "test_snp_block_output_unphased_v11\n" ;
+	do_snp_block_write_test( "v11", 6, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
+	do_snp_block_write_test( "v11", 100, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
+}
+
+TEST_CASE( "Test that valid v1.2 variant data block containing unphased data can be read", "[bgen][v12]" ) {
+	std::cout << "test_snp_block_input_unphased_v12\n" ;
 	for( std::size_t number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
-//		do_snp_block_read_test( "v12", 0, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
-		do_snp_block_read_test( "v12", 2, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
-		do_snp_block_read_test( "v12", 6, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
-		do_snp_block_read_test( "v12", 15, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
-		do_snp_block_read_test( "v12", 37, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
-		do_snp_block_read_test( "v12", 100, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
-		do_snp_block_read_test( "v12", 1001, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits ) ;
+		do_snp_block_read_test( "v12", 0, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
+		do_snp_block_read_test( "v12", 2, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
+		do_snp_block_read_test( "v12", 6, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
+		do_snp_block_read_test( "v12", 15, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
+		do_snp_block_read_test( "v12", 37, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
+		do_snp_block_read_test( "v12", 100, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
+		do_snp_block_read_test( "v12", 1001, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "unphased" ) ;
 	}
 }
 
-TEST_CASE( "Test that valid variant data block containing phased data can be read", "[bgen]" ) {
-	std::cout << "test_snp_block_input_phased\n" ;
-	for( std::size_t number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
-		do_snp_block_read_test( "v12", 0, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-		do_snp_block_read_test( "v12", 2, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-		do_snp_block_read_test( "v12", 6, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-		do_snp_block_read_test( "v12", 15, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-		do_snp_block_read_test( "v12", 37, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-		do_snp_block_read_test( "v12", 100, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-		do_snp_block_read_test( "v12", 1001, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
-	}
-}
-
-TEST_CASE( "Test that valid variant data block containing unphased data can be written", "[bgen]" ) {
-	std::cout << "test_snp_block_output_unphased\n" ;
+TEST_CASE( "Test that valid v1.2 variant data block containing unphased data can be written", "[bgen][v12]" ) {
+	std::cout << "test_snp_block_output_unphased_v12\n" ;
 	do_snp_block_write_test( "v11", 6, "SNP01", "RS01", "1", 1000001, "A", "C" ) ;
 	do_snp_block_write_test( "v11", 100, "01234567890123456789012345678901234567890123456789", "01234567890123456789012345678901234567890123456789", "22", 4294967295u, "G", "T" ) ;
 	for( std::size_t number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
@@ -766,8 +765,21 @@ TEST_CASE( "Test that valid variant data block containing unphased data can be w
 	}
 }
 
-TEST_CASE( "Test that valid variant data block containing phased data can be written", "[bgen]" ) {
-	std::cout << "test_snp_block_output_phased\n" ;
+TEST_CASE( "Test that valid v1.2 variant data block containing phased data can be read", "[bgen][v12]" ) {
+	std::cout << "test_snp_block_input_phased_v12\n" ;
+	for( std::size_t number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
+		do_snp_block_read_test( "v12", 0, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+		do_snp_block_read_test( "v12", 2, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+		do_snp_block_read_test( "v12", 6, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+		do_snp_block_read_test( "v12", 15, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+		do_snp_block_read_test( "v12", 37, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+		do_snp_block_read_test( "v12", 100, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+		do_snp_block_read_test( "v12", 1001, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
+	}
+}
+
+TEST_CASE( "Test that valid variant data block containing phased data can be written", "[bgen][v12]" ) {
+	std::cout << "test_snp_block_output_phased_v12\n" ;
 	std::cout << "!! Skipping this test, phased output not implemented yet.\n" ;
 #if 0
 	for( std::size_t number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
