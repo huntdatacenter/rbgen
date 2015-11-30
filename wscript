@@ -47,4 +47,4 @@ def build( bld ):
 		includes = 'genfile/include',
 		export_includes = 'genfile/include'
 	)
-	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'test'] )
+	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'example', 'test'] )
