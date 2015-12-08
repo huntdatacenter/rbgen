@@ -581,7 +581,9 @@ namespace genfile {
 					m_state( eUninitialised ),
 					m_sample_i(0),
 					m_missing( eNotSet )
-				{}
+				{
+					assert( m_buffer == m_p ) ; // to avoid unused variable warning.
+				}
 
 				void initialise( uint32_t nSamples, uint16_t nAlleles ) {
 					assert( nAlleles == 2 ) ;
@@ -1032,7 +1034,7 @@ namespace genfile {
 					}
 					m_buffer[eMinPloidyByte] = m_ploidyExtent[0] ;
 					m_buffer[eMaxPloidyByte] = m_ploidyExtent[1] ;
-					m_state == eFinalised ;
+					m_state = eFinalised ;
 				}
 				
 				~ProbabilityDataWriter() {}
