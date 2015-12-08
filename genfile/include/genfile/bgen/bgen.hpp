@@ -749,7 +749,12 @@ namespace genfile {
 					int const bits
 				) ;
 					
-				void round_probs_to_scaled_simplex( double* p, std::size_t* index, std::size_t const n, int const number_of_bits ) ;
+				// Round a point on the unit simplex (expressed as n floating-point probabilities)
+				// to a point representable with the given number of bits.
+				// precondition: p points to n doubles between 0 and 1 that sum to 1
+				// (up to floating-point precision).
+				// postcondition: the values p points to are n integer values that sum to 2^(number_of_bits)-1.
+				void compute_approximate_probabilities( double* p, std::size_t* index, std::size_t const n, int const number_of_bits ) ;
 
 				// Write data encoding n probabilities, given in probs, that sum to 1,
 				// starting at the given offset in data, to the given buffer.
@@ -1076,7 +1081,13 @@ namespace genfile {
 						// flag this sample as missing.
 						m_buffer[ePloidyBytes + m_sample_i] |= 0x80 ;
 					} else {
-						impl::round_probs_to_scaled_simplex(values, &index[0], count, m_number_of_bits ) ;
+						// Any sane input values will sum to 1 ± somerounding error, which should be small.
+						assert( m_sum < 1.01 ) ;
+						// We project onto the unit simplex before computing the approximation.
+						for( std::size_t i = 0; i < count; ++i ) {
+							values[i] /= m_sum ;
+						}
+						impl::compute_approximate_probabilities(values, &index[0], count, m_number_of_bits ) ;
 						m_p = impl::write_scaled_probs(
 							&m_data, &m_offset, values,
 							count, m_number_of_bits, m_p, m_end
