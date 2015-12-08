@@ -904,6 +904,7 @@ namespace genfile {
 					m_order_type( eUnknownOrderType ),
 					m_sample_i(0),
 					m_missing( eNotSet ),
+					m_sum(0.0),
 					m_data(0)
 				{
 					m_ploidyExtent[0] = 63 ;
@@ -972,6 +973,7 @@ namespace genfile {
 					m_entry_i = 0 ;
 					m_missing = eNotSet ;
 					m_state = eNumberOfEntriesSet ;
+					m_sum = 0.0 ;
 				}
 
 				void set_value( uint32_t entry_i, genfile::MissingValue const value ) {
@@ -988,6 +990,7 @@ namespace genfile {
 						bake( &m_values[0], m_entry_i ) ;
 						m_entry_i = 0 ;
 						m_state = eBaked ;
+						m_sum = 0.0 ;
 					} else {
 						m_state = eValueSet ;
 					}
@@ -998,6 +1001,7 @@ namespace genfile {
 					assert( m_missing == eNotSet || m_missing == eNotMissing ) ;
 					assert( m_entry_i < m_number_of_entries ) ;
 					m_values[m_entry_i++] = value ;
+					m_sum += value ;
 					if( value != 0.0 ) {
 						m_missing = eNotMissing ;
 					}
@@ -1009,6 +1013,7 @@ namespace genfile {
 						bake( &m_values[0], m_entry_i ) ;
 						m_entry_i = 0 ;
 						m_state = eBaked ;
+						m_sum = 0.0 ;
 					} else {
 						m_state = eValueSet ;
 					}
@@ -1062,6 +1067,7 @@ namespace genfile {
 				std::size_t m_entry_i ;
 				Missing m_missing ;
 				double m_values[100] ;
+				double m_sum ;
 				std::size_t index[100] ;
 				uint64_t m_data ;
 				std::size_t m_offset ;
@@ -1082,7 +1088,10 @@ namespace genfile {
 						m_buffer[ePloidyBytes + m_sample_i] |= 0x80 ;
 					} else {
 						// Any sane input values will sum to 1 ± somerounding error, which should be small.
-						assert( m_sum < 1.01 ) ;
+						if( ( m_sum != m_sum ) || (m_sum > 1.01) ) {
+							std::cerr << "Input values sum to " << m_sum << ".\n" ;
+							throw BGenError() ;
+						}
 						// We project onto the unit simplex before computing the approximation.
 						for( std::size_t i = 0; i < count; ++i ) {
 							values[i] /= m_sum ;

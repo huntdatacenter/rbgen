@@ -8,6 +8,7 @@
 #include <string>
 #include <limits>
 #include <algorithm>
+#include <iomanip>
 #include "genfile/types.hpp"
 #include "genfile/bgen/bgen.hpp"
 

@@ -396,6 +396,7 @@ double get_input_probability(
 	double x = 0 ;
 	if( type == "phased" ) {
 		assert( g < 4 ) ;
+		assert( number_of_samples > 0 ) ;
 		// two haplotypes, each of whose probs sum to one
 		if( g == 0 ) {
 			x = double(i) / double(number_of_samples-1) ;
@@ -638,76 +639,76 @@ void do_snp_block_write_test(
 	REQUIRE( outStream.str() == expected ) ;
 }
 
-TEST_CASE( "Test that round_probs_to_scaled_simplex() works correctly", "[bgen]" ) {
+TEST_CASE( "Test that compute_approximate_probabilities() works correctly", "[bgen]" ) {
 	std::cout << "test_round_probs\n" ;
 	double p[10] ;
 	std::size_t anIndex[10] ;
 
 	p[0] = 1; p[1] = 0; p[2] = 0 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 1 ) ;
 	REQUIRE( p[0] == 1 ) ;
 	REQUIRE( p[1] == 0 ) ;
 	REQUIRE( p[2] == 0 ) ;
 
 	p[0] = 0; p[1] = 1; p[2] = 0 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 1 ) ;
 	REQUIRE( p[0] == 0 ) ;
 	REQUIRE( p[1] == 1 ) ;
 	REQUIRE( p[2] == 0 ) ;
 
 	p[0] = 0; p[1] = 0; p[2] = 1 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 1 ) ;
 	REQUIRE( p[0] == 0 ) ;
 	REQUIRE( p[1] == 0 ) ;
 	REQUIRE( p[2] == 1 ) ;
 	
 	p[0] = 1; p[1] = 0; p[2] = 0 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 8 ) ;
 	REQUIRE( p[0] == 255 ) ;
 	REQUIRE( p[1] == 0 ) ;
 	REQUIRE( p[2] == 0 ) ;
 
 	p[0] = 0; p[1] = 1; p[2] = 0 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 8 ) ;
 	REQUIRE( p[0] == 0 ) ;
 	REQUIRE( p[1] == 255 ) ;
 	REQUIRE( p[2] == 0 ) ;
 
 	p[0] = 0; p[1] = 0; p[2] = 1 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 8 ) ;
 	REQUIRE( p[0] == 0 ) ;
 	REQUIRE( p[1] == 0 ) ;
 	REQUIRE( p[2] == 255 ) ;
 
 	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 1 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 1 ) ;
 	REQUIRE( p[0] == 0 ) ;
 	REQUIRE( p[1] == 0 ) ;
 	REQUIRE( p[2] == 1 ) ;
 
 	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 2 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 2 ) ;
 	REQUIRE( p[0] == 1 ) ;
 	REQUIRE( p[1] == 1 ) ;
 	REQUIRE( p[2] == 1 ) ;
 
 	// up, down, exact.
 	p[0] = 0.3; p[1] = 0.3; p[2] = 0.4 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 4 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 4 ) ;
 	REQUIRE( p[0] == 5 ) ;
 	REQUIRE( p[1] == 4 ) ;
 	REQUIRE( p[2] == 6 ) ;
 
 	// up, down, exact.
 	p[0] = 76.5/255.0; p[1] = 76.5/255.0; p[2] = 102.0/255.0 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 8 ) ;
 	REQUIRE( p[0] == 77 ) ;
 	REQUIRE( p[1] == 76 ) ;
 	REQUIRE( p[2] == 102 ) ;
 
 	// down, up, down.
 	p[0] = 76.2/255.0; p[1] = 76.9/255.0; p[2] = 101.9/255.0 ;
-	genfile::bgen::v12::impl::round_probs_to_scaled_simplex( p, anIndex, 3, 8 ) ;
+	genfile::bgen::v12::impl::compute_approximate_probabilities( p, anIndex, 3, 8 ) ;
 	REQUIRE( p[0] == 76 ) ;
 	REQUIRE( p[1] == 77 ) ;
 	REQUIRE( p[2] == 102 ) ;
