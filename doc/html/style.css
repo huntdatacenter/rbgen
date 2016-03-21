@@ -176,3 +176,15 @@ h2 {
 .expandButton {
 	float: right ;
 }
+
+table.allele_counts th {
+	font-family: monospace, sans-serif ;
+	font-size: 80% ;
+	border-bottom: 1px solid black ;
+}
+
+table.allele_counts td {
+	font-family: monospace, fixed, courier ;
+	font-size: 80% ;
+	padding-right: 80px ;
+}

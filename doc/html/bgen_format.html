@@ -28,9 +28,10 @@
 			  The v1.1 format specification can be found <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">here</a>.</em>
 	  </p>
       <p>
-		  <b>Important</b>: This specification is in <b>beta</b> status.  (Relative to the earlier draft, a small modification has
-          been made to the treatment of missing data in v1.2-format variant data blocks).  While we believe the spec to be complete,
-          it's possible further changes will be needed.  We expect to finalise the specification late 2015.
+		  <b>Important</b>: This specification is in <b>second beta</b> status.  (Relative to the earlier draft, a small modification has
+          been made to the treatment of missing data in v1.2-format variant data blocks, a modification to the order of stored probabilities
+		  for higher-than diploid samples, and clarification of wording around the phased flag.).  While we believe the spec to be complete,
+          it's possible further changes will be needed.  We expect to finalise the specification mid-2016.
 	  </p>
     </div>
 
@@ -856,32 +857,51 @@
       </li>
 
       <li>
-        <p>For <b>unphased data</b>, the possible allelic configurations can be
-        enumerated by considering all strings of length <em>Z</em> in the alphabet <em>1,
-        ..., K</em> sorted so that digits do not decrease across the string. (The number
-        of such strings equals the number of ways of putting <em>Z</em> unlabelled things
-        into <em>K</em> boxes, i.e. <em>( Z+K-1 )</em> choose <em>( K-1 )</em>. We store the probabilities in
-        lexicographic order of these strings, omitting the last, e.g. for
-        <em>H</em>=4:</p>
-
+        <p>For <b>unphased data</b>, enumerate the possible genotypes as the set of <em>K</em>-vectors
+			of nonnegative integers <em>(x<sub>1</sub>, x<sub>2</sub>, ..., x<sub>K</sub>)</em>,
+			where <em>x<sub>i</sub></em> represents the count of the <em>i</em>-th allele in the genotype.
+			Probabilities are stored in reverse lexicographical order of these vectors.  The last
+			probability (corresponding the the <em>K</em>-th allele homozygotes) is not stored; instead
+			it is inferred as one minus the sum of other probabilities.  Thus a total of
+			<em>( Z+K-1 )</em> <code>choose</code> <em>( K-1 )</em>-1 probabilities is stored.
+		</p>
+		<p>
+			<b>Example</b>. For example if <em>Z=3</em> and <em>K=3</em> then the enumerated genotypes and
+			with allele count representations are:
+		</p>
+		<table class = "allele_counts">
+			<tr><th>Index</th><th>Genotype</th><th>Allele counts</th></tr>
+			<tr><td>0</td><td>111</td><td>(3,0,0)</td>
+			<tr><td>1</td><td>112</td><td>(2,1,0)</td></tr>
+			<tr><td>2</td><td>122</td><td>(1,2,0)</td></tr>
+			<tr><td>3</td><td>222</td><td>(0,3,0)</td></tr>
+			<tr><td>4</td><td>113</td><td>(2,0,1)</td></tr>
+			<tr><td>5</td><td>123</td><td>(1,1,1)</td></tr>
+			<tr><td>6</td><td>223</td><td>(0,2,1)</td></tr>
+			<tr><td>7</td><td>133</td><td>(1,0,2)</td></tr>
+			<tr><td>8</td><td>233</td><td>(0,1,2)</td></tr>
+			<tr><td>9</td><td>333</td><td>(0,0,3)</td></tr>
+		</table>
+		<p>
+			The stored probabilities are thus
         <div class="displayFormula">
-          <em>P<sub>1111</sub></em>, ..., <em>P<sub>111K</sub></em>,
-          <em>P<sub>1122</sub></em>, ..., <em>P<sub>112K</sub></em>, ...,
-          <em>P<sub>KKK1</sub></em>, ..., <em>P<sub>KKK(K-1)</sub></em>.
-        </div>The probability of the K-th allele homozygote (<em>P<sub>K...K</sub></em>)
-        is not stored; instead it is inferred as one minus the sum of other probabilities
-        for that sample.  Thus a total of <em>( Z+K-1 )</em> choose <em>( K-1 ) - 1</em>
-		probabilities are stored.
-
-        <p><b>Example</b>. For example, in the common case of diploid chromosome and a variant with two alleles,
-        <em>H</em>=2 and <em>K</em>=2, we store the probabilities <em>P<sub>11</sub></em>
-        and <em>P<sub>12</sub></em>.</p>
+			<em>P<sub>111</sub></em>,<em>P<sub>112</sub></em>, <em>P<sub>122</sub></em>, <em>P<sub>222</sub></em>,
+			<em>P<sub>113</sub></em>, <em>P<sub>123</sub></em>, <em>P<sub>223</sub></em>,
+			<em>P<sub>133</sub></em>, <em>P<sub>233</sub></em>
+        </div>
+		<p>
+			with <em>P<sub>333</sub></em> inferred as one minus the sum of the other probabilities.
+		</p>
+		<p>
+			See the <a href='#rationale'>rationale</a> below for
+			a further discussion of this choice of storage order.
+		</p>
       </li>
     </ul>
 	
     <h4>Representation of probabilities</h4>
 	<p>
-		For both genotype and haplotype data, each probability should be stored using <em>B</em> bits as follows.
+		For both genotype and haplotype data, each probability value is stored using <em>B</em> bits as follows.
 		An integer of length <em>B</em> bits can represent the values <em>0, ..., 2<sup>B</sup>-1</em> inclusive.
 		To interpret a stored value <em>x</em> as a probability:
 		<ol>
