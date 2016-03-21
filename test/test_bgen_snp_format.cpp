@@ -402,7 +402,7 @@ double get_input_probability(
 			x = double(i) / double(number_of_samples-1) ;
 		}
 		else if( g == 1 ) {
-			x = 1.0 - (double(i) / double(number_of_samples-1)) ; ;
+			x = 1.0 - (double(i) / double(number_of_samples-1)) ;
 		} else if( g == 2 ) {
 			x = double((i+1) % number_of_samples) / double(number_of_samples-1) ;
 		} else if( g == 3 ) {
@@ -586,10 +586,6 @@ void do_snp_block_write_test(
 		<< ", number_of_bits = " << bits_per_probability
 		<< ".\n" ;
 #endif
-	if( type == "phased" ) {
-		std::cerr << "!! This test fails, phased output not implemented in bgen.hpp yet.\n" ;
-	}
-	
 	std::ostringstream outStream ;
 	
 	std::vector< genfile::byte_t > buffer ;
@@ -609,10 +605,18 @@ void do_snp_block_write_test(
 	writer.initialise( number_of_individuals, 2 ) ;
 	for( std::size_t i = 0; i < number_of_individuals; ++i ) {
 		writer.set_sample( i ) ;
-		writer.set_number_of_entries( 2, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		writer.set_value( 0, get_input_probability( number_of_individuals, i, 0, type )) ;
-		writer.set_value( 1, get_input_probability( number_of_individuals, i, 1, type )) ;
-		writer.set_value( 2, get_input_probability( number_of_individuals, i, 2, type )) ;
+		if( type == "unphased" ) {
+			writer.set_number_of_entries( 2, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+			writer.set_value( 0, get_input_probability( number_of_individuals, i, 0, type )) ;
+			writer.set_value( 1, get_input_probability( number_of_individuals, i, 1, type )) ;
+			writer.set_value( 2, get_input_probability( number_of_individuals, i, 2, type )) ;
+		} else {
+			writer.set_number_of_entries( 2, 4, genfile::ePerPhasedHaplotypePerAllele, genfile::eProbability ) ;
+			writer.set_value( 0, get_input_probability( number_of_individuals, i, 0, type )) ;
+			writer.set_value( 1, get_input_probability( number_of_individuals, i, 1, type )) ;
+			writer.set_value( 2, get_input_probability( number_of_individuals, i, 2, type )) ;
+			writer.set_value( 3, get_input_probability( number_of_individuals, i, 3, type )) ;
+		}
 	}
 	writer.finalise() ;
 	outStream.write( reinterpret_cast< char const* >( writer.repr().first ), writer.repr().second - writer.repr().first ) ;
@@ -782,8 +786,6 @@ TEST_CASE( "Test that valid v1.2 variant data block containing phased data can b
 
 TEST_CASE( "Test that valid variant data block containing phased data can be written", "[bgen][v12]" ) {
 	std::cout << "test_snp_block_output_phased_v12\n" ;
-	std::cout << "!! Skipping this test, phased output not implemented yet.\n" ;
-#if 0
 	for( std::size_t number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
 		do_snp_block_write_test( "v12", 0, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
 		do_snp_block_write_test( "v12", 2, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
@@ -793,5 +795,4 @@ TEST_CASE( "Test that valid variant data block containing phased data can be wri
 		do_snp_block_write_test( "v12", 100, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
 		do_snp_block_write_test( "v12", 1001, "SNP01", "RS01", "1", 1000001, "A", "C", number_of_bits, "phased" ) ;
 	}
-#endif
 }

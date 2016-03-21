@@ -1319,8 +1319,10 @@ namespace genfile {
 				assert( (m_writer->repr().second - m_writer->repr().first) <= m_buffer1->size() ) ;
 				uLongf const uncompressed_data_size = (m_writer->repr().second - m_writer->repr().first) ;
 
+#if DEBUG_BGEN_FORMAT
 				std::cerr << ( m_writer->repr().first ) << "  :" << m_writer->repr().second << ", diff = " << (m_writer->repr().second - m_writer->repr().first) << "\n" ;
 				std::cerr << "expected " << uncompressed_data_size << "\n" ;
+#endif
 				if( m_context.flags & e_CompressedSNPBlocks ) {
 		#if HAVE_ZLIB
 					std::size_t offset = (m_layout == e_v12Layout) ? 8 : 4 ;
