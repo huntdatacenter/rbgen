@@ -187,7 +187,7 @@ namespace data {
 			p = genfile::bgen::write_little_endian_integer( p, end, ploidy ) ;
 		}
 
-		uint8_t const phased = ( type == "phased" ) ? 1 : 0 ;
+		uint8_t const phased = ( type == "phased" || number_of_samples == 0 ) ? 1 : 0 ;
 		p = genfile::bgen::write_little_endian_integer( p, end, phased ) ;
 		p = genfile::bgen::write_little_endian_integer( p, end, uint8_t( bits_per_probability ) ) ;
 
@@ -592,29 +592,30 @@ void do_snp_block_write_test(
 	
 	std::ostringstream outStream ;
 	
-	genfile::bgen::write_snp_identifying_data( 
-		outStream,
+	std::vector< genfile::byte_t > buffer ;
+	std::vector< genfile::byte_t > buffer2 ;
+	genfile::byte_t* end = genfile::bgen::write_snp_identifying_data(
+		&buffer,
 		context,
 		SNPID,
 		RSID,
 		chromosome,
 		SNP_position,
-		a,
-		b
+		2, [&a,&b]( std::size_t i ) { if( i == 0 ) { return a ; } else if( i == 1 ) { return b ; } else { assert(0) ; }}
 	) ;
+	outStream.write( reinterpret_cast< char* >( &buffer[0] ), end - &buffer[0] ) ;
 
-	std::vector< genfile::byte_t > buffer ;
-	std::vector< genfile::byte_t > buffer2 ;
-	genfile::bgen::write_snp_probability_data( 
-		outStream,
-		context,
-		std::bind( &get_input_probability, number_of_individuals, _1, 0, type ),
-		std::bind( &get_input_probability, number_of_individuals, _1, 1, type ),
-		std::bind( &get_input_probability, number_of_individuals, _1, 2, type ),
-		bits_per_probability,
-		&buffer,
-		&buffer2
-	) ;	
+	genfile::bgen::GenotypeDataBlockWriter writer( &buffer, &buffer2, context, bits_per_probability ) ;
+	writer.initialise( number_of_individuals, 2 ) ;
+	for( std::size_t i = 0; i < number_of_individuals; ++i ) {
+		writer.set_sample( i ) ;
+		writer.set_number_of_entries( 2, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		writer.set_value( 0, get_input_probability( number_of_individuals, i, 0, type )) ;
+		writer.set_value( 1, get_input_probability( number_of_individuals, i, 1, type )) ;
+		writer.set_value( 2, get_input_probability( number_of_individuals, i, 2, type )) ;
+	}
+	writer.finalise() ;
+	outStream.write( reinterpret_cast< char const* >( writer.repr().first ), writer.repr().second - writer.repr().first ) ;
 
 	std::string expected = data::construct_snp_block(
 		bgen_version,
@@ -630,7 +631,7 @@ void do_snp_block_write_test(
 		type
 	) ;
 
-#if DEBUG	
+#if DEBUG
 	std::cerr << "          actual: " << to_hex( outStream.str() ) << "\n" ;
 	std::cerr << "        expected: " << to_hex( expected ) << "\n" ;
 #endif

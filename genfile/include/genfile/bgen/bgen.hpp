@@ -179,15 +179,18 @@ namespace genfile {
 		) ;
 			
 		// Write identifying data fields for the given variant.
-		void write_snp_identifying_data(
-			std::ostream& aStream,
+		// The buffer will be resizes to fit.
+		// Return a pointer to past-the-end of the data written.
+		template< typename AlleleGetter >
+		byte_t* write_snp_identifying_data(
+			std::vector< byte_t >* buffer,
 			Context const& context,
 			std::string SNPID,
 			std::string RSID,
 			std::string chromosome,
-			uint32_t SNP_position,
-			std::string first_allele,
-			std::string second_allele
+			uint32_t position,
+			uint16_t const number_of_alleles,
+			AlleleGetter get_allele
 		) ;
 
 		// Ignore (and seek forward past) the genotype data block contained in the given stream.
@@ -352,6 +355,18 @@ namespace genfile {
 			}
 			return buffer ;
 		}
+
+		// Write data containd in a std::string to the buffer,
+		// Preceded by a length of the given integral type in little-endian format.
+		// Return past-the-end of what was written.
+		template< typename IntegerType >
+		byte_t* write_length_followed_by_data( byte_t* buffer, byte_t* const end, IntegerType length, std::string const data_string ) {
+			assert( end >= buffer + length + sizeof( IntegerType ) ) ;
+			assert( length <= data_string.size() ) ;
+			buffer = write_little_endian_integer( buffer, end, length ) ;
+			buffer = std::copy( data_string.begin(), data_string.begin() + length, buffer ) ;
+			return buffer ;
+		}
 		
 		// Write an integer to the stream in little-endian format.
 		// The stream is assumed to have sizeof( Integertype ) bytes writeable.
@@ -362,6 +377,8 @@ namespace genfile {
 			out_stream.write( reinterpret_cast< char const* >( buffer ), sizeof( IntegerType )) ;
 		}
 		
+		// Write data containd in a std::string to the stream,
+		// Preceded by a length of the given integral type in little-endian format.
 		template< typename IntegerType >
 		void write_length_followed_by_data( std::ostream& out_stream, IntegerType length, std::string const data_string ) {
 			assert( length <= data_string.size() ) ;
@@ -551,6 +568,27 @@ namespace genfile {
 			}
 		}
 
+		namespace impl {
+			struct ProbabilityDataWriterBase
+			{
+				virtual ~ProbabilityDataWriterBase() {} ;
+			
+				virtual void initialise( uint32_t nSamples, uint16_t nAlleles, byte_t* buffer, byte_t* const end ) = 0 ;
+				virtual bool set_sample( std::size_t i ) = 0 ;
+				virtual void set_number_of_entries(
+					uint32_t ploidy,
+					uint32_t number_of_entries,
+					OrderType const order_type,
+					ValueType const value_type
+				) = 0 ;
+				virtual void set_value( uint32_t entry_i, genfile::MissingValue const value ) = 0 ;
+				virtual void set_value( uint32_t entry_i, double const value ) = 0 ;
+				virtual void finalise() = 0 ;
+			
+				virtual std::pair< byte_t const*, byte_t const* > repr() const = 0 ;
+			} ;
+		}
+		
 		namespace v11 {
 			namespace impl {
 				template< typename FloatType >
@@ -570,23 +608,23 @@ namespace genfile {
 				double get_probability_conversion_factor( uint32_t flags ) ;
 			}
 
-			struct ProbabilityDataWriter {
+			struct ProbabilityDataWriter: public genfile::bgen::impl::ProbabilityDataWriterBase {
 				enum Missing { eNotSet = 0, eMissing = 1, eNotMissing = 2 } ;
 				enum State { eUninitialised = 0, eInitialised = 1, eSampleSet = 2, eNumberOfEntriesSet = 3, eValueSet = 4, eBaked = 5, eFinalised = 6 } ;
 				
-				ProbabilityDataWriter( byte_t* buffer, byte_t* const end ):
-					m_buffer( buffer ),
-					m_p( buffer ),
-					m_end( end ),
+				~ProbabilityDataWriter() {}
+
+				ProbabilityDataWriter():
 					m_state( eUninitialised ),
 					m_sample_i(0),
 					m_missing( eNotSet )
 				{
-					assert( m_buffer == m_p ) ; // to avoid unused variable warning.
 				}
 
-				void initialise( uint32_t nSamples, uint16_t nAlleles ) {
+				void initialise( uint32_t nSamples, uint16_t nAlleles, byte_t* buffer, byte_t* const end ) {
 					assert( nAlleles == 2 ) ;
+					m_p = m_buffer = buffer ;
+					m_end = end ;
 					m_number_of_samples = nSamples ;
 					m_state = eInitialised ;
 				}
@@ -606,7 +644,9 @@ namespace genfile {
 					ValueType const value_type
 				) {
 					assert( m_state == eSampleSet ) ;
-					assert( ploidy == uint32_t(2) ) ;
+					if( ploidy != uint32_t(2)) {
+						throw BGenError() ;
+					}
 					assert( number_of_entries == uint32_t(3)) ;
 					assert( order_type == ePerUnorderedGenotype ) ;
 					m_entry_i = 0 ;
@@ -651,14 +691,12 @@ namespace genfile {
 					m_state = eFinalised ;
 				}
 				
-				~ProbabilityDataWriter() {}
-				
-				byte_t* end_of_data() const { return m_p ; }
+				std::pair< byte_t const*, byte_t const* > repr() const { return std::make_pair( m_buffer, m_p ) ; }
 
 			private:
 				byte_t* m_buffer ;
 				byte_t* m_p ;
-				byte_t* const m_end ;
+				byte_t* m_end ;
 				State m_state ;
 				uint32_t m_number_of_samples ;
 				std::size_t m_sample_i ;
@@ -675,28 +713,6 @@ namespace genfile {
 				}
 			} ;
 			
-			template< typename GenotypeProbabilityGetter >
-			byte_t* write_uncompressed_snp_probability_data(
-				byte_t* buffer,
-				byte_t* const end,
-				Context const& context,
-				GenotypeProbabilityGetter get_AA_probability,
-				GenotypeProbabilityGetter get_AB_probability,
-				GenotypeProbabilityGetter get_BB_probability
-			) {
-				v11::ProbabilityDataWriter writer( buffer, end ) ;
-				writer.initialise( context.number_of_samples, 2 ) ;
-				for ( uint32_t i = 0 ; i < context.number_of_samples ; ++i ) {
-					writer.set_sample( i ) ;
-					writer.set_number_of_entries( 2, 3, ePerUnorderedGenotype, eProbability ) ;
-					writer.set_value( 0, get_AA_probability( i ) ) ;
-					writer.set_value( 1, get_AB_probability( i ) ) ;
-					writer.set_value( 2, get_BB_probability( i ) ) ;
-				}
-				writer.finalise() ;
-				return writer.end_of_data() ;
-			}
-
 			template< typename Setter >
 			void parse_probability_data(
 				byte_t const* buffer,
@@ -887,7 +903,7 @@ namespace genfile {
 				call_finalise( setter ) ;
 			}
 
-			struct ProbabilityDataWriter {
+			struct ProbabilityDataWriter: public genfile::bgen::impl::ProbabilityDataWriterBase {
 				enum {
 					eMinPloidyByte = 6, eMaxPloidyByte = 7,
 					ePloidyBytes = 8
@@ -895,15 +911,12 @@ namespace genfile {
 				enum Missing { eNotSet = 0, eMissing = 1, eNotMissing = 2 } ;
 				enum State { eUninitialised = 0, eInitialised = 1, eSampleSet = 2, eNumberOfEntriesSet = 3, eValueSet = 4, eBaked = 5, eFinalised = 6 } ;
 
+				~ProbabilityDataWriter() {}
+				
 				ProbabilityDataWriter(
-					byte_t* buffer,
-					byte_t* const end,
 					uint8_t const number_of_bits,
 					double const tolerance = 1.01
 				):
-					m_buffer( buffer ),
-					m_p( buffer ),
-					m_end( end ),
 					m_number_of_bits( number_of_bits ),
 					m_tolerance( tolerance ),
 					m_state( eUninitialised ),
@@ -923,8 +936,12 @@ namespace genfile {
 					m_ploidyExtent[1] = 0 ;
 				}
 
-				void initialise( uint32_t nSamples, uint16_t nAlleles ) {
+				void initialise( uint32_t nSamples, uint16_t nAlleles, byte_t* buffer, byte_t* const end ) {
 					assert( m_state == eUninitialised ) ;
+					m_p = m_buffer = buffer ;
+					m_end = end ;
+					
+					// Write whatever fieds we can now.
 					m_p = write_little_endian_integer( m_p, m_end, nSamples ) ;
 					m_p = write_little_endian_integer( m_p, m_end, nAlleles ) ;
 					// skip the ploidy and other non-data bytes, which we'll write later
@@ -935,9 +952,12 @@ namespace genfile {
 					m_offset = 0 ;
 					if( m_number_of_samples == 0 ) {
 						m_ploidyExtent[0] = 0 ;
-						m_order_type = ePerUnorderedGenotype ;
+						m_order_type = ePerPhasedHaplotypePerAllele ;
 					}
-					m_buffer[8+m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
+					// We set data as phased until we learn otherwise
+					// In the case of samples with ploidy < 2, this means we nominally interpret data 
+					// the data as phased until we see an informative sample.
+					m_buffer[8+m_number_of_samples] = 1 ; 
 					m_buffer[9+m_number_of_samples] = m_number_of_bits ;
 					m_state = eInitialised ;
 				}
@@ -967,22 +987,20 @@ namespace genfile {
 					m_ploidyExtent[1] = std::max( m_ploidyExtent[1], ploidyByte ) ;
 					
 					assert( order_type == ePerUnorderedGenotype || order_type == ePerPhasedHaplotypePerAllele ) ;
-					if( m_sample_i == 0 ) {
-						m_order_type = order_type ;
-						// write phased flag.
-
-						m_buffer[8+m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
-						m_buffer[9+m_number_of_samples] = m_number_of_bits ;
-					} else {
-						if( m_order_type != order_type ) {
-							throw BGenError() ;
+					if( ploidy > 1 ) {
+						if( m_order_type == eUnknownOrderType ) {
+							m_order_type = order_type ;
+						} else {
+							if( m_order_type != order_type ) {
+								throw BGenError() ;
+							}
 						}
 					}
 					if( value_type != eProbability ) {
 						throw BGenError() ;
 					}
 					m_number_of_entries = number_of_entries ;
-					m_entries_per_bake = (m_order_type == ePerUnorderedGenotype) ? m_number_of_entries : m_number_of_alleles ;
+					m_entries_per_bake = (m_order_type == ePerUnorderedGenotype || m_ploidy == 0) ? m_number_of_entries : m_number_of_alleles ;
 					m_entry_i = 0 ;
 					m_missing = eNotSet ;
 					m_state = eNumberOfEntriesSet ;
@@ -1014,9 +1032,14 @@ namespace genfile {
 					m_values[m_entry_i++] = value ;
 					m_sum += value ;
 
+#if DEBUG_BGEN_FORMAT
+					std::cerr << "set_value( " << entry_i << ", " << value << "); m_entry_i = " << m_entry_i << "\n" ;
+#endif
 					// Any sane input values will sum to 1 ± somerounding error, which should be small.
 					if( ( m_sum != m_sum ) || (m_sum > m_tolerance)) {
+#if DEBUG_BGEN_FORMAT
 						std::cerr << "First " << entry_i << " input values sum to " << m_sum << ".\n" ;
+#endif
 						throw BGenError() ;
 					}
 
@@ -1034,11 +1057,30 @@ namespace genfile {
 				}
 
 				void finalise() {
-					assert(
-						( m_number_of_samples == 0 && m_state == eInitialised )
-						|| ( m_number_of_entries == 0 && m_state == eNumberOfEntriesSet )
-						|| m_state == eBaked
-					) ;
+					if( m_order_type == eUnknownOrderType ) {
+						m_order_type = ePerPhasedHaplotypePerAllele ;
+					}
+					m_buffer[8+m_number_of_samples] = ( m_order_type == ePerPhasedHaplotypePerAllele ) ? 1 : 0 ;
+					m_buffer[9+m_number_of_samples] = m_number_of_bits ;
+					
+					if(
+						!(
+							( m_number_of_samples == 0 && m_state == eInitialised )
+							|| ( m_number_of_entries == 0 && m_state == eNumberOfEntriesSet )
+							|| m_state == eBaked
+						)
+					) {
+						std::cerr << "genfile::bgen::v12::ProbabilityDataWriter::finalise(): m_number_of_samples = "
+							<< m_number_of_samples
+							<< " m_state = " << m_state
+							<< " m_number_of_entries = " << m_number_of_entries
+							<< " m_entries_per_bake = " << m_entries_per_bake
+							<< " m_entry_i = " << m_entry_i
+							<< " m_order_type = " << m_order_type
+							<< " m_ploidy = " << m_ploidy
+							<< ".\n" ;
+						throw BGenError() ;
+					}
 					// Write any remaining data
 					if( m_offset > 0 ) {
 						int const nBytes = (m_offset+7)/8 ;
@@ -1061,14 +1103,12 @@ namespace genfile {
 					m_state = eFinalised ;
 				}
 				
-				~ProbabilityDataWriter() {}
-
-				byte_t* end_of_data() const { return m_p ; }
+				std::pair< byte_t const*, byte_t const* > repr() const { return std::make_pair( m_buffer, m_p ) ; }
 
 			private:
 				byte_t* m_buffer ;
 				byte_t* m_p ;
-				byte_t* const m_end ;
+				byte_t* m_end ;
 				uint8_t const m_number_of_bits ;
 				double const m_tolerance ;
 				State m_state ;
@@ -1119,37 +1159,6 @@ namespace genfile {
 					}
 				}
 			} ;
-
-			template< typename GenotypeProbabilityGetter >
-			byte_t* write_uncompressed_snp_probability_data(
-				byte_t* buffer,
-				byte_t* const end,
-				Context const& context,
-				GenotypeProbabilityGetter get_AA_probability,
-				GenotypeProbabilityGetter get_AB_probability,
-				GenotypeProbabilityGetter get_BB_probability,
-				int const number_of_bits
-			) {
-				assert( number_of_bits > 0 ) ;
-				assert( number_of_bits <= 32 ) ;
-#if DEBUG_BGEN_FORMAT
-				std::cerr << "genfile::bgen::impl::v12::write_uncompressed_snp_probability_data(): number_of_bits = " << number_of_bits << ", buffer = " << reinterpret_cast< void* >( buffer ) << ", (end-buffer) = " << (end-buffer) << ".\n" ;
-#endif
-				ProbabilityDataWriter writer( buffer, end, number_of_bits ) ;
-				uint16_t const numberOfAlleles = 2 ;
-				uint8_t const ploidy = 2 ;
-				writer.initialise( context.number_of_samples, numberOfAlleles ) ;
-				for( uint32_t i = 0; i < context.number_of_samples; ++i ) {
-					if( writer.set_sample(i) ) {
-						writer.set_number_of_entries( ploidy, 3, ePerUnorderedGenotype, eProbability ) ;
-						writer.set_value( 0, get_AA_probability( i ) ) ;
-						writer.set_value( 1, get_AB_probability( i ) ) ;
-						writer.set_value( 2, get_BB_probability( i ) ) ;
-					}
-				}
-				writer.finalise() ;
-				return writer.end_of_data() ;
-			}
 		}
 		
 		template< typename Setter >
@@ -1184,97 +1193,185 @@ namespace genfile {
 			) ;
 		}
 
-		template< typename GenotypeProbabilityGetter >
-		byte_t* write_uncompressed_snp_probability_data(
-			byte_t* buffer,
-			byte_t* const bufferEnd,
-			Context const& context,
-			GenotypeProbabilityGetter get_AA_probability,
-			GenotypeProbabilityGetter get_AB_probability,
-			GenotypeProbabilityGetter get_BB_probability,
-			int const number_of_bits = 16
-		) {
-			uint32_t const layout = context.flags & e_Layout ;
-			if( layout == e_v11Layout ) {
-				buffer = v11::write_uncompressed_snp_probability_data(
-					buffer,
-					bufferEnd,
-					context,
-					get_AA_probability, get_AB_probability, get_BB_probability
-				) ;
-				assert( buffer == bufferEnd ) ;
-			} else if( layout == e_v12Layout ) {
-				buffer = v12::write_uncompressed_snp_probability_data(
-					buffer,
-					bufferEnd,
-					context,
-					get_AA_probability, get_AB_probability, get_BB_probability,
-					number_of_bits
-				) ;
-			} else {
-				assert(0) ;
-			}
-			return buffer ;
-		}
-
-		template< typename GenotypeProbabilityGetter >
-		void write_snp_probability_data(
-			std::ostream& aStream,
-			Context const& context,
-			GenotypeProbabilityGetter get_AA_probability,
-			GenotypeProbabilityGetter get_AB_probability,
-			GenotypeProbabilityGetter get_BB_probability,
-			int const number_of_bits,
+		// Write identifying data fields for the given variant.
+		template< typename AlleleGetter >
+		byte_t* write_snp_identifying_data(
 			std::vector< byte_t >* buffer,
-			std::vector< byte_t >* compression_buffer
+			Context const& context,
+			std::string SNPID,
+			std::string RSID,
+			std::string chromosome,
+			uint32_t position,
+			uint16_t const number_of_alleles,
+			AlleleGetter get_allele
 		) {
 			uint32_t const layout = context.flags & e_Layout ;
-			// Write the data to a buffer, which we then compress and write to the stream
-			uLongf uncompressed_data_size =
-				( layout == e_v11Layout )
-					? (6 * context.number_of_samples)
-					: ( 10 + context.number_of_samples + ((( context.number_of_samples * number_of_bits * 2 )+7) / 8) ) ;
+			assert( layout == e_v11Layout || layout == e_v12Layout ) ;
 
-			buffer->resize( uncompressed_data_size ) ;
-			byte_t* p = write_uncompressed_snp_probability_data(
-				&(*buffer)[0],
-				&(*buffer)[0] + uncompressed_data_size,
-				context,
-				get_AA_probability, get_AB_probability, get_BB_probability,
-				number_of_bits
-			) ;
-			assert( p = &(*buffer)[0] + uncompressed_data_size ) ;
-
-			if( context.flags & e_CompressedSNPBlocks ) {
-	#if HAVE_ZLIB
-				uLongf compression_buffer_size = 12 + (1.1 * uncompressed_data_size) ;		// calculated according to zlib manual.
-				compression_buffer->resize( compression_buffer_size ) ;
-				int result = compress(
-					reinterpret_cast< Bytef* >( &(*compression_buffer)[0] ), &compression_buffer_size,
-					reinterpret_cast< Bytef* >( &(*buffer)[0] ), uncompressed_data_size
-				) ;
-				assert( result == Z_OK ) ;
-				// write total payload size (compression_buffer_size is now the compressed length of the data).
-				// Account for a 4-byte uncompressed data size if we are in layout 1.2
-				if( layout == e_v12Layout ) {
-					write_little_endian_integer( aStream, uint32_t( compression_buffer_size ) + 4 ) ;
-					write_little_endian_integer( aStream, uint32_t( uncompressed_data_size )) ;
-				} else {
-					write_little_endian_integer( aStream, uint32_t( compression_buffer_size ) ) ;
-				}
-
-				// and write the data
-				aStream.write( reinterpret_cast< char const* >( &(*compression_buffer)[0] ), compression_buffer_size ) ;
-	#else
-				assert(0) ;
-	#endif
-			} else {
-				if( layout == e_v12Layout ) {
-					write_little_endian_integer( aStream, uint32_t( uncompressed_data_size )) ;
-				}
-				aStream.write( reinterpret_cast< char const* >( &(*buffer)[0] ), uncompressed_data_size ) ;
+			// Make sure we have space
+			std::size_t size = 10 + RSID.size() + SNPID.size() + chromosome.size() + ((layout == e_v11Layout) ? 4 : 2) ;
+			for( uint16_t allele_i = 0; allele_i < number_of_alleles; ++allele_i ) {
+				size += 4 + get_allele( allele_i ).size() ;
 			}
+			buffer->resize( size ) ;
+			
+			// Write the data to the buffer
+			byte_t* p = &(buffer->operator[](0)) ;
+			byte_t* const end = p + size ;
+
+			if( layout == e_v11Layout ) {
+				p = write_little_endian_integer( p, end, context.number_of_samples ) ;
+				// otherwise number of samples appears in the probability data block below.
+			}
+
+			std::size_t const max_id_length = std::numeric_limits< uint16_t >::max() ;
+			assert( SNPID.size() <= static_cast< std::size_t >( max_id_length )) ;
+			assert( RSID.size() <= static_cast< std::size_t >( max_id_length )) ;
+			p = write_length_followed_by_data( p, end, uint16_t( SNPID.size() ), SNPID.data() ) ;
+			p = write_length_followed_by_data( p, end, uint16_t( RSID.size() ), RSID.data() ) ;
+			p = write_length_followed_by_data( p, end, uint16_t( chromosome.size() ), chromosome ) ;
+			p = write_little_endian_integer( p, end, position ) ;
+			
+			if( layout == e_v12Layout ) {
+				// v12 has an explicit allele count
+				p = write_little_endian_integer( p, end, number_of_alleles ) ;
+			} else if( number_of_alleles != 2u ) {
+				throw BGenError() ;
+			}
+
+			std::size_t const max_allele_length = std::numeric_limits< uint32_t >::max() ;
+			for( uint16_t allele_i = 0; allele_i < number_of_alleles; ++allele_i ) {
+				std::string const& allele = get_allele( allele_i ) ;
+				if( allele.size() > static_cast< std::size_t >( max_allele_length ) ) {
+					throw BGenError() ;
+				}
+				p = write_length_followed_by_data( p, end, uint32_t( allele.size() ), allele.data() ) ;
+			}
+			assert( p == end ) ;
+			return p ;
 		}
+
+		struct GenotypeDataBlockWriter
+		{
+			GenotypeDataBlockWriter(
+				std::vector< byte_t >* buffer1,
+				std::vector< byte_t >* buffer2,
+				Context const& context,
+				int const number_of_bits
+			):
+				m_buffer1( buffer1 ),
+				m_buffer2( buffer2 ),
+				m_context( context ),
+				m_layout( m_context.flags & e_Layout ),
+				m_number_of_bits( number_of_bits ),
+				m_v11_writer(),
+				m_v12_writer( number_of_bits ),
+				m_writer(0)
+			{
+				assert( m_buffer1 != 0 && m_buffer2 != 0 ) ;
+				assert( m_layout == e_v11Layout || m_layout == e_v12Layout ) ;
+				if( m_layout == e_v11Layout ) {
+					m_writer = &m_v11_writer ;
+				} else if( m_layout == e_v12Layout ) {
+					m_writer = &m_v12_writer ;
+				} else {
+					assert(0) ;
+				}
+			}
+
+			void initialise( uint32_t nSamples, uint16_t nAlleles ) {
+				assert( nSamples == m_context.number_of_samples ) ;
+				std::size_t const max_ploidy = 15 ;
+				std::size_t const uncompressed_data_size =
+					( m_layout == e_v11Layout )
+						? (6 * nSamples)
+						: ( 10 + nSamples + ((( nSamples * m_number_of_bits * (max_ploidy-1) )+7)/8) ) ;
+				;
+				m_buffer1->resize( uncompressed_data_size ) ;
+				m_writer->initialise( nSamples, nAlleles, &(*m_buffer1)[0], &(*m_buffer1)[0] + uncompressed_data_size ) ;
+			}
+
+			bool set_sample( std::size_t i ) {
+				return m_writer->set_sample(i) ;
+			}
+
+			void set_number_of_entries(
+				uint32_t ploidy,
+				uint32_t number_of_entries,
+				OrderType const order_type,
+				ValueType const value_type
+			) {
+				m_writer->set_number_of_entries( ploidy, number_of_entries, order_type, value_type ) ;
+			}
+
+			void set_value( uint32_t entry_i, genfile::MissingValue const value ) {
+				m_writer->set_value( entry_i, value ) ;
+			}
+
+			void set_value( uint32_t entry_i, double const value ) {
+				m_writer->set_value( entry_i, value ) ;
+			}
+			
+			void finalise() {
+				m_writer->finalise() ;
+				// Sanity check: did we get the size right?
+				assert( m_writer->repr().first == &(*m_buffer1)[0] ) ;
+				assert( (m_writer->repr().second - m_writer->repr().first) <= m_buffer1->size() ) ;
+				uLongf const uncompressed_data_size = (m_writer->repr().second - m_writer->repr().first) ;
+
+				std::cerr << ( m_writer->repr().first ) << "  :" << m_writer->repr().second << ", diff = " << (m_writer->repr().second - m_writer->repr().first) << "\n" ;
+				std::cerr << "expected " << uncompressed_data_size << "\n" ;
+				if( m_context.flags & e_CompressedSNPBlocks ) {
+		#if HAVE_ZLIB
+					std::size_t offset = (m_layout == e_v12Layout) ? 8 : 4 ;
+					uLongf compression_buffer_size = 12 + (1.1 * m_buffer1->size()) ;		// calculated according to zlib manual.
+					m_buffer2->resize( compression_buffer_size + offset ) ;
+					int result = compress(
+						reinterpret_cast< Bytef* >( &(*m_buffer2)[0] + offset ), &compression_buffer_size,
+						reinterpret_cast< Bytef* >( &(*m_buffer1)[0] ), uncompressed_data_size
+					) ;
+					assert( result == Z_OK ) ;
+					// compression_buffer_size is now the compressed length of the data.
+					// Now write total compressed data size to the start of the buffer, including
+					// the uncompressed data size if we are in layout 1.2.
+					if( m_layout == e_v12Layout ) {
+						write_little_endian_integer( &(*m_buffer2)[0], &(*m_buffer2)[0]+4, uint32_t( compression_buffer_size ) + 4 ) ;
+						write_little_endian_integer( &(*m_buffer2)[0]+4, &(*m_buffer2)[0]+8, uint32_t( uncompressed_data_size ) ) ;
+					} else {
+						write_little_endian_integer( &(*m_buffer2)[0], &(*m_buffer2)[0]+4, uint32_t( compression_buffer_size ) ) ;
+					}
+					
+					m_result = std::make_pair( &(*m_buffer2)[0], &(*m_buffer2)[0] + compression_buffer_size + offset ) ;
+		#else
+					assert(0) ;
+		#endif
+				}
+				else {
+					// Copy uncompressed data to compression buffer
+					// This is inefficient but is not expected to be used much, so not important.
+					std::size_t offset = (m_layout == e_v12Layout) ? 4 : 0 ;
+					m_buffer2->resize( m_buffer1->size() + offset ) ;
+					if( m_layout == e_v12Layout ) {
+						write_little_endian_integer( &(*m_buffer2)[0], &(*m_buffer2)[0]+4, uint32_t( uncompressed_data_size )) ;
+					}
+					std::copy( &(*m_buffer1)[0], &(*m_buffer1)[0] + uncompressed_data_size, &(*m_buffer2)[0] + offset ) ;
+					m_result = std::make_pair( &(*m_buffer2)[0], &(*m_buffer2)[0] + uncompressed_data_size + offset ) ;
+				}
+			}
+			
+			std::pair< byte_t const*, byte_t const* > repr() const { return m_result ; }
+			
+		private:
+			std::vector< byte_t >* m_buffer1 ;
+			std::vector< byte_t >* m_buffer2 ;
+			Context const& m_context ;
+			uint32_t const m_layout ;
+			std::size_t m_number_of_bits ;
+			v11::ProbabilityDataWriter m_v11_writer ;
+			v12::ProbabilityDataWriter m_v12_writer ;
+			impl::ProbabilityDataWriterBase* m_writer ;
+			std::pair< byte_t const*, byte_t const* > m_result ;
+		} ;
 	}
 }
 

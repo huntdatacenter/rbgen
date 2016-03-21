@@ -23,13 +23,17 @@
 
 using namespace std::placeholders ;
 
+// #define DEBUG 1 
+
 TEST_CASE( "Test probability bound", "[bgen][biallelic][unphased]" ) {
 	std::cerr << "test_probability_bound\n" ;
 	std::vector< genfile::byte_t > buffer( 1000 ) ;
 	double epsilon = std::numeric_limits< double >::epsilon() ; // Something small and nonzero.
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.01 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_NOTHROW( writer.set_value( 0, 1.01 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
@@ -37,26 +41,26 @@ TEST_CASE( "Test probability bound", "[bgen][biallelic][unphased]" ) {
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.001 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.001 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_THROWS_AS( writer.set_value( 0, 1.01 ), genfile::bgen::BGenError ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.001 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.001 ) ;
+		writer.initialise( 1, 2,&buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_NOTHROW( writer.set_value( 0, 1.001 ) ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.01 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		writer.initialise( 1, 2,&buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_THROWS_AS( writer.set_value( 0, 1.01 + epsilon ), genfile::bgen::BGenError ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.01 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		writer.initialise( 1, 2,&buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 1, 0.5 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
@@ -64,8 +68,8 @@ TEST_CASE( "Test probability bound", "[bgen][biallelic][unphased]" ) {
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.01 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 1, 0.5 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 2, 0.01 ) ) ;
@@ -73,22 +77,22 @@ TEST_CASE( "Test probability bound", "[bgen][biallelic][unphased]" ) {
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.01 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 1, 0.5 ) ) ;
 		REQUIRE_THROWS_AS( writer.set_value( 2, 0.01 + epsilon ), genfile::bgen::BGenError ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( &buffer[0], &buffer[0] + buffer.size(), 16, 1.01 ) ;
-		writer.initialise( 1, 2 ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
 		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
 		REQUIRE_THROWS_AS( writer.set_value( 1, 0.51 + epsilon ), genfile::bgen::BGenError ) ;
 	}
 }
 
-TEST_CASE( "Single sample (biallelic,unphased)", "[bgen][biallelic][unphased]" ) {
+TEST_CASE( "Single sample (biallelic unphased)", "[bgen][biallelic][unphased]" ) {
 	std::cout << "test_single_sample_biallelic_unphased\n" ;
 
 	std::vector< genfile::byte_t > data( 1000 ) ;
@@ -140,14 +144,15 @@ TEST_CASE( "Single sample (biallelic,unphased)", "[bgen][biallelic][unphased]" )
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
 	} ;
 	
-	genfile::byte_t* end = 0 ;
+	std::pair< genfile::byte_t const*, genfile::byte_t const* > repr ;
 	std::size_t const number_of_alleles = 2 ;
 	for( uint8_t ploidy = 0; ploidy < 63; ++ploidy ) {
 		expected[6] = expected[7] = ploidy ;
 		expected[8] = ploidy ;
 		for( unsigned char number_of_bits = 1; number_of_bits <= 32; ++number_of_bits ) {
 			expected[ eNumberOfBits ] = number_of_bits ;
-			uint8_t const phased = 0 ;
+			// Always treat 0- or haploid as phased.
+			uint8_t const phased = ( ploidy > 1 ) ? 0 : 1 ;
 			expected[9] = phased ;
 			// For a biallelic (K=2) variant the number of probability values is ploidy+1 if unphased
 			// or ploidy*2 if phased.
@@ -185,8 +190,8 @@ TEST_CASE( "Single sample (biallelic,unphased)", "[bgen][biallelic][unphased]" )
 					expected[8] |= 0x80 ;
 				}
 				{
-					genfile::bgen::v12::ProbabilityDataWriter writer( &data[0], &data[0] + data.size(), number_of_bits ) ;
-					writer.initialise( 1, number_of_alleles ) ;
+					genfile::bgen::v12::ProbabilityDataWriter writer( number_of_bits ) ;
+					writer.initialise( 1, number_of_alleles, &data[0], &data[0] + data.size() ) ;
 					writer.set_sample( 0 ) ;
 					writer.set_number_of_entries(
 						ploidy, numberOfValues,
@@ -203,14 +208,14 @@ TEST_CASE( "Single sample (biallelic,unphased)", "[bgen][biallelic][unphased]" )
 						}
 					}
 					writer.finalise() ;
-					end = writer.end_of_data() ;
+					repr = writer.repr() ;
 				}
 	#if DEBUG
-				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "):   result is:" << to_hex( repr.first, repr.second ) << ".\n" ;
 				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
 	#endif
-				REQUIRE( ( end - &data[0] ) == expected_size ) ;
-				REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+				REQUIRE( ( repr.second - repr.first ) == expected_size ) ;
+				REQUIRE( std::memcmp( repr.first, expected.data(), expected_size ) == 0 ) ;
 			}
 		}
 	}
@@ -268,7 +273,7 @@ TEST_CASE( "Single sample (biallelic phased)", "[bgen][biallelic][phased]" ) {
 		0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
 	} ;
 	
-	genfile::byte_t* end = 0 ;
+	std::pair< genfile::byte_t const*, genfile::byte_t const* > repr ;
 	std::size_t const number_of_alleles = 2 ;
 	for( uint8_t ploidy = 0; ploidy < 63; ++ploidy ) {
 		expected[6] = expected[7] = ploidy ;
@@ -326,8 +331,8 @@ TEST_CASE( "Single sample (biallelic phased)", "[bgen][biallelic][phased]" ) {
 
 				// Now use bgen writer to set expected genotype
 				{
-					genfile::bgen::v12::ProbabilityDataWriter writer( &data[0], &data[0] + data.size(), number_of_bits ) ;
-					writer.initialise( 1, number_of_alleles ) ;
+					genfile::bgen::v12::ProbabilityDataWriter writer( number_of_bits ) ;
+					writer.initialise( 1, number_of_alleles, &data[0], &data[0] + data.size() ) ;
 					writer.set_sample( 0 ) ;
 					writer.set_number_of_entries(
 						ploidy, numberOfValues,
@@ -345,14 +350,14 @@ TEST_CASE( "Single sample (biallelic phased)", "[bgen][biallelic][phased]" ) {
 						}
 					}
 					writer.finalise() ;
-					end = writer.end_of_data() ;
+					repr = writer.repr() ;
 				}
 	#if DEBUG
-				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "):   result is:" << to_hex( repr.first, repr.second ) << ".\n" ;
 				std::cerr << "test_single_sample(): (bits=" << int( number_of_bits ) << ", ploidy=" << int(ploidy) <<", g=" << g << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
 	#endif
-				REQUIRE( ( end - &data[0] ) == expected_size ) ;
-				REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+				REQUIRE( ( repr.second - repr.first ) == expected_size ) ;
+				REQUIRE( std::memcmp( repr.first, expected.data(), expected_size ) == 0 ) ;
 			}
 		}
 	}
@@ -402,18 +407,25 @@ TEST_CASE( "Test two samples, unphased", "[bgen][small]" ) {
 			{
 				expected[ eNumberOfBits ] = number_of_bits ;
 				std::size_t expected_size = 12 + ((( number_of_bits * 4 ) + 7 ) / 8 ) ;
-				genfile::byte_t const* end = genfile::bgen::v12::write_uncompressed_snp_probability_data(
-					&data[0], &data[0] + data.size(),
-					context,
-					get_AA, get_AB, get_BB,
-					number_of_bits
-				) ;
+
+				genfile::bgen::v12::ProbabilityDataWriter writer( number_of_bits ) ;
+				writer.initialise( 2, 2, &data[0], &data[0] + data.size() ) ;
+				for( std::size_t i = 0; i < 2; ++i ) {
+					writer.set_sample( i ) ;
+					writer.set_number_of_entries( 2, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+					writer.set_value( 0, get_AA(i) ) ;
+					writer.set_value( 1, get_AB(i) ) ;
+					writer.set_value( 2, get_BB(i) ) ;
+				}
+				writer.finalise() ;
+
+				std::pair< genfile::byte_t const*, genfile::byte_t const* > repr = writer.repr() ;
 	#if DEBUG
-				std::cerr << "test_two_samples(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( &data[0], end ) << ".\n" ;
+				std::cerr << "test_two_samples(): (bits=" << int( number_of_bits ) << "):   result is:" << to_hex( repr.first, repr.second ) << ".\n" ;
 				std::cerr << "test_two_samples(): (bits=" << int( number_of_bits ) << "): expected is:" << to_hex( &expected[0], &expected[0] + expected_size ) << ".\n" ;
 	#endif
-				REQUIRE( ( end - &data[0] ) == expected_size ) ;
-				REQUIRE( std::memcmp( &data[0], expected.data(), expected_size ) == 0 ) ;
+				REQUIRE( ( repr.second - repr.first ) == expected_size ) ;
+				REQUIRE( std::memcmp( repr.first, expected.data(), expected_size ) == 0 ) ;
 			}
 		}
 	}
