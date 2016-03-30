@@ -73,8 +73,7 @@ public:
 		
 		options.declare_group( "Output options" ) ;
 		options[ "-list" ]
-			.set_description( "Don't output a bgen file; just list variants instead." ) ;
-		
+			.set_description( "Suppress BGEN output; instead output a list of variants." ) ;
 	}
 } ;
 
@@ -109,6 +108,12 @@ struct BgenProcessor {
 
 	std::streampos current_position() const {
 		return m_current_variant_position ;
+	}
+	
+	void seek_to( std::streampos pos ) {
+		m_current_variant_position = pos ;
+		m_stream->seekg( pos ) ;
+		m_state = e_ReadyForVariant ;
 	}
 
 	uint32_t number_of_variants() const {
@@ -348,8 +353,8 @@ private:
 		}
 	}
 
-	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
-		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read-write" ) ;
+	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) const {
+		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read" ) ;
 
 		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
 
@@ -365,7 +370,15 @@ private:
 				positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( size ))) ;
 			}
 		}
-		
+
+		if( options().check( "-list" ) ) {
+			process_selection_list( bgen_filename, positions ) ;
+		} else {
+			process_selection_bgen( bgen_filename, positions ) ;
+		}
+	}
+
+	void process_selection_bgen( std::string const& bgen_filename, std::vector< std::pair< uint32_t, uint32_t > > const& positions ) const {
 		std::ifstream bgen_file( bgen_filename, std::ios::binary ) ;
 		uint32_t offset = 0 ;
 
@@ -395,6 +408,34 @@ private:
 		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
 	}
 	
+	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< uint32_t, uint32_t > > const& positions ) const {
+		BgenProcessor processor( bgen_filename ) ;
+		std::cout << boost::format( "# %s: started\n" ) % globals::program_name ;
+		std::cout << "alternate_ids\trsid\tchromosome\tposition\tnumber_of_alleles\tfirst_allele\talternative_alleles\n" ;
+		
+		std::string SNPID, rsid, chromosome ;
+		uint32_t position ;
+		std::vector< std::string > alleles ;
+
+		for( std::size_t i = 0; i < positions.size(); ++i ) {
+			processor.seek_to( positions[i].first ) ;
+			bool success = processor.read_variant(
+				&SNPID, &rsid, &chromosome, &position, &alleles
+			) ;
+			std::cout << SNPID << "\t" << rsid << "\t" << chromosome << "\t" << position << "\t" << alleles.size() << "\t" << alleles[0] << "\t" ;
+			for( std::size_t allele_i = 1; allele_i < alleles.size(); ++allele_i ) {
+				std::cout << (( allele_i > 1 ) ? "," : "" ) << alleles[allele_i] ;
+			}
+			std::cout << "\n" ;
+			if( !success ) {
+				throw std::invalid_argument( "positions" ) ;
+			}
+			processor.ignore_probs() ;
+		}
+		
+		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
+	}
+
 	boost::tuple< std::string, uint32_t, uint32_t > parse_range( std::string const& spec ) const {
 		std::size_t colon_pos = spec.find( ':' ) ;
 		if ( colon_pos == std::string::npos ) {
