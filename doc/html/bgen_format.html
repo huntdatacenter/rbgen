@@ -22,17 +22,21 @@
   <div class="main_text">
     <div id="overview">
       <p>
-		  <b>This page documents version 1.2 of the BGEN format.</b>
+		  <b>This page documents version 1.2 (beta) of the BGEN format.</b>
 		  <em>This version supports storage of both genotype and haplotype data,
 				variants with multiple alleles, and improved compression, and is backward-compatible previous versions of the format.
 			  The v1.1 format specification can be found <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">here</a>.</em>
 	  </p>
-      <p>
-		  <b>Important</b>: This specification is in <b>second beta</b> status.  (Relative to the earlier draft, a small modification has
-          been made to the treatment of missing data in v1.2-format variant data blocks, a modification to the order of stored probabilities
-		  for higher-than diploid samples, and clarification of wording around the phased flag.).  While we believe the spec to be complete,
-          it's possible further changes will be needed.  We expect to finalise the specification mid-2016.
+	  <p>
+		  <b>Note</b>: While we believe the spec to be complete, it's possible further changes will be needed.  We expect to
+		  finalise the specification mid-2016.  A history of revisions is as follows:
 	  </p>
+	  <ul>
+		  <li><b>2015-05-22</b> (<code>v1.2 draft</code>): Initial v1.2 draft.</li>
+		  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in v1.2-format variant data blocks.</li>
+		  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
+			  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
+      </ul>
     </div>
 
     <h2>Introduction</h2>
@@ -70,16 +74,22 @@
 			</center>
 		</div>
 		<p>
-			For <a href="">binary ped</a> (BED) files, identifying data is stored in a separate file (the <span class="monospace">.bim</span> file)
-			so the time is effectively zero.  For text-based formats there is a significant trade-off between the use of file compression and
+			For <a href="https://www.cog-genomics.org/plink2/input#bed">PLINK binary (<code>.bed</code>) files</a>, identifying data is
+			stored in a separate file (the <span class="monospace"><code>.bim</code></span> file) so the time is effectively zero.
+			For text-based formats there is a significant trade-off between the use of file compression and
 			read performance.  BGEN stores
 			the entire dataset of 2,250 million genotypes in 334Mb, slightly over one bit per genotype, and in this test took 1.5s.
+		</p>
+		<p>
+			(Note that further performance optimisation of all formats may be possible,
+			so the above plot will not represent best-possible timings.)
 		</p>
 		<p>
 			The BGEN format has been used in several major projects, including the
 			<a href="http://www.wtccc.org.uk/ccc2/">Wellcome Trust Case-Control Consortium 2</a>
 			and the <a href="https://www.malariagen.net/projects/host">MalariaGEN</a> project.
-			<!--It will be the release format for genome-wide genotype data for the <a href="http://www.ukbiobank.ac.uk">UK Biobank</a>.-->
+			It has been adopted as the release format for genome-wide imputed genotypes
+			for the <a href="http://www.ukbiobank.ac.uk">UK Biobank</a>.
 		</p>
 	</div>
 	<div id = "contributors">
@@ -94,28 +104,40 @@
 			</ul>
 	</div>
 	<div id = "tools">
-		<h3>Tool support</h3>
+		<h3>Software support</h3>
+		<p>A freely available C++ implementation of the BGEN format is available
+			<a href="http://bitbucket.org/gavinband/bgen">on bitbucket</a>.  This repository also contains utilities:
+		</p>
 		<ul>
-			<li><a href="http://www.well.ox.ac.uk/~gav/qctool">QCTOOL</a> can be used to read and write
-			BGEN files, and to convert them to other formats.</li>
-			<li>We have written a tool <a href="http://www.well.ox.ac.uk/~gav/qctool">cat-bgen</a> which can be used to efficiently
-				concatenate BGEN files.  We found this useful for joining together chunks of imputed data after a genome-wide
+			<li>An example program, <a href="https://bitbucket.org/gavinband/bgen/src/master/example/bgen_to_vcf.cpp?at=default&fileviewer=file-view-default"><code>bgen_to_vcf</code></a>, which converts bgen-formatted files to
+				<a href="https://samtools.github.io/hts-specs/">Variant Call Format</a>.  This is intended as an example
+				of use of the API.</li>
+			<li>A bgen indexing tool <a href="https://bitbucket.org/gavinband/bgen/src/master/apps/bgenix.cpp"><code>bgenix</code></a>.</li>
+			<li>A tool <a href="https://bitbucket.org/gavinband/bgen/src/master/apps/cat-bgen.cpp"><code>cat-bgen</code></a> for efficiently concatenating bgen files.
+				We have found this useful for joining together chunks of imputed data after a genome-wide
 				imputation run.</li>
-			<li><a href="https://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html">SNPTEST</a> has supported BGEN v1.1 since
-			version 2.4.0, and BGEN v1.2 since version 2.5.1.</li>
-			<li><a href="">PLINK 1.9</a> now includes <a href="https://www.cog-genomics.org/plink2/input#oxford">support for BGEN</a>.</li>
 		</ul>
-		<p>A freely available C++ implementation of the BGEN format is available in the "genfile" sublibrary of QCTOOL,
-			available <a href="http://bitbucket.org/gavinband/qctool/">here</a>.</p>
-	</div>
-
+		<p>
+			In addition, bgen support has been implemented in several other software packages:
+		</p>
+		<ul>
+			<li><a href="http://www.well.ox.ac.uk/~gav/qctool"><code>QCTOOL</code></a> can be used to read and write BGEN files and to convert between
+			BGEN and other formats.</li>
+			<li><a href="https://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html"><code>SNPTEST</code></a> has supported BGEN v1.1 since
+			version 2.4.0, and BGEN v1.2 since version 2.5.1.</li>
+			<li><a href="https://www.cog-genomics.org/plink2"><code>PLINK</code></a> v1.9 now includes <a href="https://www.cog-genomics.org/plink2/input#oxford">support for BGEN</a>.</li>
+			<li><a href="https://watson.hgen.pitt.edu/docs/mega2_html/mega2.html"><code>Mega2</code></a> now includes <a href="https://watson.hgen.pitt.edu/docs/mega2_html/mega2.html">support for BGEN</a>.</li>
+		</ul>
+		<p>
+			(Please contact me if your software supports BGEN and you'd like it added to this list.)
+		</p>
 	</div>
     <div id="history">
       <h3>Change history</h3>
 
 	  <div class = "boxed">
 	  <dl>
-		  <dt>v1.2 (May 2015):</dt>
+		  <dt>v1.2 (March 2016):</dt>
 		  <dd>
 			  Major update extending the BGEN format:
               <ul>
@@ -860,13 +882,13 @@
         <p>For <b>unphased data</b>, enumerate the possible genotypes as the set of <em>K</em>-vectors
 			of nonnegative integers <em>(x<sub>1</sub>, x<sub>2</sub>, ..., x<sub>K</sub>)</em>,
 			where <em>x<sub>i</sub></em> represents the count of the <em>i</em>-th allele in the genotype.
-			Probabilities are stored in reverse lexicographical order of these vectors.  The last
+			Probabilities are stored in <a href="https://en.wikiversity.org/wiki/Lexicographic_and_colexicographic_order">colex order</a> of these vectors.  The last
 			probability (corresponding the the <em>K</em>-th allele homozygotes) is not stored; instead
 			it is inferred as one minus the sum of other probabilities.  Thus a total of
 			<em>( Z+K-1 )</em> <code>choose</code> <em>( K-1 )</em>-1 probabilities is stored.
 		</p>
 		<p>
-			<b>Example</b>. For example if <em>Z=3</em> and <em>K=3</em> then the enumerated genotypes and
+			<b>Example</b>. For example if <em>Z=3</em> and <em>K=3</em> then the enumerated genotypes
 			with allele count representations are:
 		</p>
 		<table class = "allele_counts">
@@ -893,6 +915,8 @@
 			with <em>P<sub>333</sub></em> inferred as one minus the sum of the other probabilities.
 		</p>
 		<p>
+			The colex order has the important property that the genotypes that for each <em>i</em> the genotypes carrying
+			the <em>i</em>-th allele appear later in the order than those that carry only alleles <em>1,...,i-1</em>.
 			See the <a href='#rationale'>rationale</a> below for
 			a further discussion of this choice of storage order.
 		</p>
@@ -941,36 +965,62 @@
 		We therefore renormalise input probabilities to sum to one.
 	</p>
 </div>
-<h2>Rationale</h2>
+<h2>Rationale and FAQ</h2>
 <div id = "rationale">
 	<p>
 	<b>Q.</b> Should I use BGEN v1.1 or v1.2?  Or something else?
 	</p>
 	<p>
-	<b>A.</b> As of writing (November 2015) BGEN v1.1 format is supported in more tools.  We expect tool support
-    for BGEN v1.2 to improve in future.  In technical terms, we developed BGEN v1.2 to be superior to BGEN v1.1 in
-    most senses.  One thing BGEN v1.2 does not support is <em>partial missingness</em>, i.e. the probability of a NULL
-    (i.e. missing) genotype call for each sample must be either 0 or 1.  This property is satisfied by many imputed datasets,
-    particularly those that have been processed through a pre-phasing pipeline, and by genotype calling pipelines that
-    produce hard genotype calls.  Thus <em>BGEN v1.2 format should not be used for data generated by calling algorithms such as
-    chiamo or genoSNP, which can assign non-zero weight to a NULL genotype call.</em>
-    </p>
-    <p>Otherwise, we believe BGEN v1.2 should be a good choice:</p>
+	<b>A.</b> The short answer is that we believe that for most purposes BGEN v1.2 is a
+	good choice for storage of hard-called or imputed genotypes.
 	</p>
-    <ul>
-        <li>It offers control over the precision/space tradeoff, but acheives better space usage than v1.1 for the same precision.</li>
-        <li>It supports bi- and multi-allelic variants as well as non-diploid samples.</li>
-        <li>Hard-called data can be stored with two bits per probability, making files especially small.</li>
-        <li>It supports both phased and unphased data.</li>
-    </ul>
+	<p>For a more detailed answer, the following table tabulates features of various different formats:
+	<table class = "filespec">
+		<tr><th></th>
+			<th>PLINK binary</th><th>GEN</th><th>BGEN v1.1</th><th>BGEN v1.2</th><th>VCF</th><th>BCF</th></tr>
+		<tr><td>Supports unphased genotype calls</td>
+			<td>&#10003;</td><td>&#10003;<sup>*</sup></td><td>&#10003;<sup>*</sup></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+		<tr><td>Supports unphased genotype probabilities</td>
+			<td></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+		<tr><td>Supports NULL/outlier probability<br /><small>e.g. NULL class from CHIAMO / GenoSNP</small></td>
+			<td></td><td>&#10003;</td><td>&#10003;</td><td></td><td>&#10003;</td><td>&#10003;</td></tr>
+		<tr><td>Supports non-diploid samples</td>
+			<td></td><td>&dagger;</td><td><sup>&dagger;</sup></td><td>&#10003;</td><td>&#10003;<sup>&Dagger;</sup></td><td>&#10003;<sup>&Dagger;</sup></td></tr>
+		<tr><td>Supports phased data?</td>
+			<td></td><td></td><td></td><td>&#10003;</td><td>&#10003;<sup>&Dagger;</sup></td><td>&#10003;<sup>&Dagger;</sup></td></tr>
+		<tr><td>Supports multi-allelic variants</td>
+			<td></td><td></td><td></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
+		<tr><td>Efficient representation?</td>
+			<td>&#10003;</td><td></td><td>&#10003;</td><td>&#10003;</td><td></td><td>&#10003;</td></tr>
+	</table>
 	<p>
+		<small>
+		<sup>*</sup>Hard-called genotypes are converted to probabilities in GEN and BGEN v1.1.
+		<sup>&dagger;</sup>By convention, males on the X chromosome are stored as homozygote females in GEN and BGEN v1.1.
+		<sup>&Dagger;</sup>At the time of writing, the storage of genotype likelihoods and probabilities for non-diploid samples
+		and/or phased data in VCF/BCF is not fully specified.
+	</small>
+	</p>
+	<p>
+		Thus BGEN v1.2 is appropriate except for storing genotype probabilities from cluster-based calles such as
+		<a href="https://mathgen.stats.ox.ac.uk/genetics_software/chiamo/chiamo.html"><code>CHIAMO</code></a>
+		or <a href="http://www.stats.ox.ac.uk/~giannoul/GenoSNP/"><code>GenoSNP</code></a>,
+		which can assign nonzero probability to a NULL or outlier class.  Use BGEN v1.1 or another format for these data.
+	<p>
+		Another consideration over what to use is tool support.  Support for BGEN v1.1 has been available for some time in
+		QCTOOL, SNPTEST and other packages including PLINK.  Support for BGEN v1.2 is becoming available across a range of tools
+		mid-2016.  We expect tool support for BGEN to continue to increase in future, driven in part by the use of
+		BGEN for the UK Biobank data releases and the <a href="http://bitbucket.org/gavinband/bgen">availability of a reference implementation</a>.
+	</p>
 	<b>Q.</b> Why compress the data for each variant seperately?  Doesn't this end up using more space?
 	</p>
 	<p>
-	<b>A.</b> It's true that maximum compression can be acheived by compressing as much data as possible.
+	<b>A.</b> Compressing each variant seperately has the advantage that the variant identifying data fields -
+	which are stored uncompressed in BGEN - can be efficiently accessed without decompressing the whole file.
+	It's true that theoretically higher rates of compression could be acheived by compressing as much data as possible.
 	However, for large cohorts, each variant has plenty of data to compress, so the difference is expected to be small.
-	Moreover compressing each variant seperately has advantages when it comes to 
-	Alternative approaches - like <a href="">bgzip</a>, which compresses data in blocks - also incur a size overhead.
+	(Alternative indexing approaches - like <a href="bgzip">bgzip</a>, which
+		compresses data in blocks - also incur a size overhead.)
 	</p>
 	<p>
 	<b>Q.</b> Why store the number of individuals on each row?  Why store the number of alleles twice?  Doesn't this waste space?
@@ -981,11 +1031,32 @@
 	of testing that file structure is correct.
 	</p>
 	<p>
+	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why the choice of colex order of genotypes?
+	</p>
+	<p>
+	<b>A.</b> Several considerations motiviated this choice - including simplicity of specification, ease of implementation,
+	and compatibility with established standards.
+	</p>
+	<p>
+	The chosen order has the property that at a variant with
+	<em>K</em> alleles, genotypes carrying only the first <em>k &lt K</em> alleles appear earlier in the ordering than
+	those carrying higher alleles - and with the same order as if the 'extra' <em>K-k</em> alleles weren't present.  Consequently,
+	mapping of each genotype to the index of the corresponding probability can be accomplished using a single precalculated 
+	lookup table that is independent of <em>K</em> (though it does depend on the ploidy).  We've used such a lookup table in the
+	<a href="https://bitbucket.org/gavinband/qctool/src/tip/genfile/src/ToGP.cpp">QCTOOL implementation</a> to convert hard-called
+	genotypes to probabilities. 
+	</p>
+	<p>
+		The colex order specified also coincides with the order specified for 
+		<code>GL</code> and <code>GP</code> fields for diploid samples in the <a href="https://samtools.github.io/hts-specs/">VCF</a>.  (At the time of writing the VCF specification of this field
+		only applies to diploid samples).
+	</p>
+	<p>
 	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why omit the last probability instead of the first?
 	</p>
 	<p>
 	<b>A.</b> The intention is to make parsing the file as simple and fast as possible.  If we omitted the first probability,
-	parsers would have to read and store all other <em>( Z+K-1 ) choose ( K-1 ) - 1</em> probabilities before computing and emitting
+	parsers would have to read and store all the other probabilities before computing and emitting
 	the first probability.  With the scheme described here, parsers can simply emit the probabilities as they are read from the file,
 	before finally emitting the last probability as one minus the sum of the stored probabilities.
 	</p>
@@ -993,15 +1064,14 @@
     Doesn't this increase file size unneccessarily?
 	</p>
 	<p>
-	<b>A.</b> A change was made in the beta version of this specification to store data for missing genotypes as zeroes instead
-    of omitting it entirely.  The rationale for this is that the stored format
-    
-    The intention is to make parsing the file as simple and fast as possible.  If we omitted the first probability,
-	parsers would have to read and store all other <em>( Z+K-1 ) choose ( K-1 ) - 1</em> probabilities before computing and emitting
-	the first probability.  With the scheme described here, parsers can simply emit the probabilities as they are read from the file,
-	before finally emitting the last probability as one minus the sum of the stored probabilities.
+	<b>A.</b>
+ 		(Note this behaviour was changed in the beta version of the spec relative to the earlier draft.)
+		The intention is to make parsing the file as simple and fast as possible.  One option for loading genotypes
+		from a BGEN file is simply to load the uncompressed genotype data into memory.  Potentially, encoded genotypes could
+		then be used directly, e.g. as keys in a lookup table.  Storing placeholder data for missing samples
+		makes this simpler to implement by preserving a predictable index for the data for each sample within the encoded
+		representation.  (We note this will be more complicated if ploidy varies across samples).
 	</p>
-	
 </div>
 </body>
 </html>
