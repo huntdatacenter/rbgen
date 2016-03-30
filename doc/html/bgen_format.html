@@ -1034,22 +1034,24 @@
 	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why the choice of colex order of genotypes?
 	</p>
 	<p>
-	<b>A.</b> Several considerations motiviated this choice - including simplicity of specification, ease of implementation,
+	<b>A.</b> Several considerations motivated this choice - including simplicity of specification, ease of implementation,
 	and compatibility with established standards.
 	</p>
 	<p>
-	The chosen order has the property that at a variant with
-	<em>K</em> alleles, genotypes carrying only the first <em>k &lt K</em> alleles appear earlier in the ordering than
-	those carrying higher alleles - and with the same order as if the 'extra' <em>K-k</em> alleles weren't present.  Consequently,
-	mapping of each genotype to the index of the corresponding probability can be accomplished using a single precalculated 
-	lookup table that is independent of <em>K</em> (though it does depend on the ploidy).  We've used such a lookup table in the
-	<a href="https://bitbucket.org/gavinband/qctool/src/tip/genfile/src/ToGP.cpp">QCTOOL implementation</a> to convert hard-called
-	genotypes to probabilities. 
+		The colex order coincides with the order specified for 
+		<code>GL</code> and <code>GP</code> fields for diploid samples in the <a href="https://samtools.github.io/hts-specs/">VCF</a>.  (At the time of writing the VCF specification of this field
+		only applies to diploid samples).  This makes it easy to convert between BGEN and VCF formats.
 	</p>
 	<p>
-		The colex order specified also coincides with the order specified for 
-		<code>GL</code> and <code>GP</code> fields for diploid samples in the <a href="https://samtools.github.io/hts-specs/">VCF</a>.  (At the time of writing the VCF specification of this field
-		only applies to diploid samples).
+	The chosen order has a useful 'nesting' property: adding an allele does not change the order of probabilities for
+	genotypes not carrying the new allele.  More precisely, at a variant with <em>K+1</em> alleles, genotypes
+	carrying only alleles among the first <em>K</em> appear earlier in the ordering than
+	those carrying the <em>K</em>th allele - and with the same order as if the 'extra' allele wasn't present.
+	A practical consequence of this is that mapping of each genotype to the index of
+	the corresponding probability can be accomplished using a single lookup table that is independent of <em>K</em>
+	(though it does depend on the ploidy).  We used such a lookup table in the
+	<a href="https://bitbucket.org/gavinband/qctool/src/tip/genfile/src/ToGP.cpp">QCTOOL implementation</a> to convert hard-called
+	genotypes to probabilities. 
 	</p>
 	<p>
 	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why omit the last probability instead of the first?
@@ -1069,7 +1071,7 @@
 		The intention is to make parsing the file as simple and fast as possible.  One option for loading genotypes
 		from a BGEN file is simply to load the uncompressed genotype data into memory.  Potentially, encoded genotypes could
 		then be used directly, e.g. as keys in a lookup table.  Storing placeholder data for missing samples
-		makes this simpler to implement by preserving a predictable index for the data for each sample within the encoded
+		makes this simpler to implement by maintaining a predictable index for the data for each sample within the encoded
 		representation.  (We note this will be more complicated if ploidy varies across samples).
 	</p>
 </div>
