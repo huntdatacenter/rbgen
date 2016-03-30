@@ -50,9 +50,7 @@ public:
 
 		options[ "-set-free-data" ]
 			.set_description(
-					"Specify that cat-bgen should set free data in the resulting file to the given value."
-					" If the value is an existing filename, bytes are read from that filename."
-					" Otherwise the value is treated as a string."
+					"Specify that cat-bgen should set free data in the resulting file to the given string value."
 			)
 			.set_takes_single_value()
 		;
