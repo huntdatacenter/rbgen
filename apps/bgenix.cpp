@@ -74,6 +74,8 @@ public:
 		options.declare_group( "Output options" ) ;
 		options[ "-list" ]
 			.set_description( "Suppress BGEN output; instead output a list of variants." ) ;
+		options[ "-with-rowid" ]
+			.set_description( "Create an index file without using the 'WITHOUT ROWID' tables.  These are suitable for use with sqlite versions < 3.8.2" ) ;
 	}
 } ;
 
@@ -315,6 +317,8 @@ private:
 	}
 	
 	void setup_index_file( db::Connection& connection ) {
+		std::string const tag = options().check( "-with-rowid" ) ? "" : " WITHOUT ROWID" ;
+
 		connection.run_statement(
 			"CREATE TABLE Variant ("
 			"  chromosome TEXT NOT NULL,"
@@ -327,7 +331,7 @@ private:
 			"  file_start_position INT NOT NULL," // 
 			"  size_in_bytes INT NOT NULL,"       // We put these first to minimise cost of retrieval
 			"  PRIMARY KEY (chromosome, position, rsid )"
-			") WITHOUT ROWID"
+			")" + tag
 		) ;
 		
 		connection.run_statement(
@@ -339,12 +343,12 @@ private:
 			"  allele TEXT NOT NULL,"
 			"  PRIMARY KEY (chromosome, position, rsid, allele_index ),"
 			"  FOREIGN KEY (chromosome, position, rsid) REFERENCES Variant(chromosome, position, rsid)"
-			") WITHOUT ROWID"
+			")" + tag
 		) ;
 
 	}
 	
-	void process_selection( std::string const& bgen_filename, std::string const& index_filename ) {
+	void process_selection( std::string const& bgen_filename, std::string const& index_filename ) const {
 		try {
 			process_selection_unsafe( bgen_filename, index_filename ) ;
 		}
