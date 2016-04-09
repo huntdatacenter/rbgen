@@ -179,7 +179,7 @@ namespace genfile {
 		) ;
 			
 		// Write identifying data fields for the given variant.
-		// The buffer will be resizes to fit.
+		// The buffer will be resized to fit.
 		// Return a pointer to past-the-end of the data written.
 		template< typename AlleleGetter >
 		byte_t* write_snp_identifying_data(
@@ -356,8 +356,8 @@ namespace genfile {
 			return buffer ;
 		}
 
-		// Write data containd in a std::string to the buffer,
-		// Preceded by a length of the given integral type in little-endian format.
+		// Write data contained in a std::string to the buffer, preceded
+		// by a length of the given integral type in little-endian format.
 		// Return past-the-end of what was written.
 		template< typename IntegerType >
 		byte_t* write_length_followed_by_data( byte_t* buffer, byte_t* const end, IntegerType length, std::string const data_string ) {
@@ -1282,13 +1282,13 @@ namespace genfile {
 			void initialise( uint32_t nSamples, uint16_t nAlleles ) {
 				assert( nSamples == m_context.number_of_samples ) ;
 				std::size_t const max_ploidy = 15 ;
-				std::size_t const uncompressed_data_size =
+				std::size_t const buffer_size =
 					( m_layout == e_v11Layout )
 						? (6 * nSamples)
-						: ( 10 + nSamples + ((( nSamples * m_number_of_bits * (max_ploidy-1) )+7)/8) ) ;
+						: ( 10 + nSamples + ((( nSamples * ( impl::n_choose_k( max_ploidy + nAlleles - 1, std::size_t( nAlleles ) - 1 ) - 1 ) * m_number_of_bits )+7)/8)) ;
 				;
-				m_buffer1->resize( uncompressed_data_size ) ;
-				m_writer->initialise( nSamples, nAlleles, &(*m_buffer1)[0], &(*m_buffer1)[0] + uncompressed_data_size ) ;
+				m_buffer1->resize( buffer_size ) ;
+				m_writer->initialise( nSamples, nAlleles, &(*m_buffer1)[0], &(*m_buffer1)[0] + buffer_size ) ;
 			}
 
 			bool set_sample( std::size_t i ) {
