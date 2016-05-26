@@ -19,7 +19,7 @@
 
 namespace bfs = boost::filesystem ;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
@@ -67,7 +67,7 @@ public:
 				" and pos1 and pos2 are positions with pos2 >= pos1. "
 				" At most one of pos1 and pos2 can also be omitted, in which case the range extends to the start or"
 				" end of the chromosome as appropriate. "
-				" Position ranges are treated as closed (i.e. <pos1> and <pos2> are included in the range.)"
+				" Position ranges are treated as closed (i.e. <pos1> and <pos2> are included in the range)."
 			)
 			.set_takes_value_by_position(2)
 			.set_takes_values_until_next_option()
@@ -487,8 +487,8 @@ private:
 		}
 
 		std::string chromosome( pieces[0] ) ;
-		int pos1 = std::stoi( pieces[1].substr( 0, separator_pos ) ) ;
-		int pos2 = std::stoi( pieces[1].substr( separator_pos + 1, pieces[1].size() ) ) ;
+		int pos1 = (separator_pos == 0) ? 0 : std::stoi( pieces[1].substr( 0, separator_pos ) ) ;
+		int pos2 = (separator_pos == (pieces[1].size()-1)) ? std::numeric_limits< int >::max() : std::stoi( pieces[1].substr( separator_pos + 1, pieces[1].size() ) ) ;
 		assert( pos1 >= 0 ) ;
 		assert( pos2 >= pos1 ) ;
 
