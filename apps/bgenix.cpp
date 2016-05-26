@@ -19,7 +19,7 @@
 
 namespace bfs = boost::filesystem ;
 
-#define DEBUG 1
+// #define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
