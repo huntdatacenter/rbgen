@@ -19,7 +19,7 @@
 
 namespace bfs = boost::filesystem ;
 
-#define DEBUG 1
+// #define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
@@ -64,9 +64,25 @@ public:
 			.set_takes_values_until_next_option()
 		;
 
+		options[ "-excl-range" ]
+			.set_description(
+				"Exclude variants in the specified genomic interval from the output. "
+				"See the description of -incl-range for details."
+				"If this is specified multiple times, variants in any of the specified ranges will be excluded."
+			)
+			.set_takes_values_until_next_option()
+		;
+
 		options[ "-incl-rsids" ]
 			.set_description(
-				"Include variants with the specified rsid in the output. "
+				"Include variants with the specified rsid(s) in the output. "
+			)
+			.set_takes_values_until_next_option()
+		;
+
+		options[ "-excl-rsids" ]
+			.set_description(
+				"Exclude variants with the specified rsid(s) from the output. "
 			)
 			.set_takes_values_until_next_option()
 		;
@@ -360,8 +376,10 @@ private:
 	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) const {
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read" ) ;
 
+#if DEBUG
+		std::cerr << "Running sql: \"" << get_select_sql() << "\"...\n" ;
+#endif
 		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
-
 		std::vector< std::pair< uint32_t, uint32_t > > positions ;
 		{
 			positions.reserve( 1000000 ) ;
@@ -471,6 +489,7 @@ private:
 	std::string get_select_sql() const {
 		std::string result = "SELECT file_start_position, size_in_bytes FROM Variant WHERE " ;
 		std::string inclusion = "((1==0)" ;
+		std::string exclusion = "((1==1)" ;
 		if( options().check( "-incl-range" )) {
 			auto elts = options().get_values< std::string >( "-incl-range" ) ;
 			for( std::string const& elt: elts ) {
@@ -480,14 +499,34 @@ private:
 				).str() ;
 			}
 		}
-		if( options().check( "-incl-rsids" )) {
-			auto elts = options().get_values< std::string >( "-incl-rsids" ) ;
+		if( options().check( "-excl-range" )) {
+			auto elts = options().get_values< std::string >( "-excl-range" ) ;
 			for( std::string const& elt: elts ) {
-				inclusion += ( boost::format( " OR ( rsid == '%s' )" ) % elt ) .str() ;
+				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
+				exclusion += (
+					boost::format( " AND NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
+				).str() ;
 			}
 		}
+		if( options().check( "-incl-rsids" )) {
+			auto elts = options().get_values< std::string >( "-incl-rsids" ) ;
+			inclusion += "OR rsid IN (" ;
+			for( std::size_t i = 0; i < elts.size(); ++i ) {
+				inclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
+			}
+			inclusion += ")" ;
+		}
+		if( options().check( "-excl-rsids" )) {
+			auto elts = options().get_values< std::string >( "-excl-rsids" ) ;
+			exclusion += "AND rsid NOT IN (" ;
+			for( std::size_t i = 0; i < elts.size(); ++i ) {
+				exclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
+			}
+			exclusion += ")" ;
+		}
 		inclusion += ")" ;
-		return result + inclusion + " ORDER BY chromosome, position, rsid, allele1, allele2";
+		exclusion += ")" ;
+		return result + inclusion + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
 	}
 } ;
 
