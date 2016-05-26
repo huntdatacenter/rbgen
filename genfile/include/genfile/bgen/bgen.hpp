@@ -12,6 +12,7 @@
 #include <cassert>
 #include <cmath>
 #include <stdint.h>
+#include <limits>
 //#include "genfile/snp_data_utils.hpp"
 //#include "genfile/get_set.hpp"
 #include "genfile/zlib.hpp"
@@ -1316,7 +1317,7 @@ namespace genfile {
 				m_writer->finalise() ;
 				// Sanity check: did we get the size right?
 				assert( m_writer->repr().first == &(*m_buffer1)[0] ) ;
-				assert( (m_writer->repr().second - m_writer->repr().first) <= m_buffer1->size() && std::size_t(m_writer->repr().second - m_writer->repr().first) <= m_buffer1->size() ) ;
+				assert( (m_writer->repr().second >= m_writer->repr().first) && std::size_t(m_writer->repr().second - m_writer->repr().first) <= m_buffer1->size() ) ;
 				uLongf const uncompressed_data_size = (m_writer->repr().second - m_writer->repr().first) ;
 
 #if DEBUG_BGEN_FORMAT
