@@ -46,8 +46,17 @@ public:
 
 		options[ "-clobber" ]
 			.set_description(
-				"Specify that cat-bgen should overwrite existing index file if it exists."
+				"Specify that bgenix should overwrite existing index file if it exists."
 			)
+		;
+		
+		options[ "-index-table" ]
+			.set_description( "Specify the table that bgenix should read the file index from."
+				"Currently this only affects reading the file.  The named table (or view) should have the"
+				"same schema as the Variant table written by bgenix."
+			)
+			.set_takes_single_value()
+			.set_default_value( "Variant" )
 		;
 		
 		options.declare_group( "Variant selection options" ) ;
@@ -487,7 +496,9 @@ private:
 	}
 
 	std::string get_select_sql() const {
-		std::string result = "SELECT file_start_position, size_in_bytes FROM Variant WHERE " ;
+		std::string result = "SELECT file_start_position, size_in_bytes FROM `"
+			+ options().get_value("-index-table")
+			+ "` WHERE " ;
 		std::string inclusion = "((1==0)" ;
 		std::string exclusion = "((1==1)" ;
 		if( options().check( "-incl-range" )) {
