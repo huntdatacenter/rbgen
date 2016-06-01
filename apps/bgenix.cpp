@@ -38,10 +38,11 @@ public:
 		options.declare_group( "Input / output file options" ) ;
 		options[ "-g" ]
 			.set_description(
-				"Path of bgen file to operate on."
+				"Path of bgen file to operate on.  (An optional form where \"-g\" is omitted and the filename is specified as the first argument, i.e. bgenix <filename>, can also be used)."
 			)
 			.set_takes_single_value()
 			.set_takes_value_by_position(1)
+			.set_is_required()
 		;
 
 		options[ "-clobber" ]
@@ -253,6 +254,10 @@ private:
 			assert( !bfs::exists( index_filename + ".tmp" ) ) ;
 			result = create_bgen_index_unsafe( bgen_filename, index_filename + ".tmp" ) ;
 			bfs::rename( index_filename + ".tmp", index_filename ) ;
+		} catch( db::StatementStepError const& e ) {
+			ui().logger() << "!! Error in \"" << e.spec() << "\": " << e.description() << ".\n" ;
+			bfs::remove( index_filename + ".tmp" ) ;
+			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 		} catch( ... ) {
 			// Remove the incomplete attempt at an index file.
 			bfs::remove( index_filename + ".tmp" ) ;
@@ -355,7 +360,7 @@ private:
 			"  allele2 TEXT NULL,"
 			"  file_start_position INT NOT NULL," // 
 			"  size_in_bytes INT NOT NULL,"       // We put these first to minimise cost of retrieval
-			"  PRIMARY KEY (chromosome, position, rsid )"
+			"  PRIMARY KEY (chromosome, position, rsid, allele1 )"
 			")" + tag
 		) ;
 		
