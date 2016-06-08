@@ -19,7 +19,7 @@
 
 namespace bfs = boost::filesystem ;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
@@ -388,17 +388,22 @@ private:
 #if DEBUG
 		std::cerr << "Running sql: \"" << get_select_sql() << "\"...\n" ;
 #endif
-		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
 		std::vector< std::pair< uint32_t, uint32_t > > positions ;
 		{
-			positions.reserve( 1000000 ) ;
-			std::size_t batch_i = 0 ;
-			for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
-				int64_t const pos = stmt->get< int64_t >( 0 ) ;
-				int64_t const size = stmt->get< int64_t >( 1 ) ;
-				assert( pos >= 0 ) ;
-				assert( size >= 0 ) ;
-				positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( size ))) ;
+			auto progress_context = ui().get_progress_context( "Selecting variants" ) ;
+			ui().logger() << "Selecting variants...\n" ;
+			db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
+			{
+				positions.reserve( 1000000 ) ;
+				std::size_t batch_i = 0 ;
+				for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
+					int64_t const pos = stmt->get< int64_t >( 0 ) ;
+					int64_t const size = stmt->get< int64_t >( 1 ) ;
+					assert( pos >= 0 ) ;
+					assert( size >= 0 ) ;
+					positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( size ))) ;
+					progress_context( positions.size(), boost::optional< std::size_t >() ) ;
+				}
 			}
 		}
 
@@ -429,13 +434,16 @@ private:
 		// Copy everything else up to the start of the data
 		std::copy_n( inIt, offset - context.header_size(), outIt ) ;
 
-		// Now we go for it
-		for( std::size_t i = 0; i < positions.size(); ++i ) {
-			bgen_file.seekg( positions[i].first ) ;
-			std::istreambuf_iterator< char > inIt( bgen_file ) ;
-			std::copy_n( inIt, positions[i].second, outIt ) ;
+		{
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( positions.size() ) + " variants" ) ;
+			// Now we go for it
+			for( std::size_t i = 0; i < positions.size(); ++i ) {
+				bgen_file.seekg( positions[i].first ) ;
+				std::istreambuf_iterator< char > inIt( bgen_file ) ;
+				std::copy_n( inIt, positions[i].second, outIt ) ;
+				progress_context( i+1, positions.size() ) ;
+			}
 		}
-		
 		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
 	}
 	
@@ -499,14 +507,14 @@ private:
 		std::string result = "SELECT file_start_position, size_in_bytes FROM `"
 			+ options().get_value("-index-table")
 			+ "` WHERE " ;
-		std::string inclusion = "((1==0)" ;
+		std::string inclusion = "" ;
 		std::string exclusion = "((1==1)" ;
 		if( options().check( "-incl-range" )) {
 			auto elts = options().get_values< std::string >( "-incl-range" ) ;
 			for( std::string const& elt: elts ) {
 				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
-				inclusion += (
-					boost::format( " OR ( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
+				inclusion += ((inclusion.size() > 0) ? " OR " : "" ) + (
+					boost::format( "( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
 				).str() ;
 			}
 		}
@@ -535,9 +543,9 @@ private:
 			}
 			exclusion += ")" ;
 		}
-		inclusion += ")" ;
+		inclusion = "(" + inclusion + ")" ;
 		exclusion += ")" ;
-		return result + inclusion + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
+		return result + "(" + inclusion + ")" + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
 	}
 } ;
 
