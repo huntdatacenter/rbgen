@@ -54,10 +54,10 @@ public:
 		options[ "-index-table" ]
 			.set_description( "Specify the table that bgenix should read the file index from."
 				"Currently this only affects reading the file.  The named table (or view) should have the"
-				"same schema as the Variant table written by bgenix."
+				"same schema as the ByPosition table written by bgenix."
 			)
 			.set_takes_single_value()
-			.set_default_value( "Variant" )
+			.set_default_value( "ByPosition" )
 		;
 		
 		options.declare_group( "Variant selection options" ) ;
@@ -277,13 +277,8 @@ private:
 		transaction.reset() ;
 
 		db::Connection::StatementPtr insert_variant_stmt = connection->get_statement(
-			"INSERT INTO Variant ( SNPID, rsid, chromosome, position, number_of_alleles, allele1, allele2, file_start_position, size_in_bytes ) "
-			"VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ? )"
-		) ;
-
-		db::Connection::StatementPtr insert_extra_allele_stmt = connection->get_statement(
-			"INSERT INTO ExtraAllele (rsid, chromosome, position, allele_index, allele ) "
-			"VALUES( ?, ?, ?, ?, ? )"
+			"INSERT INTO Variant( chromosome, position, rsid, number_of_alleles, allele1, allele2, file_start_position, size_in_bytes ) "
+			"VALUES( ?, ?, ?, ?, ?, ?, ?, ? )"
 		) ;
 
 		BgenProcessor processor( bgen_filename ) ;
@@ -303,39 +298,53 @@ private:
 			auto progress_context = ui().get_progress_context( "Building BGEN index" ) ;
 			std::size_t variant_count = 0;
 			int64_t file_pos = int64_t( processor.current_position() ) ;
-			while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
-				processor.ignore_probs() ;
-				int64_t file_end_pos = int64_t( processor.current_position() ) ;
-				assert( alleles.size() > 1 ) ;
-				assert( (file_end_pos - file_pos) > 0 ) ;
-				insert_variant_stmt
-					->bind( 1, SNPID )
-					.bind( 2, rsid )
-					.bind( 3, chromosome )
-					.bind( 4, position )
-					.bind( 5, uint32_t( alleles.size() ))
-					.bind( 6, alleles[0] )
-					.bind( 7, alleles[1] )
-					.bind( 8, file_pos )
-					.bind( 9, file_end_pos - file_pos )
-					.step()
-				;
-				insert_variant_stmt->reset() ;
-			
-				progress_context( ++variant_count, processor.number_of_variants() ) ;
+			try {
+				while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
+					processor.ignore_probs() ;
+					int64_t file_end_pos = int64_t( processor.current_position() ) ;
+					assert( alleles.size() > 1 ) ;
+					assert( (file_end_pos - file_pos) > 0 ) ;
+#if DEBUG
+					std::cerr << chromosome << " " << position << " " << rsid << " " << file_pos << ".\n" ;
+#endif
+					insert_variant_stmt
+						->bind( 1, chromosome )
+						.bind( 2, position )
+						.bind( 3, rsid )
+						.bind( 4, alleles.size() )
+						.bind( 5, alleles[0] )
+						.bind( 6, alleles[1] )
+						.bind( 7, file_pos )
+						.bind( 8, file_end_pos - file_pos )
+						.step()
+					;
+					insert_variant_stmt->reset() ;
+				
+					progress_context( ++variant_count, processor.number_of_variants() ) ;
 			
 				// Make sure and commit every 10000 SNPs.
-				if( variant_count % chunk_size == 0 ) {
-	//				ui().logger()
-	//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
-				
-					transaction.reset() ;
-					transaction = connection->open_transaction( 240 ) ;
+					if( variant_count % chunk_size == 0 ) {
+		//				ui().logger()
+		//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
+					
+						transaction.reset() ;
+						transaction = connection->open_transaction( 240 ) ;
+					}
+					file_pos = file_end_pos ;
 				}
-				file_pos = file_end_pos ;
+			}
+			catch( db::StatementStepError const& e ) {
+				ui().logger() << "Last observed variant was " << SNPID << " " << rsid << " " << chromosome << " " << position ;
+				for( std::size_t i = 0; i < alleles.size(); ++i ) {
+					ui().logger() << " " << alleles[i] ;
+				}
+				ui().logger() << "\n" ;
+				throw ;
 			}
 		}
-		{
+		/*
+                {
+         
 			auto progress_context = ui().get_progress_context( "Creating indices" ) ;
 			progress_context( 0, 1 ) ;
 			connection->run_statement(
@@ -343,6 +352,7 @@ private:
 			) ;
 			progress_context( 1, 1 ) ;
 		}
+		*/
 		return connection ;
 	}
 	
@@ -353,29 +363,15 @@ private:
 			"CREATE TABLE Variant ("
 			"  chromosome TEXT NOT NULL,"
 			"  position INT NOT NULL,"
-			"  SNPID TEXT NOT NULL,"
 			"  rsid TEXT NOT NULL,"
 			"  number_of_alleles INT NOT NULL,"
-			"  allele1 TEXT NOT NULL,"
-			"  allele2 TEXT NULL,"
+			"  allele1 TEXT,"
+			"  allele2 TEXT,"
 			"  file_start_position INT NOT NULL," // 
 			"  size_in_bytes INT NOT NULL,"       // We put these first to minimise cost of retrieval
-			"  PRIMARY KEY (chromosome, position, rsid, allele1 )"
+			"  PRIMARY KEY (chromosome, position, file_start_position )"
 			")" + tag
 		) ;
-		
-		connection.run_statement(
-			"CREATE TABLE ExtraAllele ("
-			"  rsid TEXT NOT NULL,"
-			"  chromosome TEXT NOT NULL,"
-			"  position INT NOT NULL,"
-			"  allele_index INT NOT NULL,"
-			"  allele TEXT NOT NULL,"
-			"  PRIMARY KEY (chromosome, position, rsid, allele_index ),"
-			"  FOREIGN KEY (chromosome, position, rsid) REFERENCES Variant(chromosome, position, rsid)"
-			")" + tag
-		) ;
-
 	}
 	
 	void process_selection( std::string const& bgen_filename, std::string const& index_filename ) const {
