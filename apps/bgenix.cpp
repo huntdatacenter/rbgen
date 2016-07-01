@@ -19,7 +19,7 @@
 
 namespace bfs = boost::filesystem ;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
@@ -391,8 +391,10 @@ private:
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read" ) ;
 
 #if DEBUG
+		std::cerr << "Processing...\n" ;
 		std::cerr << "Running sql: \"" << get_select_sql() << "\"...\n" ;
 #endif
+		ui().logger() << "Reading index...\n" ;
 		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
 		std::vector< std::pair< uint32_t, uint32_t > > positions ;
 		{
@@ -418,6 +420,7 @@ private:
 		std::ifstream bgen_file( bgen_filename, std::ios::binary ) ;
 		uint32_t offset = 0 ;
 
+		auto progress_context = ui().get_progress_context( "Outputting BGEN file for " + std::to_string( positions.size() ) + " variants" ) ;
 		using namespace genfile ;
 		bgen::Context context ;
 		bgen::read_offset( bgen_file, &offset ) ;
@@ -439,6 +442,7 @@ private:
 			bgen_file.seekg( positions[i].first ) ;
 			std::istreambuf_iterator< char > inIt( bgen_file ) ;
 			std::copy_n( inIt, positions[i].second, outIt ) ;
+			progress_context( i+1, positions.size() ) ;
 		}
 		
 		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
@@ -526,6 +530,9 @@ private:
 		}
 		if( options().check( "-incl-rsids" )) {
 			auto elts = options().get_values< std::string >( "-incl-rsids" ) ;
+#if DEBUG
+			std::cerr << "Adding " << elts.size() << " included regions...\n" ;
+#endif
 			inclusion += "OR rsid IN (" ;
 			for( std::size_t i = 0; i < elts.size(); ++i ) {
 				inclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
