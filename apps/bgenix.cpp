@@ -12,6 +12,7 @@
 #include <boost/tuple/tuple.hpp>
 #include "appcontext/CmdLineOptionProcessor.hpp"
 #include "appcontext/ApplicationContext.hpp"
+#include "appcontext/get_current_time_as_string.hpp"
 #include "genfile/bgen/bgen.hpp"
 #include "db/Connection.hpp"
 #include "db/SQLStatement.hpp"
@@ -19,7 +20,7 @@
 
 namespace bfs = boost::filesystem ;
 
-#define DEBUG 1
+// #define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
@@ -51,10 +52,10 @@ public:
 			)
 		;
 		
-		options[ "-index-table" ]
-			.set_description( "Specify the table that bgenix should read the file index from."
-				"Currently this only affects reading the file.  The named table (or view) should have the"
-				"same schema as the Variant table written by bgenix."
+		options[ "-table" ]
+			.set_description( "Specify the table (or view) that bgenix should read the file index from."
+				"This only affects reading the index file.  The named table or view should have the"
+				"same schema as the Variant table written by bgenix on index creation."
 			)
 			.set_takes_single_value()
 			.set_default_value( "Variant" )
@@ -277,13 +278,8 @@ private:
 		transaction.reset() ;
 
 		db::Connection::StatementPtr insert_variant_stmt = connection->get_statement(
-			"INSERT INTO Variant ( SNPID, rsid, chromosome, position, number_of_alleles, allele1, allele2, file_start_position, size_in_bytes ) "
-			"VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ? )"
-		) ;
-
-		db::Connection::StatementPtr insert_extra_allele_stmt = connection->get_statement(
-			"INSERT INTO ExtraAllele (rsid, chromosome, position, allele_index, allele ) "
-			"VALUES( ?, ?, ?, ?, ? )"
+			"INSERT INTO Variant( chromosome, position, rsid, number_of_alleles, allele1, allele2, file_start_position, size_in_bytes ) "
+			"VALUES( ?, ?, ?, ?, ?, ?, ?, ? )"
 		) ;
 
 		BgenProcessor processor( bgen_filename ) ;
@@ -303,45 +299,49 @@ private:
 			auto progress_context = ui().get_progress_context( "Building BGEN index" ) ;
 			std::size_t variant_count = 0;
 			int64_t file_pos = int64_t( processor.current_position() ) ;
-			while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
-				processor.ignore_probs() ;
-				int64_t file_end_pos = int64_t( processor.current_position() ) ;
-				assert( alleles.size() > 1 ) ;
-				assert( (file_end_pos - file_pos) > 0 ) ;
-				insert_variant_stmt
-					->bind( 1, SNPID )
-					.bind( 2, rsid )
-					.bind( 3, chromosome )
-					.bind( 4, position )
-					.bind( 5, uint32_t( alleles.size() ))
-					.bind( 6, alleles[0] )
-					.bind( 7, alleles[1] )
-					.bind( 8, file_pos )
-					.bind( 9, file_end_pos - file_pos )
-					.step()
-				;
-				insert_variant_stmt->reset() ;
-			
-				progress_context( ++variant_count, processor.number_of_variants() ) ;
+			try {
+				while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
+					processor.ignore_probs() ;
+					int64_t file_end_pos = int64_t( processor.current_position() ) ;
+					assert( alleles.size() > 1 ) ;
+					assert( (file_end_pos - file_pos) > 0 ) ;
+#if DEBUG
+					std::cerr << chromosome << " " << position << " " << rsid << " " << file_pos << ".\n" ;
+#endif
+					insert_variant_stmt
+						->bind( 1, chromosome )
+						.bind( 2, position )
+						.bind( 3, rsid )
+						.bind( 4, int64_t( alleles.size() ) )
+						.bind( 5, alleles[0] )
+						.bind( 6, alleles[1] )
+						.bind( 7, file_pos )
+						.bind( 8, file_end_pos - file_pos )
+						.step()
+					;
+					insert_variant_stmt->reset() ;
+				
+					progress_context( ++variant_count, processor.number_of_variants() ) ;
 			
 				// Make sure and commit every 10000 SNPs.
-				if( variant_count % chunk_size == 0 ) {
-	//				ui().logger()
-	//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
-				
-					transaction.reset() ;
-					transaction = connection->open_transaction( 240 ) ;
+					if( variant_count % chunk_size == 0 ) {
+		//				ui().logger()
+		//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
+					
+						transaction.reset() ;
+						transaction = connection->open_transaction( 240 ) ;
+					}
+					file_pos = file_end_pos ;
 				}
-				file_pos = file_end_pos ;
 			}
-		}
-		{
-			auto progress_context = ui().get_progress_context( "Creating indices" ) ;
-			progress_context( 0, 1 ) ;
-			connection->run_statement(
-				"CREATE INDEX VariantRsidIndex ON Variant( rsid )"
-			) ;
-			progress_context( 1, 1 ) ;
+			catch( db::StatementStepError const& e ) {
+				ui().logger() << "Last observed variant was " << SNPID << " " << rsid << " " << chromosome << " " << position ;
+				for( std::size_t i = 0; i < alleles.size(); ++i ) {
+					ui().logger() << " " << alleles[i] ;
+				}
+				ui().logger() << "\n" ;
+				throw ;
+			}
 		}
 		return connection ;
 	}
@@ -353,29 +353,15 @@ private:
 			"CREATE TABLE Variant ("
 			"  chromosome TEXT NOT NULL,"
 			"  position INT NOT NULL,"
-			"  SNPID TEXT NOT NULL,"
 			"  rsid TEXT NOT NULL,"
 			"  number_of_alleles INT NOT NULL,"
 			"  allele1 TEXT NOT NULL,"
 			"  allele2 TEXT NULL,"
 			"  file_start_position INT NOT NULL," // 
 			"  size_in_bytes INT NOT NULL,"       // We put these first to minimise cost of retrieval
-			"  PRIMARY KEY (chromosome, position, rsid, allele1 )"
+			"  PRIMARY KEY (chromosome, position, rsid, allele1, allele2, file_start_position )"
 			")" + tag
 		) ;
-		
-		connection.run_statement(
-			"CREATE TABLE ExtraAllele ("
-			"  rsid TEXT NOT NULL,"
-			"  chromosome TEXT NOT NULL,"
-			"  position INT NOT NULL,"
-			"  allele_index INT NOT NULL,"
-			"  allele TEXT NOT NULL,"
-			"  PRIMARY KEY (chromosome, position, rsid, allele_index ),"
-			"  FOREIGN KEY (chromosome, position, rsid) REFERENCES Variant(chromosome, position, rsid)"
-			")" + tag
-		) ;
-
 	}
 	
 	void process_selection( std::string const& bgen_filename, std::string const& index_filename ) const {
@@ -391,21 +377,24 @@ private:
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read" ) ;
 
 #if DEBUG
-		std::cerr << "Processing...\n" ;
 		std::cerr << "Running sql: \"" << get_select_sql() << "\"...\n" ;
 #endif
-		ui().logger() << "Reading index...\n" ;
-		db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
-		std::vector< std::pair< uint32_t, uint32_t > > positions ;
+		std::vector< std::pair< int64_t, int64_t> > positions ;
 		{
-			positions.reserve( 1000000 ) ;
-			std::size_t batch_i = 0 ;
-			for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
-				int64_t const pos = stmt->get< int64_t >( 0 ) ;
-				int64_t const size = stmt->get< int64_t >( 1 ) ;
-				assert( pos >= 0 ) ;
-				assert( size >= 0 ) ;
-				positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( size ))) ;
+			auto progress_context = ui().get_progress_context( "Selecting variants" ) ;
+			progress_context( 0, boost::optional< std::size_t >() ) ;
+			db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
+			{
+				positions.reserve( 1000000 ) ;
+				std::size_t batch_i = 0 ;
+				for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
+					int64_t const pos = stmt->get< int64_t >( 0 ) ;
+					int64_t const size = stmt->get< int64_t >( 1 ) ;
+					assert( pos >= 0 ) ;
+					assert( size >= 0 ) ;
+					positions.push_back( std::make_pair( int64_t( pos ), int64_t( size ))) ;
+					progress_context( positions.size(), boost::optional< std::size_t >() ) ;
+				}
 			}
 		}
 
@@ -416,11 +405,10 @@ private:
 		}
 	}
 
-	void process_selection_bgen( std::string const& bgen_filename, std::vector< std::pair< uint32_t, uint32_t > > const& positions ) const {
+	void process_selection_bgen( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
 		std::ifstream bgen_file( bgen_filename, std::ios::binary ) ;
 		uint32_t offset = 0 ;
 
-		auto progress_context = ui().get_progress_context( "Outputting BGEN file for " + std::to_string( positions.size() ) + " variants" ) ;
 		using namespace genfile ;
 		bgen::Context context ;
 		bgen::read_offset( bgen_file, &offset ) ;
@@ -437,20 +425,22 @@ private:
 		// Copy everything else up to the start of the data
 		std::copy_n( inIt, offset - context.header_size(), outIt ) ;
 
-		// Now we go for it
-		for( std::size_t i = 0; i < positions.size(); ++i ) {
-			bgen_file.seekg( positions[i].first ) ;
-			std::istreambuf_iterator< char > inIt( bgen_file ) ;
-			std::copy_n( inIt, positions[i].second, outIt ) ;
-			progress_context( i+1, positions.size() ) ;
+		{
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( positions.size() ) + " variants" ) ;
+			// Now we go for it
+			for( std::size_t i = 0; i < positions.size(); ++i ) {
+				bgen_file.seekg( positions[i].first ) ;
+				std::istreambuf_iterator< char > inIt( bgen_file ) ;
+				std::copy_n( inIt, positions[i].second, outIt ) ;
+				progress_context( i+1, positions.size() ) ;
+			}
 		}
-		
 		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
 	}
 	
-	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< uint32_t, uint32_t > > const& positions ) const {
+	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
 		BgenProcessor processor( bgen_filename ) ;
-		std::cout << boost::format( "# %s: started\n" ) % globals::program_name ;
+		std::cout << boost::format( "# %s: started %s\n" ) % globals::program_name % appcontext::get_current_time_as_string() ;
 		std::cout << "alternate_ids\trsid\tchromosome\tposition\tnumber_of_alleles\tfirst_allele\talternative_alleles\n" ;
 		
 		std::string SNPID, rsid, chromosome ;
@@ -473,7 +463,7 @@ private:
 			processor.ignore_probs() ;
 		}
 		
-		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
+		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
 	}
 
 	boost::tuple< std::string, uint32_t, uint32_t > parse_range( std::string const& spec ) const {
@@ -506,16 +496,16 @@ private:
 
 	std::string get_select_sql() const {
 		std::string result = "SELECT file_start_position, size_in_bytes FROM `"
-			+ options().get_value("-index-table")
+			+ options().get_value("-table")
 			+ "` WHERE " ;
-		std::string inclusion = "((1==0)" ;
+		std::string inclusion = "" ;
 		std::string exclusion = "((1==1)" ;
 		if( options().check( "-incl-range" )) {
 			auto elts = options().get_values< std::string >( "-incl-range" ) ;
 			for( std::string const& elt: elts ) {
 				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
-				inclusion += (
-					boost::format( " OR ( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
+				inclusion += ((inclusion.size() > 0) ? " OR " : "" ) + (
+					boost::format( "( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
 				).str() ;
 			}
 		}
@@ -530,10 +520,7 @@ private:
 		}
 		if( options().check( "-incl-rsids" )) {
 			auto elts = options().get_values< std::string >( "-incl-rsids" ) ;
-#if DEBUG
-			std::cerr << "Adding " << elts.size() << " included regions...\n" ;
-#endif
-			inclusion += "OR rsid IN (" ;
+			inclusion += std::string(( inclusion.size() > 0 ) ? "OR " : "" ) + "rsid IN (" ;
 			for( std::size_t i = 0; i < elts.size(); ++i ) {
 				inclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
 			}
@@ -547,7 +534,7 @@ private:
 			}
 			exclusion += ")" ;
 		}
-		inclusion += ")" ;
+		inclusion = "(" + inclusion + ")" ;
 		exclusion += ")" ;
 		return result + inclusion + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
 	}
