@@ -19,7 +19,7 @@
 
 namespace bfs = boost::filesystem ;
 
-#define DEBUG 1
+// #define DEBUG 1
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
@@ -51,13 +51,13 @@ public:
 			)
 		;
 		
-		options[ "-index-table" ]
-			.set_description( "Specify the table that bgenix should read the file index from."
-				"Currently this only affects reading the file.  The named table (or view) should have the"
-				"same schema as the ByPosition table written by bgenix."
+		options[ "-table" ]
+			.set_description( "Specify the table (or view) that bgenix should read the file index from."
+				"This only affects reading the index file.  The named table or view should have the"
+				"same schema as the Variant table written by bgenix on index creation."
 			)
 			.set_takes_single_value()
-			.set_default_value( "ByPosition" )
+			.set_default_value( "Variant" )
 		;
 		
 		options.declare_group( "Variant selection options" ) ;
@@ -342,17 +342,6 @@ private:
 				throw ;
 			}
 		}
-		/*
-                {
-         
-			auto progress_context = ui().get_progress_context( "Creating indices" ) ;
-			progress_context( 0, 1 ) ;
-			connection->run_statement(
-				"CREATE INDEX VariantRsidIndex ON Variant( rsid )"
-			) ;
-			progress_context( 1, 1 ) ;
-		}
-		*/
 		return connection ;
 	}
 	
@@ -369,7 +358,7 @@ private:
 			"  allele2 TEXT NULL,"
 			"  file_start_position INT NOT NULL," // 
 			"  size_in_bytes INT NOT NULL,"       // We put these first to minimise cost of retrieval
-			"  PRIMARY KEY (chromosome, position, file_start_position )"
+			"  PRIMARY KEY (chromosome, position, rsid, allele1, allele2, file_start_position )"
 			")" + tag
 		) ;
 	}
@@ -389,7 +378,7 @@ private:
 #if DEBUG
 		std::cerr << "Running sql: \"" << get_select_sql() << "\"...\n" ;
 #endif
-		std::vector< std::pair< uint32_t, uint32_t > > positions ;
+		std::vector< std::pair< int64_t, int64_t> > positions ;
 		{
 			auto progress_context = ui().get_progress_context( "Selecting variants" ) ;
 			ui().logger() << "Selecting variants...\n" ;
@@ -402,7 +391,7 @@ private:
 					int64_t const size = stmt->get< int64_t >( 1 ) ;
 					assert( pos >= 0 ) ;
 					assert( size >= 0 ) ;
-					positions.push_back( std::make_pair( uint32_t( pos ), uint32_t( size ))) ;
+					positions.push_back( std::make_pair( int64_t( pos ), int64_t( size ))) ;
 					progress_context( positions.size(), boost::optional< std::size_t >() ) ;
 				}
 			}
@@ -415,7 +404,7 @@ private:
 		}
 	}
 
-	void process_selection_bgen( std::string const& bgen_filename, std::vector< std::pair< uint32_t, uint32_t > > const& positions ) const {
+	void process_selection_bgen( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
 		std::ifstream bgen_file( bgen_filename, std::ios::binary ) ;
 		uint32_t offset = 0 ;
 
@@ -448,7 +437,7 @@ private:
 		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
 	}
 	
-	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< uint32_t, uint32_t > > const& positions ) const {
+	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
 		BgenProcessor processor( bgen_filename ) ;
 		std::cout << boost::format( "# %s: started\n" ) % globals::program_name ;
 		std::cout << "alternate_ids\trsid\tchromosome\tposition\tnumber_of_alleles\tfirst_allele\talternative_alleles\n" ;
@@ -506,7 +495,7 @@ private:
 
 	std::string get_select_sql() const {
 		std::string result = "SELECT file_start_position, size_in_bytes FROM `"
-			+ options().get_value("-index-table")
+			+ options().get_value("-table")
 			+ "` WHERE " ;
 		std::string inclusion = "" ;
 		std::string exclusion = "((1==1)" ;
@@ -530,7 +519,7 @@ private:
 		}
 		if( options().check( "-incl-rsids" )) {
 			auto elts = options().get_values< std::string >( "-incl-rsids" ) ;
-			inclusion += "OR rsid IN (" ;
+			inclusion += std::string(( inclusion.size() > 0 ) ? "OR " : "" ) + "rsid IN (" ;
 			for( std::size_t i = 0; i < elts.size(); ++i ) {
 				inclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
 			}
@@ -546,7 +535,7 @@ private:
 		}
 		inclusion = "(" + inclusion + ")" ;
 		exclusion += ")" ;
-		return result + "(" + inclusion + ")" + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
+		return result + inclusion + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
 	}
 } ;
 
