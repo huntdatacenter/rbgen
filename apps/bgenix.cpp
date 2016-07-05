@@ -12,6 +12,7 @@
 #include <boost/tuple/tuple.hpp>
 #include "appcontext/CmdLineOptionProcessor.hpp"
 #include "appcontext/ApplicationContext.hpp"
+#include "appcontext/get_current_time_as_string.hpp"
 #include "genfile/bgen/bgen.hpp"
 #include "db/Connection.hpp"
 #include "db/SQLStatement.hpp"
@@ -381,7 +382,7 @@ private:
 		std::vector< std::pair< int64_t, int64_t> > positions ;
 		{
 			auto progress_context = ui().get_progress_context( "Selecting variants" ) ;
-			ui().logger() << "Selecting variants...\n" ;
+			progress_context( 0, boost::optional< std::size_t >() ) ;
 			db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
 			{
 				positions.reserve( 1000000 ) ;
@@ -439,7 +440,7 @@ private:
 	
 	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
 		BgenProcessor processor( bgen_filename ) ;
-		std::cout << boost::format( "# %s: started\n" ) % globals::program_name ;
+		std::cout << boost::format( "# %s: started %s\n" ) % globals::program_name % appcontext::get_current_time_as_string() ;
 		std::cout << "alternate_ids\trsid\tchromosome\tposition\tnumber_of_alleles\tfirst_allele\talternative_alleles\n" ;
 		
 		std::string SNPID, rsid, chromosome ;
@@ -462,7 +463,7 @@ private:
 			processor.ignore_probs() ;
 		}
 		
-		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
+		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
 	}
 
 	boost::tuple< std::string, uint32_t, uint32_t > parse_range( std::string const& spec ) const {
