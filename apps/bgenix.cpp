@@ -312,7 +312,7 @@ private:
 						->bind( 1, chromosome )
 						.bind( 2, position )
 						.bind( 3, rsid )
-						.bind( 4, alleles.size() )
+						.bind( 4, int64_t( alleles.size() ) )
 						.bind( 5, alleles[0] )
 						.bind( 6, alleles[1] )
 						.bind( 7, file_pos )
