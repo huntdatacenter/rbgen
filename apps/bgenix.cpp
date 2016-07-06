@@ -55,7 +55,7 @@ public:
 		options[ "-table" ]
 			.set_description( "Specify the table (or view) that bgenix should read the file index from."
 				"This only affects reading the index file.  The named table or view should have the"
-				"same schema as the Variant table written by bgenix on index creation."
+				" same schema as the Variant table written by bgenix on index creation."
 			)
 			.set_takes_single_value()
 			.set_default_value( "Variant" )
