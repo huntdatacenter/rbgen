@@ -4,7 +4,7 @@ BGEN reference implementation
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++, 
 originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  In addition two applications - `bgenix`, which indexes BGEN files, and `cat-bgen` which efficiently concatenates BGEN files - are provided.  See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation on these programs.
 
-A utility program, `bgen_to_vcf`, is also provided as an example; as the name suggests it converts a BGEN file to VCF.  This is intended as an example program that shows how to use the BGEN file reading API.
+A utility program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  This is intended as an example program that shows how to use the BGEN file reading API.
 
 License
 ========
