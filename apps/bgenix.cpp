@@ -375,15 +375,15 @@ private:
 
 	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) const {
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read" ) ;
-
+		std::string const& select_sql = get_select_sql( *connection ) ;
 #if DEBUG
-		std::cerr << "Running sql: \"" << get_select_sql() << "\"...\n" ;
+		std::cerr << "Running sql: \"" << select_sql << "\"...\n" ;
 #endif
 		std::vector< std::pair< int64_t, int64_t> > positions ;
 		{
 			auto progress_context = ui().get_progress_context( "Selecting variants" ) ;
 			progress_context( 0, boost::optional< std::size_t >() ) ;
-			db::Connection::StatementPtr stmt = connection->get_statement( get_select_sql() ) ;
+			db::Connection::StatementPtr stmt = connection->get_statement( select_sql ) ;
 			{
 				positions.reserve( 1000000 ) ;
 				std::size_t batch_i = 0 ;
@@ -494,12 +494,13 @@ private:
 		return boost::make_tuple( chromosome, uint32_t( pos1 ), uint32_t( pos2 ) ) ;
 	}
 
-	std::string get_select_sql() const {
+	std::string get_select_sql( db::Connection& connection ) const {
 		std::string result = "SELECT file_start_position, size_in_bytes FROM `"
 			+ options().get_value("-table")
-			+ "` WHERE " ;
+			+ "` V" ;
+		std::string join ;
 		std::string inclusion = "" ;
-		std::string exclusion = "((1==1)" ;
+		std::string exclusion = "" ;
 		if( options().check( "-incl-range" )) {
 			auto elts = options().get_values< std::string >( "-incl-range" ) ;
 			for( std::string const& elt: elts ) {
@@ -513,31 +514,65 @@ private:
 			auto elts = options().get_values< std::string >( "-excl-range" ) ;
 			for( std::string const& elt: elts ) {
 				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
-				exclusion += (
-					boost::format( " AND NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
+				exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + (
+					boost::format( " NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
 				).str() ;
 			}
 		}
 		if( options().check( "-incl-rsids" )) {
-			auto elts = options().get_values< std::string >( "-incl-rsids" ) ;
-			inclusion += std::string(( inclusion.size() > 0 ) ? "OR " : "" ) + "rsid IN (" ;
-			for( std::size_t i = 0; i < elts.size(); ++i ) {
-				inclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
+			auto const ids = collect_unique_ids( options().get_values< std::string >( "-incl-rsids" ));
+			connection.run_statement( "CREATE TEMP TABLE tmpIncludedId( rsid TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
+			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpIncludedId( rsid ) VALUES( ? )" ) ;
+			for( auto elt: ids ) {
+				insert_stmt
+					->bind( 1, elt )
+					.step() ;
+				insert_stmt->reset() ;
 			}
-			inclusion += ")" ;
+			join += " INNER JOIN tmpIncludedId T1 ON T1.rsid == V.rsid" ;
 		}
 		if( options().check( "-excl-rsids" )) {
-			auto elts = options().get_values< std::string >( "-excl-rsids" ) ;
-			exclusion += "AND rsid NOT IN (" ;
-			for( std::size_t i = 0; i < elts.size(); ++i ) {
-				exclusion += (i>0?",": "") + ( boost::format( "'%s'" ) % elts[i] ).str() ;
+			auto const ids = collect_unique_ids( options().get_values< std::string >( "-incl-rsids" ));
+			connection.run_statement( "CREATE TEMP TABLE tmpExcludedId( rsid TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
+			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpExcludedId( rsid ) VALUES( ? )" ) ;
+			for( auto elt: ids ) {
+				insert_stmt
+					->bind( 1, elt )
+					.step() ;
+				insert_stmt->reset() ;
 			}
-			exclusion += ")" ;
+			join += " LEFT OUTER JOIN tmpExcludedId TE ON TE.rsid == V.rsid" ;
+			exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.rsid IS NULL" ) ;
 		}
 		inclusion = "(" + inclusion + ")" ;
-		exclusion += ")" ;
-		return result + inclusion + " AND " + exclusion + " ORDER BY chromosome, position, rsid, allele1, allele2" ;
+		exclusion += "(" + exclusion + ")" ;
+		std::string const where = "WHERE " + inclusion + " AND " + exclusion ;
+		std::string const orderBy = "ORDER BY chromosome, position, rsid, allele1, allele2" ;
+		return result + " " + join + " " + where +  inclusion + " AND " + exclusion + " " + orderBy ;
 	}
+	
+	std::vector< std::string > collect_unique_ids( std::vector< std::string > const& ids_or_filenames ) const {
+		std::vector< std::string > result ;
+		for( auto elt: ids_or_filenames ) {
+			if( bfs::exists( elt )) {
+				std::ifstream f( elt ) ;
+				std::copy(
+					std::istream_iterator< std::string >( f ),
+					std::istream_iterator< std::string >(),
+					std::back_inserter< std::vector< std::string > >( result )
+				) ;
+			} else {
+				result.push_back( elt ) ;
+			}
+		}
+		// now sort and uniqueify them...
+		std::sort( result.begin(), result.end() ) ;
+		std::vector< std::string >::const_iterator newBack = std::unique( result.begin(), result.end() ) ;
+		result.resize( newBack - result.begin() ) ;
+		return result ;
+	}
+
+	
 } ;
 
 int main( int argc, char** argv ) {
