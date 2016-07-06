@@ -521,34 +521,34 @@ private:
 		}
 		if( options().check( "-incl-rsids" )) {
 			auto const ids = collect_unique_ids( options().get_values< std::string >( "-incl-rsids" ));
-			connection.run_statement( "CREATE TEMP TABLE tmpIncludedId( rsid TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
-			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpIncludedId( rsid ) VALUES( ? )" ) ;
+			connection.run_statement( "CREATE TEMP TABLE tmpIncludedId( identifier TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
+			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpIncludedId( identifier ) VALUES( ? )" ) ;
 			for( auto elt: ids ) {
 				insert_stmt
 					->bind( 1, elt )
 					.step() ;
 				insert_stmt->reset() ;
 			}
-			join += " INNER JOIN tmpIncludedId T1 ON T1.rsid == V.rsid" ;
+			join += " INNER JOIN tmpIncludedId TI ON TI.identifier == V.rsid" ;
 		}
 		if( options().check( "-excl-rsids" )) {
-			auto const ids = collect_unique_ids( options().get_values< std::string >( "-incl-rsids" ));
-			connection.run_statement( "CREATE TEMP TABLE tmpExcludedId( rsid TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
-			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpExcludedId( rsid ) VALUES( ? )" ) ;
+			auto const ids = collect_unique_ids( options().get_values< std::string >( "-excl-rsids" ));
+			connection.run_statement( "CREATE TEMP TABLE tmpExcludedId( identifier TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
+			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpExcludedId( identifier ) VALUES( ? )" ) ;
 			for( auto elt: ids ) {
 				insert_stmt
 					->bind( 1, elt )
 					.step() ;
 				insert_stmt->reset() ;
 			}
-			join += " LEFT OUTER JOIN tmpExcludedId TE ON TE.rsid == V.rsid" ;
-			exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.rsid IS NULL" ) ;
+			join += " LEFT OUTER JOIN tmpExcludedId TE ON TE.identifier == V.rsid" ;
+			exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.identifier IS NULL" ) ;
 		}
-		inclusion = "(" + inclusion + ")" ;
-		exclusion += "(" + exclusion + ")" ;
-		std::string const where = "WHERE " + inclusion + " AND " + exclusion ;
+		inclusion = ( inclusion.size() > 0 ) ? ("(" + inclusion + ")") : "" ;
+		exclusion = ((inclusion.size() > 0 ) ? "AND " : "" ) + (( exclusion.size() > 0 ) ? ("(" + exclusion + ")") : "" ) ;
+		std::string const where = (inclusion.size() > 0 || exclusion.size() > 0) ? ("WHERE " + inclusion + exclusion) : "" ;
 		std::string const orderBy = "ORDER BY chromosome, position, rsid, allele1, allele2" ;
-		return result + " " + join + " " + where +  inclusion + " AND " + exclusion + " " + orderBy ;
+		return result + " " + join + " " + where + " " + orderBy ;
 	}
 	
 	std::vector< std::string > collect_unique_ids( std::vector< std::string > const& ids_or_filenames ) const {
