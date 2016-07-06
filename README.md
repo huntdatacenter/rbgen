@@ -50,9 +50,9 @@ If all goes well a message like `All tests passed` should be printed.
 The example program `bgen_to_vcf` reads a bgen file (v1.1 or v1.2) and outputs it as a VCF file to stdout.  You can try running it
 by typing
 ```sh
-./build/example/bgen_to_vcf file.bgen
+./build/example/bgen_to_vcf example/example.8bits.bgen
 ```
-which should output vcf-formatted data to stdout.  We've provided example bgen files in the `example/` subdirectory.
+which should output vcf-formatted data to stdout.  We've provided further example bgen files in the `example/` subdirectory.
 
 Apps
 =====
