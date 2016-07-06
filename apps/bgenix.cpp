@@ -452,6 +452,12 @@ private:
 			bool success = processor.read_variant(
 				&SNPID, &rsid, &chromosome, &position, &alleles
 			) ;
+			if( SNPID.empty() ) {
+				SNPID = "." ;
+			}
+			if( rsid.empty() ) {
+				rsid = "." ;
+			}
 			std::cout << SNPID << "\t" << rsid << "\t" << chromosome << "\t" << position << "\t" << alleles.size() << "\t" << alleles[0] << "\t" ;
 			for( std::size_t allele_i = 1; allele_i < alleles.size(); ++allele_i ) {
 				std::cout << (( allele_i > 1 ) ? "," : "" ) << alleles[allele_i] ;
@@ -529,7 +535,8 @@ private:
 					.step() ;
 				insert_stmt->reset() ;
 			}
-			join += " INNER JOIN tmpIncludedId TI ON TI.identifier == V.rsid" ;
+			join += " LEFT OUTER JOIN tmpIncludedId TI ON TI.identifier == V.rsid" ;
+			inclusion += ( inclusion.size() > 0 ? " OR" : "" ) + std::string( " TI.identifier IS NOT NULL" ) ;
 		}
 		if( options().check( "-excl-rsids" )) {
 			auto const ids = collect_unique_ids( options().get_values< std::string >( "-excl-rsids" ));
@@ -545,7 +552,7 @@ private:
 			exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.identifier IS NULL" ) ;
 		}
 		inclusion = ( inclusion.size() > 0 ) ? ("(" + inclusion + ")") : "" ;
-		exclusion = ((inclusion.size() > 0 ) ? "AND " : "" ) + (( exclusion.size() > 0 ) ? ("(" + exclusion + ")") : "" ) ;
+		exclusion = ((inclusion.size() > 0 && exclusion.size() > 0 ) ? "AND " : "" ) + (( exclusion.size() > 0 ) ? ("(" + exclusion + ")") : "" ) ;
 		std::string const where = (inclusion.size() > 0 || exclusion.size() > 0) ? ("WHERE " + inclusion + exclusion) : "" ;
 		std::string const orderBy = "ORDER BY chromosome, position, rsid, allele1, allele2" ;
 		return result + " " + join + " " + where + " " + orderBy ;
