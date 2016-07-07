@@ -6,6 +6,16 @@ originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) imple
 
 A utility program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  Currently this is mainly intended as an example program that shows how to use the BGEN file reading API.
 
+Apps
+=====
+
+The following programs are currently built with the BGEN repository.
+
+* [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
+* [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
+
+Click on the names to see the wiki pages.
+
 License
 ========
 This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
@@ -45,16 +55,6 @@ by typing
 ./build/example/bgen_to_vcf example/example.8bits.bgen
 ```
 which should output vcf-formatted data to stdout.  We've provided further example bgen files in the `example/` subdirectory.
-
-Apps
-=====
-
-The following programs are currently built with the BGEN repository.
-
-* [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
-* [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
-
-Click on the names to see the wiki pages.
 
 Branches
 ========
