@@ -20,11 +20,6 @@ Use mercurial to download the master branch as follows:
 hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
 ```
 
-Branches
-========
-
-This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.  The command given above downloads the master branch, which is what most people will want.
-
 Compilation
 =====
 
@@ -60,6 +55,11 @@ The following programs are currently built with the BGEN repository.
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
 
 Click on the names to see the wiki pages.
+
+Branches
+========
+
+This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.  The command given above downloads the master branch, which is what most people will want.
 
 More information
 =====
