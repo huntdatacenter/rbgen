@@ -26,12 +26,7 @@ hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
 Compilation
 =====
 
-To compile the code, either use make:
-```sh
-make
-```
-
-Or use the supplied waf build tool:
+To compile the code, use the supplied waf build tool:
 ```sh
 ./waf-1.8.13 configure
 ./waf-1.8.13
