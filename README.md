@@ -25,13 +25,13 @@ Click on the names to see the wiki pages.
 Download
 ========
 
-You can download a tarball of the latest master branch by visiting this link:
+A tarball of the latest master branch is available here: http://bitbucket.org/gavinband/bgen/get/master.tar.gz.
 
-Use mercurial to download the master branch as follows:
+Alternatively, use mercurial to download the master branch as follows:
 ```sh
 hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
 ```
-
+(This command can take a while.)
 
 Compilation
 =====
