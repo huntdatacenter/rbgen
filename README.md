@@ -12,16 +12,18 @@ This BGEN implementation is released under the Boost Software License v1.0.  Thi
 
 This repository also contains code from  the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries.  The former is [available in the public domain](http://www.sqlite.org/copyright.html) and the latter under the boost software license.  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
 
-Branches
+Download
 ========
 
-This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.
-
-One way to check out the master branch in mercurial is:
-
+Use mercurial to download the master branch as follows:
 ```sh
 hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
 ```
+
+Branches
+========
+
+This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.  The command given above downloads the master branch, which is what most people will want.
 
 Compilation
 =====
