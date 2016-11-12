@@ -2,6 +2,6 @@ def build( bld ):
 	bld.program(
 		source = 'bgen_to_vcf.cpp',
 		target = 'bgen_to_vcf',
-		use = 'bgen zlib',
+		use = 'bgen zlib zstd',
 		cxxflags = ['-std=c++11']
 	)

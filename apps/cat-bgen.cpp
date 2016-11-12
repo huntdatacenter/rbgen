@@ -175,7 +175,7 @@ private:
 			
 			if( context.flags != resultContext.flags ) {
 				ui().logger()
-					<< boost::format( "Error: iInput file #%d ( \"%s\" ) has the wrong flags (%x, expected %x).  Quitting.\n" )
+					<< boost::format( "Error: input file #%d ( \"%s\" ) has the wrong flags (%x, expected %x).  Quitting.\n" )
 						% (i+1) % inputFilenames[i] % context.flags % resultContext.flags ;
 				throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 			}
