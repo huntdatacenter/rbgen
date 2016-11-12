@@ -22,21 +22,12 @@
   <div class="main_text">
     <div id="overview">
       <p>
-		  <b>This page documents version 1.2 (beta) of the BGEN format.</b>
-		  <em>This version supports storage of both genotype and haplotype data,
-				variants with multiple alleles, and improved compression, and is backward-compatible previous versions of the format.
-			  The v1.1 format specification can be found <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">here</a>.</em>
+		  <b>This page documents version 1.2 of the BGEN format.</b>
+		  This version supercedes the previous version of the format (BGEN v1.1, see <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">here</a>).
+		  The format documented here is backward-compatible with v1.1, meaning that a valid v1.1-format file is
+		  also a valid v1.2 format file.  However, v1.2 introduces new features not supported by v1.1 (i.e. it is
+		  not 'forward-compatible') so programs will need to be updated if they want to use the new format).
 	  </p>
-	  <p>
-		  <b>Note</b>: While we believe the spec to be complete, it's possible further changes will be needed.  We expect to
-		  finalise the specification mid-2016.  A history of revisions is as follows:
-	  </p>
-	  <ul>
-		  <li><b>2015-05-22</b> (<code>v1.2 draft</code>): Initial v1.2 draft.</li>
-		  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in v1.2-format variant data blocks.</li>
-		  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
-			  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
-      </ul>
     </div>
 
     <h2>Introduction</h2>
@@ -137,7 +128,11 @@
 
 	  <div class = "boxed">
 	  <dl>
-		  <dt>v1.2 (March 2016):</dt>
+	  <p>
+		  A history of revisions of the v1.2 format spec is as follows:
+	  </p>
+	  <ul>
+		  <dt>BGEN v1.2 (November 2016):</dt>
 		  <dd>
 			  Major update extending the BGEN format:
               <ul>
@@ -151,10 +146,21 @@
 
                 <li>Support storing a list of sample identifiers.</li>
               </ul>
+			  A draft version of this spec was published beginning May 2015.  The following changes have been made since the earlier draft:
+			  <ul>
+				  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in v1.2-format variant data blocks.</li>
+				  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
+					  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
+				  <li><b>2016-11-12</b> (<code>v1.2</code>): modified to support compression with <a href="zstandard">zstandard</a>
+					  compression library.  Tests indicate this has better performance both in terms of file size
+					  and speed of reading and writing.
+				  </ul>
+			  
 		  </dd>
-		  <dt>v1.1 (March 2012):</dt>
+		  <dt>BGEN v1.1 (March 2012):</dt>
 		  <dd>
-              BGEN format that is designed to cope with the long alleles present at indels and
+              The first widely used version of the BGEN format.  The UK Biobank interim imputed data was released in this format.
+			  Relative to v1.0, this version is designed to cope with the long alleles present at indels and
               structural variants in recent releases of the 1000 genomes project.  Features
 			  of this version are:
               <ul>
@@ -162,11 +168,11 @@
                 <li>Store probabilities to at least 4 decimal places worth' of accuracy</li>
               </ul>
 		  </dd>
-		  <dt>v1.0 (2009):</dt>
+		  <dt>BGEN v1.0 (2009):</dt>
 		  <dd>
-			  The original BGEN format.  This version is now deprecated and will be removed
+			  The original BGEN format.  <am>This version is now deprecated and will be removed
 			  from a future version of this spec; there probably aren't any files in the wild
-			  in this format.
+			  in this format.</em>
 		  </dd>
 		</dl>
 	</div>
@@ -301,7 +307,7 @@
     <h4>Header block -- flag definitions</h4>
 
     <p>The following flags can be contained in the <em>flags</em> field in the header
-    block. <b>Note</b>: all bits not listed here must be set to 0.</p>
+    block. <b>Note</b>: bits and field values not specified here are reserved for possible future use.</p>
 
     <table class="filespec">
       <tr>
@@ -315,7 +321,7 @@
       </tr>
 
       <tr>
-        <td>0</td>
+        <td>0-1</td>
 
         <td><em>CompressedSNPBlocks</em></td>
 
@@ -333,6 +339,16 @@
 
         <td>Indicates SNP block probability data is compressed using zlib's compress()
         function.</td>
+      </tr>
+
+      <tr>
+        <td></td>
+
+        <td></td>
+
+        <td>2</td>
+
+        <td>Indicates SNP block probability data is compressed using zstandard's ZSTD_compress() function.</td>
       </tr>
 
       <tr>
@@ -661,8 +677,9 @@
             the cohort in the format described below.
 			If <em>CompressedSNPBlocks=0</em> this consists of <em>C=6N</em> bytes in the format
 			described below.
-			If <em>CompressedSNPBlocks=1</em> this is <em>C</em> bytes which can be uncompressed
-			using <a href="http://www.zlib.net">zlib</a>
+			Otherwise this is <em>C</em> bytes which can be uncompressed
+			using either <a href="http://www.zlib.net">zlib</a> (<em>CompressedSNPBlocks = 1</em>)
+			or <a href="http://www.zstandard.net">zstandard</a> (<em>CompressedSNPBlocks = 2</em>)
 			to form <em>6N</em> bytes stored in the format described below.
 		</td></tr>
 	</tbody>
@@ -678,9 +695,10 @@
 				the second the probability of 'AB',
 				the third the probability of 'BB', where A and B are the two alleles at the variant.
 				When <em>CompressedSNPBlocks</em> is not set, these 6 * <em>N</em> bytes are
-				stored in the file directly.  When <em>CompressedSNPBlocks</em> is set, these 6*<em>N</em>
-				bytes are first compressed using <a href="http://www.zlib.net/">zlib</a>, and
-				the length of the compressed data is stored as the 4-byte integer <em>C</em>,
+				stored in the file directly.  When <em>CompressedSNPBlocks>0</em>, these 6*<em>N</em>
+				bytes are first compressed using <a href="http://www.zlib.net/">zlib</a>
+				or <a href="http://www.zstandard.net">zstandard</a>,
+				and the length of the compressed data is stored as the 4-byte integer <em>C</em>,
 				followed by the compressed data itself.
             </p>
             <p>
@@ -744,9 +762,9 @@
 
 	          <td>Genotype probability data for the SNP for each of the <em>N</em> individuals in
 	            the cohort.  If <em>CompressedSNPBlocks = 0</em>, this is <em>D</em> bytes
-				stored in the format described below.  If <em>CompressedSNPBlocks = 1</em>, this is <em>C-4</em> bytes
-				which can be uncompressed using <a href="http://www.zlib.net">zlib</a> to
-				form <em>D</em> bytes in the format described below.
+				stored in the format described below.  If <em>CompressedSNPBlocks</em> is nonzero, this is <em>C-4</em> bytes
+				which can be uncompressed to form <em>D</em> bytes in the format described below.
+				(Compression uses either zlib or zstd according to the value of <em>CompressedSNPBlocks</em>; see the header block documentation.
 			</td>
 	        </tr>
 	      </tbody>
@@ -756,7 +774,7 @@
 	<p>
 		BGEN v1.2-style probability data storage is structured as described below.
 		If <em>CompressedSNPBlocks = 0</em> the structure is stored directly, and <em>C</em> reflects the length of this structure.
-		If <em>CompressedSNPBlocks = 1</em> the whole structure is stored after compression using zlib.  In this case
+		If <em>CompressedSNPBlocks > 0</em> the whole structure is stored after compression.  In this case
 		<em>D</em> reflects the length of the uncompressed structure and
 		the length of the compressed structure is <em>C-4</em>.
 	</p>
