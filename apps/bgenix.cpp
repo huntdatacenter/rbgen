@@ -72,11 +72,14 @@ public:
 		options[ "-incl-range" ]
 			.set_description(
 				"Include variants in the specified genomic interval in the output. "
-				" The argument must be of the form <chr>:<pos1>-<pos2> where <chr> is a chromosome identifier "
+				"(If the argument is the name of a valid readable file, the file will "
+				"be opened and whitespace-separated rsids read from it instead.)"
+				" Each interval must be of the form <chr>:<pos1>-<pos2> where <chr> is a chromosome identifier "
 				" and pos1 and pos2 are positions with pos2 >= pos1. "
-				" At most one of pos1 and pos2 can also be omitted, in which case the range extends to the start or"
+				" One of pos1 and pos2 can also be omitted, in which case the range extends to the start or"
 				" end of the chromosome as appropriate. "
 				" Position ranges are treated as closed (i.e. <pos1> and <pos2> are included in the range)."
+				"If this is specified multiple times, variants in any of the specified ranges will be included."
 			)
 			.set_takes_value_by_position(2)
 			.set_takes_values_until_next_option()
@@ -94,6 +97,9 @@ public:
 		options[ "-incl-rsids" ]
 			.set_description(
 				"Include variants with the specified rsid(s) in the output. "
+				"If the argument is the name of a valid readable file, the file will "
+				"be opened and whitespace-separated rsids read from it instead."
+				"If this is specified multiple times, variants with any of the specified ids will be included."
 			)
 			.set_takes_values_until_next_option()
 		;
@@ -101,6 +107,8 @@ public:
 		options[ "-excl-rsids" ]
 			.set_description(
 				"Exclude variants with the specified rsid(s) from the output. "
+				"See the description of -incl-range for details."
+					"If this is specified multiple times, variants with any of the specified ids will be excluded."
 			)
 			.set_takes_values_until_next_option()
 		;
