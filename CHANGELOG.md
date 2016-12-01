@@ -1,5 +1,17 @@
 History
 ====
+
+7 July 2016
+----
+
+* Updates to bgenix to handle UK biobank interim files and to avoid extra index tables in the index file.
+
+21 March 2016
+----
+
+* BGEN spec and implementation updated to alter probability order for unphased data when the number of alleles (K) or the ploidy is greater than two.
+This order now better matches the order of VCF GP fields and as a simple enumeration scheme.
+
 10 Nov 2015
 ----
 
@@ -14,7 +26,7 @@ Major changes in revision ff11254f9505:
     - sqlite3 3.9.2
     - boost 1.55.0
 
-These changes were erroneously applied first to the master branch (they were intended for default first).
+Note: these changes were erroneously applied first to the master branch (they were intended for default first).
 
 6 Nov 2015
 ----
