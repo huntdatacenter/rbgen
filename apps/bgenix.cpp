@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -46,30 +47,39 @@ public:
 			.set_is_required()
 		;
 
-		options[ "-clobber" ]
-			.set_description(
-				"Specify that bgenix should overwrite existing index file if it exists."
-			)
-		;
-		
 		options[ "-table" ]
 			.set_description( "Specify the table (or view) that bgenix should read the file index from."
 				"This only affects reading the index file.  The named table or view should have the"
-				"same schema as the Variant table written by bgenix on index creation."
+				" same schema as the Variant table written by bgenix on index creation."
 			)
 			.set_takes_single_value()
 			.set_default_value( "Variant" )
 		;
 		
+		options.declare_group( "Indexing options" ) ;
+		options[ "-index" ]
+			.set_description( "Specify that bgenix should build an index for the BGE file"
+				" specified by the -g option."
+			)
+		;
+		options[ "-clobber" ]
+			.set_description(
+				"Specify that bgenix should overwrite existing index file if it exists."
+			)
+		;
+
 		options.declare_group( "Variant selection options" ) ;
 		options[ "-incl-range" ]
 			.set_description(
 				"Include variants in the specified genomic interval in the output. "
-				" The argument must be of the form <chr>:<pos1>-<pos2> where <chr> is a chromosome identifier "
+				"(If the argument is the name of a valid readable file, the file will "
+				"be opened and whitespace-separated rsids read from it instead.)"
+				" Each interval must be of the form <chr>:<pos1>-<pos2> where <chr> is a chromosome identifier "
 				" and pos1 and pos2 are positions with pos2 >= pos1. "
-				" At most one of pos1 and pos2 can also be omitted, in which case the range extends to the start or"
+				" One of pos1 and pos2 can also be omitted, in which case the range extends to the start or"
 				" end of the chromosome as appropriate. "
 				" Position ranges are treated as closed (i.e. <pos1> and <pos2> are included in the range)."
+				"If this is specified multiple times, variants in any of the specified ranges will be included."
 			)
 			.set_takes_value_by_position(2)
 			.set_takes_values_until_next_option()
@@ -87,6 +97,9 @@ public:
 		options[ "-incl-rsids" ]
 			.set_description(
 				"Include variants with the specified rsid(s) in the output. "
+				"If the argument is the name of a valid readable file, the file will "
+				"be opened and whitespace-separated rsids read from it instead."
+				"If this is specified multiple times, variants with any of the specified ids will be included."
 			)
 			.set_takes_values_until_next_option()
 		;
@@ -94,6 +107,8 @@ public:
 		options[ "-excl-rsids" ]
 			.set_description(
 				"Exclude variants with the specified rsid(s) from the output. "
+				"See the description of -incl-range for details."
+					"If this is specified multiple times, variants with any of the specified ids will be excluded."
 			)
 			.set_takes_values_until_next_option()
 		;
@@ -103,15 +118,23 @@ public:
 			.set_description( "Suppress BGEN output; instead output a list of variants." ) ;
 		options[ "-with-rowid" ]
 			.set_description( "Create an index file without using the 'WITHOUT ROWID' tables.  These are suitable for use with sqlite versions < 3.8.2" ) ;
+
+		// Option interdependencies
+		options.option_excludes_group( "-index", "Variant selection options" ) ;
+		options.option_implies_option( "-clobber", "-index" ) ;
 	}
 } ;
 
 struct BgenProcessor {
 	
+	typedef uint8_t byte_t ;
+	
 	BgenProcessor( std::string const& filename ):
 		m_filename( filename ),
 		m_state( e_NotOpen )
 	{
+		m_last_write_time = boost::filesystem::last_write_time( filename ) ;
+
 		// Open the stream
 		m_stream.reset(
 			new std::ifstream( filename, std::ifstream::binary )
@@ -119,6 +142,19 @@ struct BgenProcessor {
 		if( !*m_stream ) {
 			throw std::invalid_argument( filename ) ;
 		}
+		
+		// get file size
+		{
+			std::ios::streampos origin = m_stream->tellg() ;
+			m_stream->seekg( 0, std::ios::end ) ;
+			m_file_size = m_stream->tellg() - origin ;
+			m_stream->seekg( 0, std::ios::beg ) ;
+			m_first_bytes.resize( 1000, 0 ) ;
+			m_stream->read( reinterpret_cast< char* >( &m_first_bytes[0] ), 1000 ) ;
+			m_stream->seekg( 0, std::ios::beg ) ;
+			m_stream->clear() ;
+		}
+		
 		m_state = e_Open ;
 
 		// Read the offset, header, and sample IDs if present.
@@ -138,13 +174,25 @@ struct BgenProcessor {
 	std::streampos current_position() const {
 		return m_current_variant_position ;
 	}
-	
+
 	void seek_to( std::streampos pos ) {
 		m_current_variant_position = pos ;
 		m_stream->seekg( pos ) ;
 		m_state = e_ReadyForVariant ;
 	}
 
+	int64_t file_size() const {
+		return m_file_size ;
+	}
+
+	std::time_t last_write_time() const {
+		return m_last_write_time ;
+	}
+
+	std::vector< byte_t > const& first_1000_bytes() const {
+		return m_first_bytes ;
+	}
+	
 	uint32_t number_of_variants() const {
 		return m_context.number_of_variants ;
 	}
@@ -191,6 +239,11 @@ private:
 	std::string const m_filename ;
 	std::unique_ptr< std::istream > m_stream ;
 
+	// meta-data we record to avoid using a stale index file
+	int64_t m_file_size ;
+	std::time_t m_last_write_time ;
+	std::vector< byte_t > m_first_bytes ;
+
 	// bgen::Context object holds information from the header block,
 	// including bgen flags
 	genfile::bgen::Context m_context ;
@@ -236,14 +289,17 @@ private:
 		if( !bfs::exists( m_bgen_filename )) {
 			throw std::invalid_argument( m_bgen_filename ) ;
 		}
-		if( options().check( "-clobber" ) || !bfs::exists( m_index_filename )) {
-			create_bgen_index( m_bgen_filename, m_index_filename ) ;
-		}
-		if( options().check_if_option_was_supplied_in_group( "Variant selection options" )) {
+		if( options().check( "-index" )) {
+			if( bfs::exists( m_index_filename ) && !options().check( "-clobber" )) {
+				std::cout << "Index file \"" + m_index_filename + "\" already exists, use -clobber if you want to overwrite it.\n" ;
+				throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+			} else {
+				create_bgen_index( m_bgen_filename, m_index_filename ) ;
+			}
+		} else {
 			process_selection( m_bgen_filename, m_index_filename ) ;
 		}
 	}
-
 
 	void create_bgen_index( std::string const& bgen_filename, std::string const& index_filename ) {
 		db::Connection::UniquePtr result ;
@@ -251,7 +307,6 @@ private:
 			<< boost::format( "%s: creating index for \"%s\" in \"%s\"...\n" ) % globals::program_name % bgen_filename % index_filename ;
 
 		try {
-			assert( !bfs::exists( index_filename ) ) ;
 			assert( !bfs::exists( index_filename + ".tmp" ) ) ;
 			result = create_bgen_index_unsafe( bgen_filename, index_filename + ".tmp" ) ;
 			bfs::rename( index_filename + ".tmp", index_filename ) ;
@@ -267,7 +322,7 @@ private:
 	}
 	
 	db::Connection::UniquePtr create_bgen_index_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
-		db::Connection::UniquePtr connection = db::Connection::create( index_filename ) ;
+		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "rw" ) ;
 
 		connection->run_statement( "PRAGMA locking_mode = EXCLUSIVE ;" ) ;
 		connection->run_statement( "PRAGMA journal_mode = MEMORY ;" ) ;
@@ -277,12 +332,24 @@ private:
 		// Close and open the transaction
 		transaction.reset() ;
 
+		db::Connection::StatementPtr insert_metadata_stmt = connection->get_statement(
+			"INSERT INTO Metadata( filename, file_size, last_write_time, first_1000_bytes, index_creation_time ) VALUES( ?, ?, ?, ?, ? )"
+		) ;
+
 		db::Connection::StatementPtr insert_variant_stmt = connection->get_statement(
 			"INSERT INTO Variant( chromosome, position, rsid, number_of_alleles, allele1, allele2, file_start_position, size_in_bytes ) "
 			"VALUES( ?, ?, ?, ?, ?, ?, ?, ? )"
 		) ;
 
 		BgenProcessor processor( bgen_filename ) ;
+
+		insert_metadata_stmt
+			->bind( 1, bgen_filename )
+			.bind( 2, processor.file_size() )
+			.bind( 3, uint64_t( processor.last_write_time() ) )
+			.bind( 4, &processor.first_1000_bytes()[0], &processor.first_1000_bytes()[0] + processor.first_1000_bytes().size() )
+			.bind( 5, appcontext::get_current_time_as_string() )
+			.step() ;
 
 		ui().logger()
 			<< boost::format( "%s: Opened \"%s\" with %d variants...\n" ) % globals::program_name % bgen_filename % processor.number_of_variants() ;
@@ -350,6 +417,16 @@ private:
 		std::string const tag = options().check( "-with-rowid" ) ? "" : " WITHOUT ROWID" ;
 
 		connection.run_statement(
+			"CREATE TABLE Metadata ("
+			" filename TEXT NOT NULL,"
+			" file_size INT NOT NULL,"
+			" last_write_time INT NOT NULL,"
+			" first_1000_bytes BLOB NOT NULL,"
+			" index_creation_time INT NOT NULL"
+			")"
+		) ;
+
+		connection.run_statement(
 			"CREATE TABLE Variant ("
 			"  chromosome TEXT NOT NULL,"
 			"  position INT NOT NULL,"
@@ -374,7 +451,14 @@ private:
 	}
 
 	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) const {
-		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "read" ) ;
+		db::Connection::UniquePtr connection ;
+		try {
+			connection = db::Connection::create( index_filename, "r" ) ;
+			verify_metadata( *connection, bgen_filename ) ;
+		} catch( db::ConnectionError const& e ) {
+			std::cout << "!! Unable to open index file \"" + index_filename + "\" (run bgenix -index first).\n" ;
+			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
 		std::string const& select_sql = get_select_sql( *connection ) ;
 #if DEBUG
 		std::cerr << "Running sql: \"" << select_sql << "\"...\n" ;
@@ -402,6 +486,47 @@ private:
 			process_selection_list( bgen_filename, positions ) ;
 		} else {
 			process_selection_bgen( bgen_filename, positions ) ;
+		}
+	}
+
+	void verify_metadata( db::Connection& connection, std::string const& bgen_filename ) const {
+		{
+			// Find and verify the metadata
+			db::Connection::StatementPtr stmt = connection.get_statement( "SELECT * FROM sqlite_master WHERE name == 'Metadata' AND type == 'table'" ) ;
+			stmt->step() ;
+			
+			if( !stmt->empty() ) {
+				db::Connection::StatementPtr mdStmt = connection.get_statement( "SELECT file_size, last_write_time, first_1000_bytes FROM Metadata" ) ;
+				mdStmt->step() ;
+				if( !mdStmt->empty() ) {
+					int64_t md_fileSize = mdStmt->get< int64_t >( 0 ) ;
+					int64_t md_lastWriteTime = mdStmt->get< int64_t >( 1 ) ;
+					std::vector< uint8_t > md_first_1000_bytes = mdStmt->get< std::vector< uint8_t > >( 2 ) ;
+					std::vector< uint8_t > m_first_1000_bytes( 1000, 0 ) ;
+
+					// Verify bgen file against metadata
+					int64_t const lastWriteTime = boost::filesystem::last_write_time( bgen_filename ) ;
+					std::ifstream bgen( bgen_filename.c_str() ) ;
+					std::ios::streampos origin = bgen.tellg() ;
+					bgen.read( reinterpret_cast< char* >( &m_first_1000_bytes[0] ), 1000 ) ;
+					bgen.clear() ;
+					bgen.seekg( 0, std::ios::end ) ;
+					std::ios::streamoff const fileSize = bgen.tellg() - origin ;
+					if( md_fileSize != fileSize ) {
+						std::cout << "!! Size of file (\"" << bgen_filename << "\" ("
+							<< fileSize << " bytes)"
+							<< "differs from that recorded in the index file (" << md_fileSize << ").\n"
+							<< "Do you need to recreate the index?\n" ;
+						throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+					}
+					if( m_first_1000_bytes != md_first_1000_bytes ) {
+						std::cout << "!! File (\"" << bgen_filename << "\" has different initial bytes"
+							" than recorded in the index file - that can't be right.\n"
+							<< "Do you need to recreate the index?\n" ;
+						throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+					}
+				}
+			}
 		}
 	}
 
@@ -508,7 +633,8 @@ private:
 		std::string inclusion = "" ;
 		std::string exclusion = "" ;
 		if( options().check( "-incl-range" )) {
-			auto elts = options().get_values< std::string >( "-incl-range" ) ;
+			auto const elts = collect_unique_ids( options().get_values< std::string >( "-incl-range" ));
+			//auto elts = options().get_values< std::string >( "-incl-range" ) ;
 			for( std::string const& elt: elts ) {
 				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
 				inclusion += ((inclusion.size() > 0) ? " OR " : "" ) + (
@@ -517,7 +643,7 @@ private:
 			}
 		}
 		if( options().check( "-excl-range" )) {
-			auto elts = options().get_values< std::string >( "-excl-range" ) ;
+			auto const elts = collect_unique_ids( options().get_values< std::string >( "-excl-range" ));
 			for( std::string const& elt: elts ) {
 				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
 				exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + (

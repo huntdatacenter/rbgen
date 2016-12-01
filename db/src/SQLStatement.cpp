@@ -37,6 +37,11 @@ namespace db {
 	char SQLStatement::get_column< char >( int column_id ) const {
 		return this->get_column_char( column_id ) ;
 	}
+
+	template<>
+	std::vector< uint8_t > SQLStatement::get_column< std::vector< uint8_t > >( int column_id ) const {
+		return this->get_column_blob( column_id ) ;
+	}
 	
 	SQLStatement& SQLStatement::bind( std::size_t i, char const* value ) {
 		bind( i, std::string( value )) ;

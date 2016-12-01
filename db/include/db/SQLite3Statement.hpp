@@ -81,6 +81,7 @@ namespace db {
 		double get_column_double( int column_id ) const ;
 		std::string get_column_string( int column_id ) const ;
 		char get_column_char( int column_id ) const ;
+		std::vector< uint8_t > get_column_blob( int column_id ) const ;
 		
 		int get_column_count() const ;
 

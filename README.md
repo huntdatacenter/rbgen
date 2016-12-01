@@ -2,7 +2,9 @@ BGEN reference implementation
 ========
 
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++, 
-originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  A utility program, `bgen_to_vcf`, is also provided as an example; as the name suggests it converts a BGEN file to VCF.  In addition two applications (`bgenix`, which indexes BGEN files, and `cat-bgen` which efficiently concatenates BGEN files) are provided.
+originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  In addition two applications - `bgenix`, which indexes BGEN files, and `cat-bgen` which efficiently concatenates BGEN files - are provided.  See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation on these programs.
+
+A utility program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  Currently this is mainly intended as an example program that shows how to use the BGEN file reading API.
 
 License
 ========
@@ -10,26 +12,31 @@ This BGEN implementation is released under the Boost Software License v1.0.  Thi
 
 This repository also contains code from  the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries.  The former is [available in the public domain](http://www.sqlite.org/copyright.html) and the latter under the boost software license.  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
 
-Branches
+Apps
+=====
+
+The following programs are currently built with the BGEN repository.
+
+* [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
+* [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
+
+Click on the names to see the wiki pages.
+
+Download
 ========
 
-This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.
+A tarball of the latest master branch is available here: http://bitbucket.org/gavinband/bgen/get/master.tar.gz.
 
-One way to check out the master branch in mercurial is:
-
+Alternatively, use mercurial to download the master branch as follows:
 ```sh
 hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
 ```
+(This command can take a while.)
 
 Compilation
 =====
 
-To compile the code, either use make:
-```sh
-make
-```
-
-Or use the supplied waf build tool:
+To compile the code, use the supplied waf build tool:
 ```sh
 ./waf-1.8.13 configure
 ./waf-1.8.13
@@ -45,22 +52,17 @@ BGEN's tests can be run by typing
 ```
 If all goes well a message like `All tests passed` should be printed.
 
-The example program provided reads a bgen file (v1.1 or v1.2) and outputs it as a VCF file to stdout.  You can try running it
+The example program `bgen_to_vcf` reads a bgen file (v1.1 or v1.2) and outputs it as a VCF file to stdout.  You can try running it
 by typing
 ```sh
-./build/example/bgen_to_vcf file.bgen
+./build/example/bgen_to_vcf example/example.8bits.bgen
 ```
-which should output vcf-formatted data to stdout.  We've provided example bgen files in the `example/` subdirectory.
+which should output vcf-formatted data to stdout.  We've provided further example bgen files in the `example/` subdirectory.
 
-Apps
-=====
+Branches
+========
 
-The following programs are currently built with the BGEN repository.
-
-* [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
-* [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
-
-Click on the names to see the wiki pages.
+This repo follows the branch naming practice in which `master` represents the most up-to-date code considered in a 'releasable' state.  If you are interested in using bgen code in your own project, we therefore recommend cloning the `master` branch.  Code development takes place in the `default` branch and/or in feature branches branched from the `default` branch.  The command given above downloads the master branch, which is what most people will want.
 
 More information
 =====

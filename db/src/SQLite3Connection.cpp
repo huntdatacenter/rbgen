@@ -83,12 +83,16 @@ namespace db {
 	}
 	
 	void SQLite3Connection::open_db_connection( std::string const& filename, bool overwrite, std::string const& mode ) {
-		int flags = SQLITE_OPEN_READWRITE ;
-		if( overwrite ) {
-			flags |= SQLITE_OPEN_CREATE ;
-		}
-		if( mode == "read-only" ) {
+		int flags = 0 ;
+		if( mode == "r" ) {
 			flags |= SQLITE_OPEN_READONLY ;
+		} else if( mode == "rw" ) {
+			flags |= SQLITE_OPEN_READWRITE ;
+			if( overwrite ) {
+				flags |= SQLITE_OPEN_CREATE ;
+			}
+		} else {
+			assert( 0 ) ;
 		}
 		int code = sqlite3_open_v2( filename.c_str(), &m_db_connection, flags, NULL ) ;
 		if( code != SQLITE_OK ) {
