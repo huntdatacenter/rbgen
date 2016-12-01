@@ -24,7 +24,7 @@ namespace db {
 		typedef std::auto_ptr< Connection > UniquePtr ;
 		typedef std::auto_ptr< SQLStatement > StatementPtr ;
 		
-		static UniquePtr create( std::string const& filename, std::string const& mode = "read-write" ) ;
+		static UniquePtr create( std::string const& filename, std::string const& mode = "rw" ) ;
 		
 		virtual ~Connection() {}
 

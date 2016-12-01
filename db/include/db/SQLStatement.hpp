@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <string>
+#include <vector>
 #include <exception>
 #include <stdint.h>
 #include "sqlite3/sqlite3.h"
@@ -86,6 +87,7 @@ namespace db {
 		virtual double get_column_double( int column_id ) const = 0 ;
 		virtual std::string get_column_string( int column_id ) const = 0 ;
 		virtual char get_column_char( int column_id ) const = 0 ;
+		virtual std::vector< uint8_t > get_column_blob( int column_id ) const = 0 ;
 	} ;
 	
 	template<> int SQLStatement::get_column< int >( int column_id ) const ;

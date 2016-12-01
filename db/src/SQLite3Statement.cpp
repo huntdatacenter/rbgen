@@ -176,6 +176,13 @@ namespace db {
 		return *p ;
 	}
 	
+	std::vector< uint8_t > SQLite3Statement::get_column_blob( int column_id ) const {
+		assert( m_statement != 0 ) ;
+		uint8_t const* p = reinterpret_cast< uint8_t const* >( sqlite3_column_blob( m_statement, column_id )) ;
+		int nBytes = sqlite3_column_bytes( m_statement, column_id ) ;
+		return std::vector< uint8_t >( p, p+nBytes ) ;
+	}
+	
 	int SQLite3Statement::get_column_count() const {
 		assert( m_statement != 0 ) ;
 		return sqlite3_column_count( m_statement ) ;
