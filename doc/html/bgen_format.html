@@ -23,10 +23,8 @@
     <div id="overview">
       <p>
 		  <b>This page documents version 1.2 of the BGEN format.</b>
-		  This version supercedes the previous version of the format (BGEN v1.1, see <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">here</a>).
-		  The format documented here is backward-compatible with v1.1, meaning that a valid v1.1-format file is
-		  also a valid v1.2 format file.  However, v1.2 introduces new features not supported by v1.1 (i.e. it is
-		  not 'forward-compatible') so programs will need to be updated if they want to use the new format).
+		  This version supercedes (and is backward-compatible with) the earlier <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">v1.1 format spec</a>.
+		  (See below for a history of versions of this document).
 	  </p>
     </div>
 
@@ -72,8 +70,8 @@
 			the entire dataset of 2,250 million genotypes in 334Mb, slightly over one bit per genotype, and in this test took 1.5s.
 		</p>
 		<p>
-			(Note that further performance optimisation of all formats may be possible,
-			so the above plot will not represent best-possible timings.)
+			(Performance optimisation of all formats may of course be possible, so the above plot
+			will not represent the best possible timings, but should be regarded as illustrative.)
 		</p>
 		<p>
 			The BGEN format has been used in several major projects, including the
@@ -100,13 +98,13 @@
 			<a href="http://bitbucket.org/gavinband/bgen">on bitbucket</a>.  This repository also contains utilities:
 		</p>
 		<ul>
-			<li>An example program, <a href="https://bitbucket.org/gavinband/bgen/src/master/example/bgen_to_vcf.cpp?at=default&fileviewer=file-view-default"><code>bgen_to_vcf</code></a>, which converts bgen-formatted files to
-				<a href="https://samtools.github.io/hts-specs/">Variant Call Format</a>.  This is intended as an example
-				of use of the API.</li>
 			<li>A bgen indexing tool <a href="https://bitbucket.org/gavinband/bgen/src/master/apps/bgenix.cpp"><code>bgenix</code></a>.</li>
 			<li>A tool <a href="https://bitbucket.org/gavinband/bgen/src/master/apps/cat-bgen.cpp"><code>cat-bgen</code></a> for efficiently concatenating bgen files.
 				We have found this useful for joining together chunks of imputed data after a genome-wide
 				imputation run.</li>
+			<li>An example program, <a href="https://bitbucket.org/gavinband/bgen/src/master/example/bgen_to_vcf.cpp?at=default&fileviewer=file-view-default"><code>bgen_to_vcf</code></a>, which converts bgen-formatted files to
+				<a href="https://samtools.github.io/hts-specs/">Variant Call Format</a>.  This is intended as an example
+				of use of the API.</li>
 		</ul>
 		<p>
 			In addition, bgen support has been implemented in several other software packages:
@@ -123,7 +121,7 @@
 			(Please contact me if your software supports BGEN and you'd like it added to this list.)
 		</p>
 	</div>
-    <div id="history">
+    <div id="history" anchor="history">
       <h3>Change history</h3>
 
 	  <div class = "boxed">
@@ -134,9 +132,9 @@
 	  <ul>
 		  <dt>BGEN v1.2 (November 2016):</dt>
 		  <dd>
-			  Major update extending the BGEN format:
+			  Major update extending the BGEN format to add:
               <ul>
-                <li>Support variable ploidy and explicit missing data.</li>
+                <li>Support for variable ploidy and explicit missing data.</li>
 
                 <li>Support for multi-allelic variants (e.g. complex structural
                 variants).</li>
@@ -144,15 +142,17 @@
                 <li>Allow for control over file size by supporting genotype probabilities
                 stored at configurable precision.</li>
 
-                <li>Support storing a list of sample identifiers.</li>
+                <li>Support for storing sample identifiers.</li>
+
+                <li>Support for the <a href="http://zstd.net">zstandard</a> compression library.</li>
               </ul>
 			  A draft version of this spec was published beginning May 2015.  The following changes have been made since the earlier draft:
 			  <ul>
 				  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in v1.2-format variant data blocks.</li>
 				  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
 					  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
-				  <li><b>2016-11-12</b> (<code>v1.2</code>): modified to support compression with <a href="zstandard">zstandard</a>
-					  compression library.  Tests indicate this has better performance both in terms of file size
+				  <li><b>2016-11-12</b> (<code>v1.2</code>): modified to support compression with <a href="http://www.zstd.net">zstandard
+					  compression library</a> as an alternative to <a href="http://www.zlib.net">zlib</a>.  Tests indicate this has better performance both in terms of file size
 					  and speed of reading and writing.
 				  </ul>
 			  
@@ -679,7 +679,7 @@
 			described below.
 			Otherwise this is <em>C</em> bytes which can be uncompressed
 			using either <a href="http://www.zlib.net">zlib</a> (<em>CompressedSNPBlocks = 1</em>)
-			or <a href="http://www.zstandard.net">zstandard</a> (<em>CompressedSNPBlocks = 2</em>)
+			or <a href="http://www.zstd.org">zstandard</a> (<em>CompressedSNPBlocks = 2</em>)
 			to form <em>6N</em> bytes stored in the format described below.
 		</td></tr>
 	</tbody>
@@ -697,7 +697,7 @@
 				When <em>CompressedSNPBlocks</em> is not set, these 6 * <em>N</em> bytes are
 				stored in the file directly.  When <em>CompressedSNPBlocks>0</em>, these 6*<em>N</em>
 				bytes are first compressed using <a href="http://www.zlib.net/">zlib</a>
-				or <a href="http://www.zstandard.net">zstandard</a>,
+				or <a href="http://www.zstd.org">zstandard</a>,
 				and the length of the compressed data is stored as the 4-byte integer <em>C</em>,
 				followed by the compressed data itself.
             </p>
