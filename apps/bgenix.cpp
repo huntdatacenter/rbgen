@@ -58,7 +58,7 @@ public:
 		
 		options.declare_group( "Indexing options" ) ;
 		options[ "-index" ]
-			.set_description( "Specify that bgenix should build an index for the BGE file"
+			.set_description( "Specify that bgenix should build an index for the BGEN file"
 				" specified by the -g option."
 			)
 		;
