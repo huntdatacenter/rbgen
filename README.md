@@ -33,7 +33,7 @@ hg clone https://gavinband@bitbucket.org/gavinband/bgen -u master
 ```
 (This command can take a while.)
 
-Additionally, to get started quickly, pre-built version of the bgen utilities may be available from [this page](http://www.well.ox.ac.uk/~gav/resources/).  **Note**: the recommended use is to download and compile bgenix for your platform, these binaries are provided for convenience.
+Additionally, pre-built version of the bgen utilities may be available from [this page](http://www.well.ox.ac.uk/~gav/resources/).  **Note**: the recommended use is to download and compile bgenix for your platform; these binaries are provided for convenience in getting started quickly.
 
 Compilation
 =====
