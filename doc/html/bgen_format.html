@@ -348,7 +348,8 @@
 
         <td>2</td>
 
-        <td>Indicates SNP block probability data is compressed using zstandard's ZSTD_compress() function.</td>
+        <td>Indicates SNP block probability data is compressed using zstandard's ZSTD_compress() function.
+			Zstandard compression is only supported for BGEN v1.2-format files.</td>
       </tr>
 
       <tr>
@@ -678,9 +679,9 @@
 			If <em>CompressedSNPBlocks=0</em> this consists of <em>C=6N</em> bytes in the format
 			described below.
 			Otherwise this is <em>C</em> bytes which can be uncompressed
-			using either <a href="http://www.zlib.net">zlib</a> (<em>CompressedSNPBlocks = 1</em>)
-			or <a href="http://www.zstd.org">zstandard</a> (<em>CompressedSNPBlocks = 2</em>)
-			to form <em>6N</em> bytes stored in the format described below.
+			using <a href="http://www.zlib.net">zlib</a> to form <em>6N</em> bytes stored in the format described below.
+			(Zstandard compression, encoded by the value <em>CompressedSNPBlocks = 2</em>,
+			is not supported for v1.1 style blocks.)
 		</td></tr>
 	</tbody>
 			<tfoot>
