@@ -13,13 +13,10 @@
 #include "genfile/types.hpp"
 #include "genfile/bgen/bgen.hpp"
 
-// Verify we are using 8 bit bytes
-#ifndef CHAR_BIT
-#include "limits.h"
-#endif
-
+#ifdef CHAR_BIT
 #if (CHAR_BIT != 8)
-#error "Sorry, this implementation assumes 8-bit bytes. It won't work on your platform"
+#error CHAR_BIT "Sorry, this implementation assumes 8-bit bytes. It won't work on your platform"
+#endif
 #endif
 
 namespace genfile {
