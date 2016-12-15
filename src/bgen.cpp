@@ -7,10 +7,20 @@
 #include <iostream>
 #include <string>
 #include <limits>
+#include <climits>
 #include <algorithm>
 #include <iomanip>
 #include "genfile/types.hpp"
 #include "genfile/bgen/bgen.hpp"
+
+// Verify we are using 8 bit bytes
+#ifndef CHAR_BIT
+#include "limits.h"
+#endif
+
+#if (CHAR_BIT != 8)
+#error "Sorry, this implementation assumes 8-bit bytes. It won't work on your platform"
+#endif
 
 namespace genfile {
 	namespace bgen {
@@ -389,11 +399,10 @@ namespace genfile {
 					int* size,
 					uint8_t const bits
 				) {
-					assert( CHAR_BIT == 8 ) ;
-					assert( bits <= 64 - CHAR_BIT ) ;
+					assert( bits <= 64 - 8 ) ;
 					while( (*size) < bits && buffer < end ) {
 						(*data) |= uint64_t( *(reinterpret_cast< byte_t const* >( buffer++ ))) << (*size) ;
-						(*size) += CHAR_BIT ;
+						(*size) += 8 ;
 					}
 					if( (*size) < bits ) {
 						throw BGenError() ;
