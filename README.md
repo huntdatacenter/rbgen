@@ -2,9 +2,10 @@ BGEN reference implementation
 ========
 
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++, 
-originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  In addition two applications - `bgenix`, which indexes BGEN files, and `cat-bgen` which efficiently concatenates BGEN files - are provided.  See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation on these programs.
+originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  In addition three utilities - `bgenix`, which indexes BGEN files, `cat-bgen` which efficiently concatenates BGEN files, and `edit-bgen` which is used to manipulate BGEN metadata - are provided.
+See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation on these programs.
 
-A utility program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  Currently this is mainly intended as an example program that shows how to use the BGEN file reading API.
+An example program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  This is intended as an example program that shows how to use the BGEN file reading API.
 
 License
 ========
@@ -19,6 +20,7 @@ The following programs are currently built with the BGEN repository.
 
 * [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
+* [edit-bgen](https://bitbucket.org/gavinband/bgen/wiki/edit-bgen) - a tool to edit BGEN file metadata.
 
 Click on the names to see the wiki pages.
 
