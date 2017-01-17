@@ -21,15 +21,19 @@
   </div>
   <div class="main_text">
     <div id="overview">
-      <p>
-		  <b>This page documents version 1.2 of the BGEN format.</b>
-		  This version supercedes (and is backward-compatible with) the earlier <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">v1.1 format spec</a>.
-		  (See below for a history of versions of this document).
-	  </p>
-    </div>
+		<div class="version">v1.2</div>
+		<div class="version_overview">
+			<b>This page documents version 1.2 of the BGEN format.</b>
+			This version is backward-compatible with the
+			earlier <a href="http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.1.html">v1.1 format spec</a> -
+			this means every v1.1-format BGEN file is also a valid v1.2-format file.
+			The v1.2 spec adds a new, more flexible layout for storing variant genotypes and haplotypes.
+			(See below for a full history of versions of this spec).
+		</div>
+	</div>
 
-    <h2>Introduction</h2>
-	<div id = "introduction">
+	<div id = "introduction" class="section">
+		<h2>Introduction</h2>
 		<p>
 			Modern genetic association studies routinely employ data on tens to hundreds of thousands
 			of individuals, genotyped or imputed at tens of millions of markers genome-wide.  Traditional
@@ -81,7 +85,7 @@
 			for the <a href="http://www.ukbiobank.ac.uk">UK Biobank</a>.
 		</p>
 	</div>
-	<div id = "contributors">
+	<div id = "contributors" class="section">
 		<strong>Acknowledgements.</strong> The following people contributed to the design and implementation of the BGEN format:
         <ul>
                 <li>
@@ -92,7 +96,7 @@
                 </li>
 			</ul>
 	</div>
-	<div id = "tools">
+	<div id = "tools" class="section">
 		<h3>Software support</h3>
 		<p>A freely available C++ implementation of the BGEN format is available
 			<a href="http://bitbucket.org/gavinband/bgen">on bitbucket</a>.  This repository also contains utilities:
@@ -121,7 +125,7 @@
 			(Please contact me if your software supports BGEN and you'd like it added to this list.)
 		</p>
 	</div>
-    <div id="history" anchor="history">
+    <div id="history" anchor="history" class="section">
       <h3>Change history</h3>
 
 	  <div class = "boxed">
@@ -143,19 +147,13 @@
                 stored at configurable precision.</li>
 
                 <li>Support for storing sample identifiers.</li>
-
-                <li>Support for the <a href="http://zstd.net">zstandard</a> compression library.</li>
               </ul>
 			  A draft version of this spec was published beginning May 2015.  The following changes have been made since the earlier draft:
 			  <ul>
-				  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in v1.2-format variant data blocks.</li>
+				  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in Layout 2 (v1.2-style) variant data blocks.</li>
 				  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
 					  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
-				  <li><b>2016-11-12</b> (<code>v1.2</code>): modified to support compression with <a href="http://www.zstd.net">zstandard
-					  compression library</a> as an alternative to <a href="http://www.zlib.net">zlib</a>.  Tests indicate this has better performance both in terms of file size
-					  and speed of reading and writing.
-				  </ul>
-			  
+			  </ul>
 		  </dd>
 		  <dt>BGEN v1.1 (March 2012):</dt>
 		  <dd>
@@ -176,7 +174,7 @@
 		  </dd>
 		</dl>
 	</div>
-	<div id="specification">
+	<div id="specification" class="section">
     <h2>Detailed specification</h2>
 
 	    <h3>Overview</h3>
@@ -189,8 +187,8 @@
 		</p>
 		<p>
 			The format in which variant data blocks are stored is determined by a set of flag bits stored in the header
-			block.  Currently two formats are supported - v1.1-style blocks which are a direct translation to binary
-			of the GEN format; and v1.2-style blocks, which are both more space-efficient and more flexible, including
+			block.  Currently two formats are supported - Layout 1 blocks which are a direct translation to binary
+			of the GEN format; and Layout 2 blocks, which are both more space-efficient and more flexible, including
 			support for genotype and haplotype data, multi-allelic variants, and non-diploid samples.
 			An older format, used in the
 			v1.0 spec, is now deprecated and is no longer documented in this spec.
@@ -307,7 +305,8 @@
     <h4>Header block -- flag definitions</h4>
 
     <p>The following flags can be contained in the <em>flags</em> field in the header
-    block. <b>Note</b>: bits and field values not specified here are reserved for possible future use.</p>
+    block. <b>Note</b>: bits and field values not specified here are reserved for possible future use;
+	they should be set to zero.</p>
 
     <table class="filespec">
       <tr>
@@ -342,17 +341,6 @@
       </tr>
 
       <tr>
-        <td></td>
-
-        <td></td>
-
-        <td>2</td>
-
-        <td>Indicates SNP block probability data is compressed using zstandard's ZSTD_compress() function.
-			Zstandard compression is only supported for BGEN v1.2-format files.</td>
-      </tr>
-
-      <tr>
         <td>2-5</td>
 
         <td><em>Layout</em><br />
@@ -360,8 +348,8 @@
 
         <td>0</td>
 
-        <td>Indicates SNP blocks are layed out according to the <a href=
-        "bgen_format_v1.0.html">v1.0 spec</a>. This allows only single-character alleles.
+        <td>Indicates SNP blocks are layed out according to <b>Layout 0</b>, first used
+			in the <a href="bgen_format_v1.0.html">v1.0 spec</a>. This allows only single-character alleles.
         <b>Use of this format is deprecated, in the sense that it should not be used for
         new files.</b> We will remove this from a future version of the spec.</td>
       </tr>
@@ -373,9 +361,9 @@
 
         <td>1</td>
 
-        <td>Indicates SNP blocks are layed out according to the <a hred=
-        "bgen_format_v1.1.html">v1.1 spec</a>. This allows for multiple characters in
-        alleles and is supported in SNPTEST from <a href=
+        <td>Indicates SNP blocks are layed out according to <b>Layout 1</b>, i.e. as in
+			the <a href= "bgen_format_v1.1.html">v1.1 spec</a>. This allows for
+			multiple characters in alleles and is supported in SNPTEST from <a href=
         "https://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html">version
         2.3.0</a>, and in <a href=
         "http://www.well.ox.ac.uk/~gav/qctool/qctool.html">QCTOOL</a> from version
@@ -389,8 +377,8 @@
 
         <td>2</td>
 
-        <td>Indicates SNP blocks are layed out according to version 1.2 of the spec (as
-        described in this document). This format supports multiple alleles, phased and
+        <td>Indicates SNP blocks are layed out according to <b>Layout 2</b>, introduced in version 1.2 of
+			the spec (i.e. in this document). This format supports multiple alleles, phased and
         unphased genotypes, explicit specification of ploidy and missing data, and
         configurable levels of compression.<br />
         It is recommended that all new files are stored with <em>Layout</em>=2.</td>
@@ -522,8 +510,8 @@
 
     <p>Following the header comes a sequence of <em>M</em> variant data blocks (where <em>M</em> is the number
 		specified in the header block).
-		This document describes SNP blocks for version 1.1 (specified by the <em>Layout</em>=1 flag) and 1.2
-    (<em>Layout</em>=2 flag) of the BGEN spec.
+		This document describes SNP blocks for spec versions 1.1 and above.
+		Version 1.0 is deprecated and should not be used in new files.
 
     <p>Variant data blocks are comprised of: a section of identifying data (containing variant IDs,
     position, and alleles), followed by a section containing the genotype probability
@@ -656,10 +644,10 @@
       </tbody>
     </table>
 	</div>
-	<h3 class=>Genotype data block (v1.1 style)</h3>
+	<h3 class=>Genotype data block (Layout 1)</h3>
 	<div class="collapsible">
 		<p>
-			BGEN v1.1-style blocks are used when <em>Layout=1</em>.  Only two alleles (<em>K=2</em>) are supported.
+			Layout 1 blocks are used when <em>Layout=1</em>.  Only two alleles (<em>K=2</em>) are supported.
 			All samples are stored as if diploid; haploid samples should be stored as if having homozygous genotype.
 			Missing samples are encoded as three zero probabilities.  This is a direct translation to binary format of
 			a <a href="http://www.stats.ox.ac.uk/%7Emarchini/software/gwas/file_format.html">GEN</a> file.
@@ -690,7 +678,7 @@
 		</table>
 		<h4>Probability data storage</h4>
             <p>
-				For v1.1-style blocks, probability data is stored as a sequence of 2-byte unsigned integers.
+				For Layout 1 blocks, probability data is stored as a sequence of 2-byte unsigned integers.
 				These should be interpreted in triples,
 				the first member being the probability of a homozygous 'AA' allele,
 				the second the probability of 'AB',
@@ -698,7 +686,6 @@
 				When <em>CompressedSNPBlocks</em> is not set, these 6 * <em>N</em> bytes are
 				stored in the file directly.  When <em>CompressedSNPBlocks>0</em>, these 6*<em>N</em>
 				bytes are first compressed using <a href="http://www.zlib.net/">zlib</a>
-				or <a href="http://www.zstd.org">zstandard</a>,
 				and the length of the compressed data is stored as the 4-byte integer <em>C</em>,
 				followed by the compressed data itself.
             </p>
@@ -726,10 +713,10 @@
 			</p>
 	</div>
 
-	<h3>Genotype data block (v1.2 style)</h3>
+	<h3>Genotype data block (Layout 2)</h3>
 	<div class="collapsible">
 		<p>
-		BGEN v1.2-style blocks are used when <em>Layout=2</em>.
+		Layout 2 blocks are used when <em>Layout=2</em>.
 		This format supports arbitrary numbers of alleles (up to 65535), samples of arbitrary ploidy (up to 63),
 		and both phased and unphased data.
 	</p>
@@ -763,9 +750,8 @@
 
 	          <td>Genotype probability data for the SNP for each of the <em>N</em> individuals in
 	            the cohort.  If <em>CompressedSNPBlocks = 0</em>, this is <em>D</em> bytes
-				stored in the format described below.  If <em>CompressedSNPBlocks</em> is nonzero, this is <em>C-4</em> bytes
-				which can be uncompressed to form <em>D</em> bytes in the format described below.
-				(Compression uses either zlib or zstd according to the value of <em>CompressedSNPBlocks</em>; see the header block documentation.
+				stored in the format described below.  If <em>CompressedSNPBlocks = 1</em>, this is <em>C-4</em> bytes
+				which can be uncompressed using zlib to form <em>D</em> bytes in the format described below.
 			</td>
 	        </tr>
 	      </tbody>
@@ -773,7 +759,7 @@
 
     <h4>Probability data storage</h4>
 	<p>
-		BGEN v1.2-style probability data storage is structured as described below.
+		Layout 2 probability data storage is structured as described below.
 		If <em>CompressedSNPBlocks = 0</em> the structure is stored directly, and <em>C</em> reflects the length of this structure.
 		If <em>CompressedSNPBlocks > 0</em> the whole structure is stored after compression.  In this case
 		<em>D</em> reflects the length of the uncompressed structure and
@@ -951,7 +937,7 @@
 			<li>Convert <em>x</em> to an integer in floating-point representation.
 			<li>Divide by <em>2<sup>B</sup>-1</em>.</li>
 		</ol>
-		Thus, probabilities stored in v1.2-style blocks take possible values of the form <em>x/(2<sup>B</sup>-1) &in; [0,1]</em>.
+		Thus, probabilities stored in Layout 2 blocks take possible values of the form <em>x/(2<sup>B</sup>-1) &in; [0,1]</em>.
 	</p>
 	<p>
 		Storing probabilities to the limited precision afforded by <em>B</em> bits requires a rounding rule, which we specify as follows.
@@ -1050,7 +1036,7 @@
 	of testing that file structure is correct.
 	</p>
 	<p>
-	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why the choice of colex order of genotypes?
+	<b>Q.</b> (For Layout 2 variant data blocks) Why the choice of colex order of genotypes?
 	</p>
 	<p>
 	<b>A.</b> Several considerations motivated this choice - including simplicity of specification, ease of implementation,
@@ -1073,7 +1059,7 @@
 	genotypes to probabilities. 
 	</p>
 	<p>
-	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why omit the last probability instead of the first?
+	<b>Q.</b> (For Layout 2 variant data blocks) Why omit the last probability instead of the first?
 	</p>
 	<p>
 	<b>A.</b> The intention is to make parsing the file as simple and fast as possible.  If we omitted the first probability,
@@ -1081,7 +1067,7 @@
 	the first probability.  With the scheme described here, parsers can simply emit the probabilities as they are read from the file,
 	before finally emitting the last probability as one minus the sum of the stored probabilities.
 	</p>
-	<b>Q.</b> (For bgen v1.2-style variant data blocks) Why store dummy zero data for samples with missing genotypes?
+	<b>Q.</b> (For Layout 2 variant data blocks) Why store dummy zero data for samples with missing genotypes?
     Doesn't this increase file size unneccessarily?
 	</p>
 	<p>

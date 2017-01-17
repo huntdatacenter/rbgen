@@ -25,6 +25,38 @@ div.header {
 	font-size: 15px ;
 }
 
+#overview {
+	clear: both ;
+}
+
+div.version {
+	float: left ;
+	clear: both ;
+	margin-left: 2px ;
+	margin-right: 2px ;
+	margin-top: 10px ;
+	margin-bottom: 20px ;
+	
+	padding: 10px ;
+	font-size: 24px ;
+	font-family: sans-serif;
+	font-weight: bold ;
+	border: 2px solid black ;
+	border-radius: 1em ;
+	background-color: yellow ;
+}
+
+div.version_overview {
+	float: right ;
+	clear: right ;
+	width: 650px ;
+	margin-top: 10px ;
+	margin-bottom: 20px ;
+}
+
+div.section {
+	clear: both ;
+}
 
 table.filespec {
 	width: 80% ;
