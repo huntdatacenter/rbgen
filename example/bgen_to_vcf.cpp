@@ -109,7 +109,7 @@ struct BgenParser {
 
 	std::ostream& summarise( std::ostream& o ) const {
 		o << "BgenParser: bgen file ("
-			<< ( m_context.flags & genfile::bgen::e_v12Layout ? "v1.2 layout" : "v1.1 layout" )
+			<< ( m_context.flags & genfile::bgen::e_Layout2 ? "v1.2 layout" : "v1.1 layout" )
 			<< ", "
 			<< ( m_context.flags & genfile::bgen::e_CompressedSNPBlocks ? "compressed" : "uncompressed" ) << ")"
 			<< " with " 

@@ -363,7 +363,7 @@ namespace data {
 }
 
 namespace {
-	enum { e_v10Layout = 0, e_v11Layout = 0x4, e_v12Layout = 0x8 } ;
+	enum { e_Layout0 = 0, e_Layout1 = 0x4, e_Layout2 = 0x8 } ;
 	enum { e_CompressedSNPBlocks = 1 } ;
 }
 
@@ -484,11 +484,11 @@ void do_snp_block_read_test(
 	context.number_of_samples = number_of_individuals ;
 	std::function< double ( std::size_t i, std::size_t g ) > get_probs ;
 	if( bgen_version == "v11" ) {
-		context.flags = e_v11Layout ;
+		context.flags = e_Layout1 ;
 	} else if( bgen_version == "v12" ) {
-		context.flags = e_v12Layout ;
+		context.flags = e_Layout2 ;
 	} else {
-		context.flags = e_v10Layout ;
+		context.flags = e_Layout0 ;
 	}
 
 	std::istringstream inStream ;
@@ -572,9 +572,9 @@ void do_snp_block_write_test(
 	genfile::bgen::Context context ;
 	context.number_of_samples = number_of_individuals ;
 	if( bgen_version == "v11" ) {
-		context.flags = e_v11Layout ;
+		context.flags = e_Layout1 ;
 	} else if( bgen_version == "v12" ) {
-		context.flags = e_v12Layout ;
+		context.flags = e_Layout2 ;
 	} else {
 		assert(0) ;	
 	}

@@ -98,7 +98,7 @@ TEST_CASE( "Single sample (biallelic unphased)", "[bgen][biallelic][unphased]" )
 	std::vector< genfile::byte_t > data( 1000 ) ;
 
 	genfile::bgen::Context context ;
-	context.flags = genfile::bgen::e_v12Layout ;
+	context.flags = genfile::bgen::e_Layout2 ;
 	context.number_of_samples = 1 ;
 
 	enum { ePloidy = 8, eNumberOfBits = 10, eData = 11 } ;
@@ -227,7 +227,7 @@ TEST_CASE( "Single sample (biallelic phased)", "[bgen][biallelic][phased]" ) {
 	std::vector< genfile::byte_t > data( 1000 ) ;
 
 	genfile::bgen::Context context ;
-	context.flags = genfile::bgen::e_v12Layout ;
+	context.flags = genfile::bgen::e_Layout2 ;
 	context.number_of_samples = 1 ;
 
 	enum { ePloidy = 8, eNumberOfBits = 10, eData = 11 } ;
@@ -373,7 +373,7 @@ TEST_CASE( "Test two samples, unphased", "[bgen][small]" ) {
 	std::function< double( std::size_t ) > get_BB = [&]( std::size_t i ) { return values[i*3+2] ; } ;
 
 	genfile::bgen::Context context ;
-	context.flags = genfile::bgen::e_v12Layout ;
+	context.flags = genfile::bgen::e_Layout2 ;
 	context.number_of_samples = 2 ;
 
 	std::vector< genfile::byte_t > expected{
@@ -442,7 +442,7 @@ TEST_CASE( "Test truncated data", "[bgen]" ) {
 
 	genfile::bgen::Context context ;
 	context.number_of_samples = 2 ;
-	context.flags = genfile::bgen::e_v12Layout ;
+	context.flags = genfile::bgen::e_Layout2 ;
 
 	enum { ePloidy = 8, eNumberOfBits = 10, eData = 11 } ;
 
