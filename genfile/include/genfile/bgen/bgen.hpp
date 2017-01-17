@@ -109,6 +109,7 @@ namespace genfile {
 
 		// Read a header block from the supplied stream,
 		// filling the fields of the supplied context object.
+		// Return the number of bytes read.
 		std::size_t read_header_block(
 			std::istream& aStream,
 			Context* context
