@@ -37,6 +37,7 @@ public:
 				"Path of bgen file(s) to edit. "
 			)
 			.set_takes_values_until_next_option()
+			.set_is_required()
 		;
 
 		options.declare_group( "Actions" ) ;
