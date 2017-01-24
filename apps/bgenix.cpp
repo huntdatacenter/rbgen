@@ -411,7 +411,7 @@ private:
 			catch( genfile::bgen::BGenError const& e ) {
 				ui().logger() << "!! (" << e.what() << "): an error occurred reading from the input file.\n" ;
 				ui().logger() << "Last observed variant was \"" << SNPID.substr(0,10) << "\", \"" << rsid.substr(0,10) << "\"...\n" ;
-				ui().logger() << "Variant spans bytes " << file_pos << "-" << processor.current_position() << " in input file, which has size " << processor.file_size() << ".\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_size() << ".\n" ;
 				throw ;
 			}
 			catch( db::StatementStepError const& e ) {
