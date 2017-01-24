@@ -30,6 +30,7 @@ namespace genfile {
 		std::size_t const offset = 0,
 		int const compressionLevel = Z_BEST_COMPRESSION
 	) ;
+
 	void zstd_compress(
 		byte_t const* buffer,
 		byte_t const* const end,
