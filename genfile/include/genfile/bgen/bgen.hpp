@@ -653,6 +653,7 @@ namespace genfile {
 					assert( number_of_entries == uint32_t(3)) ;
 					assert( order_type == ePerUnorderedGenotype ) ;
 					m_entry_i = 0 ;
+					m_missing = eNotSet ;
 					m_state = eNumberOfEntriesSet ;
 				}
 
