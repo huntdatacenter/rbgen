@@ -396,13 +396,14 @@ private:
 			int64_t file_pos = int64_t( processor.current_position() ) ;
 			try {
 				while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
+#if DEBUG
+					std::cerr << "read variant:" << chromosome << " " << position << " " << rsid << " " << file_pos << " " << alleles.size() << ".\n" << std::flush ;
+					std::cerr << "alleles: " << alleles[0] << ", "  << alleles[1] << ".\n" << std::flush ;
+#endif
 					processor.ignore_probability_data() ;
 					int64_t file_end_pos = int64_t( processor.current_position() ) ;
 					assert( alleles.size() > 1 ) ;
 					assert( (file_end_pos - file_pos) > 0 ) ;
-#if DEBUG
-					std::cerr << chromosome << " " << position << " " << rsid << " " << file_pos << ".\n" ;
-#endif
 					insert_variant_stmt
 						->bind( 1, chromosome )
 						.bind( 2, position )
@@ -427,14 +428,24 @@ private:
 						transaction = connection->open_transaction( 240 ) ;
 					}
 					file_pos = file_end_pos ;
-				}
+#if DEBUG
+					std::cerr << "Record inserted.\n" << std::flush ;
+#endif
+								}
 			}
-			catch( db::StatementStepError const& e ) {
+			catch( genfile::bgen::BGenError const& e ) {
+				ui().logger() << "!! (" << e.what() << "): an error occurred reading from the input file.\n" ;
+				ui().logger() << "Last observed variant was \"" << SNPID.substr(0,10) << "\", \"" << rsid.substr(0,10) << "\"...\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_size() << ".\n" ;
+				throw ;
+			}
+ 			catch( db::StatementStepError const& e ) {
 				ui().logger() << "Last observed variant was " << SNPID << " " << rsid << " " << chromosome << " " << position ;
 				for( std::size_t i = 0; i < alleles.size(); ++i ) {
 					ui().logger() << " " << alleles[i] ;
 				}
 				ui().logger() << "\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_size() << ".\n" ;
 				throw ;
 			}
 		}

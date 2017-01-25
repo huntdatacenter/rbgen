@@ -478,6 +478,10 @@ namespace genfile {
 				set_allele( i, allele ) ;
 			}
 			if( !aStream ) {
+#if DEBUG_BGEN_FORMAT
+				std::cerr << "bgen: layout = " << layout << ", alleles = " << numberOfAlleles << ".\n" << std::flush ;
+				std::cerr << *SNPID << ", " << *RSID << ", " << *chromosome << ", " << *SNP_position << ".\n" << std::flush ;
+#endif
 				throw BGenError() ;
 			}
 			return true ;
