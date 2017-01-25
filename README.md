@@ -53,6 +53,8 @@ CXX=/path/to/g++ ./waf-1.8.13 configure
 ./waf-1.8.13
 ```
 
+We have tested compilation on gcc 4.9.3 and 5.4.0.
+
 If you don't have access to a compiler with C++-11 support, you can still build the core bgen implementation, but won't be able to build the applications or example programs.  See [the wiki](https://bitbucket.org/gavinband/bgen/wiki/Troubleshooting_compilation) for more information.
 
 Testing
