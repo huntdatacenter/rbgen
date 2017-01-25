@@ -45,7 +45,15 @@ To compile the code, use the supplied waf build tool:
 ./waf-1.8.13 configure
 ./waf-1.8.13
 ```
-Results will appear under the `build/` directory.  For more detail on compilation see [the wiki](https://bitbucket.org/gavinband/bgen/wiki/Troubleshooting_compilation).
+Results will appear under the `build/` directory.  
+
+Note: a full build requires a compiler that supports C++-11, e.g. gcc v4.7 or above.  To specify the compiler used, set the `CXX` environment variable during the configure step.  For example (if your shell is `bash`):
+```
+CXX=/path/to/g++ ./waf-1.8.13 configure
+./waf-1.8.13
+```
+
+If you don't have access to a compiler with C++-11 support, you can still build the core bgen implementation, but won't be able to build the applications or example programs.  See [the wiki](https://bitbucket.org/gavinband/bgen/wiki/Troubleshooting_compilation) for more information.
 
 Testing
 =====
