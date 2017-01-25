@@ -759,11 +759,11 @@ private:
 				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 			}
 			if( bits != 8 ) {
-				std::cerr << "For -transcode, expected 8 bits per probability, found " << bits << ".\n" ;
+				std::cerr << "For -v11, expected 8 bits per probability, found " << bits << ".\n" ;
 				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 			}
 			if( phased != 0 ) {
-				std::cerr << "For -transcode, expected unphased data.\n" ;
+				std::cerr << "For -v11, expected unphased data.\n" ;
 				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 			}
 			if( end < buffer + numberOfSamples + 2 ) {
