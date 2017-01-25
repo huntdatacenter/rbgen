@@ -705,114 +705,118 @@ private:
 
 		std::vector< uint64_t > probability_encoding_table = compute_probability_encoding_table() ;
 
-		for( std::size_t i = 0; i < positions.size(); ++i ) {
-			processor.seek_to( positions[i].first ) ;
-			bool success = processor.read_variant(
-				&SNPID, &rsid, &chromosome, &position, &alleles
-			) ;
-			
-			if( alleles.size() != 2 ) {
-				std::cerr
-					<< "In -transcode, found variant with " << alleles.size() << " allele, only 2 alleles are supported by BGEN v1.1.\n" ;
-				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-			}
-			
-			genfile::bgen::write_snp_identifying_data(
-				&idDataBuffer,
-				outputContext,
-				SNPID, rsid, chromosome, position,
-				uint16_t( 2 ), 
-				[&alleles](std::size_t i) { return alleles[i] ; }
-			) ;
-			
-			std::vector< byte_t > const& data = processor.read_raw_probability_data() ;
-
-			// This is as in bgen::v12::impl::parse_probability_data()
-			// TODO: can I abstract this out?
-			byte_t const* buffer = &data[0] ;
-			byte_t const* end = &data[0] + data.size() ;
-
-			uint32_t numberOfSamples ;
-			uint16_t numberOfAlleles ;
-			byte_t ploidyExtent[2] ;
-			enum { ePhased = 1, eUnphased = 0 } ;
-			
-			if( end < buffer + 8 ) {
-				throw std::domain_error( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-			}
-			buffer = genfile::bgen::read_little_endian_integer( buffer, end, &numberOfSamples ) ;
-			buffer = genfile::bgen::read_little_endian_integer( buffer, end, &numberOfAlleles ) ;
-			buffer = genfile::bgen::read_little_endian_integer( buffer, end, &ploidyExtent[0] ) ;
-			buffer = genfile::bgen::read_little_endian_integer( buffer, end, &ploidyExtent[1] ) ;
-			// Keep a pointer to the ploidy and move buffer past the ploidy information
-			byte_t const* ploidy_p = buffer ;
-			buffer += numberOfSamples ;
-			// Get the phased flag and number of bits
-			bool const phased = ((*buffer++) & 0x1 ) ;
-			int const bits = int( *reinterpret_cast< byte_t const *>( buffer++ ) ) ;
-
-			if( numberOfSamples != processor.context().number_of_samples ) {
-				std::cerr
-					<< "In -transcode, # samples for row (" << numberOfSamples
-					<< ") does not match number in header (" << processor.context().number_of_samples
-					<< ").\n" ;
-				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-			}
-			if( bits != 8 ) {
-				std::cerr << "For -v11, expected 8 bits per probability, found " << bits << ".\n" ;
-				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-			}
-			if( phased != 0 ) {
-				std::cerr << "For -v11, expected unphased data.\n" ;
-				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-			}
-			if( end < buffer + numberOfSamples + 2 ) {
-				throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-			}
-			byte_t* out_p = &serialisationBuffer[0] ;
-			byte_t const* p = ploidy_p ;
-			for( ; p < (ploidy_p + numberOfSamples); ++p, buffer += 2 ) {
-				if( *p & byte_t( 0x80 ) ) {
-					// data is missing, encode as zeros.
-					*out_p++ = 0 ; *out_p++ = 0 ;
-					*out_p++ = 0 ; *out_p++ = 0 ;
-					*out_p++ = 0 ; *out_p++ = 0 ;
-				} else {
-					std::size_t const key = *reinterpret_cast< uint16_t const* >( buffer ) ;
-					assert( key < probability_encoding_table.size() ) ;
-					uint64_t const value = probability_encoding_table[ *reinterpret_cast< uint16_t const* >( buffer ) ] ;
-#if DEBUG
-					std::cerr << ( boost::format( "%d, %d" ) % key % probability_encoding_table.size() ) << "\n" ;
-					std::cerr << ( boost::format( "%x: %x" ) % key % value ) << "\n" ;
-					std::cerr << "Input: " << uint64_t(*reinterpret_cast< uint8_t const* >( buffer )) << ", " << uint64_t(*reinterpret_cast< uint8_t const* >( buffer+1 )) << "\n" ;
-					std::cerr << "Output: " << uint64_t( value & 0xFFFF) << ", " << uint64_t( (value>>16) & 0xFFFF) << ", " << uint64_t( (value>>32) & 0xFFFF) << ".\n" ;
-#endif
-					*out_p++ = ( (value >> 0) & 0xFF ) ;
-					*out_p++ = ( (value >> 8) & 0xFF ) ;
-					*out_p++ = ( (value >> 16) & 0xFF ) ;
-					*out_p++ = ( (value >> 24) & 0xFF ) ;
-					*out_p++ = ( (value >> 32) & 0xFF ) ;
-					*out_p++ = ( (value >> 40) & 0xFF ) ;
+		{
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( positions.size() ) + " variants" ) ;
+			for( std::size_t i = 0; i < positions.size(); ++i ) {
+				processor.seek_to( positions[i].first ) ;
+				bool success = processor.read_variant(
+					&SNPID, &rsid, &chromosome, &position, &alleles
+				) ;
+				
+				if( alleles.size() != 2 ) {
+					std::cerr
+						<< "In -transcode, found variant with " << alleles.size() << " allele, only 2 alleles are supported by BGEN v1.1.\n" ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 				}
-			}
-			
-			// Compress it.
-			assert( out_p == &serialisationBuffer[0] + serialisationBuffer.size() ) ;
-			genfile::zlib_compress(
-				serialisationBuffer,
-				&compressionBuffer,
-				1 // compression level
-			) ;
+				
+				genfile::bgen::write_snp_identifying_data(
+					&idDataBuffer,
+					outputContext,
+					SNPID, rsid, chromosome, position,
+					uint16_t( 2 ), 
+					[&alleles](std::size_t i) { return alleles[i] ; }
+				) ;
+				
+				std::vector< byte_t > const& data = processor.read_raw_probability_data() ;
+
+				// This is as in bgen::v12::impl::parse_probability_data()
+				// TODO: can I abstract this out?
+				byte_t const* buffer = &data[0] ;
+				byte_t const* end = &data[0] + data.size() ;
+
+				uint32_t numberOfSamples ;
+				uint16_t numberOfAlleles ;
+				byte_t ploidyExtent[2] ;
+				enum { ePhased = 1, eUnphased = 0 } ;
+				
+				if( end < buffer + 8 ) {
+					throw std::domain_error( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+				}
+				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &numberOfSamples ) ;
+				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &numberOfAlleles ) ;
+				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &ploidyExtent[0] ) ;
+				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &ploidyExtent[1] ) ;
+				// Keep a pointer to the ploidy and move buffer past the ploidy information
+				byte_t const* ploidy_p = buffer ;
+				buffer += numberOfSamples ;
+				// Get the phased flag and number of bits
+				bool const phased = ((*buffer++) & 0x1 ) ;
+				int const bits = int( *reinterpret_cast< byte_t const *>( buffer++ ) ) ;
+
+				if( numberOfSamples != processor.context().number_of_samples ) {
+					std::cerr
+						<< "In -transcode, # samples for row (" << numberOfSamples
+						<< ") does not match number in header (" << processor.context().number_of_samples
+						<< ").\n" ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+				}
+				if( bits != 8 ) {
+					std::cerr << "For -v11, expected 8 bits per probability, found " << bits << ".\n" ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+				}
+				if( phased != 0 ) {
+					std::cerr << "For -v11, expected unphased data.\n" ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+				}
+				if( end < buffer + numberOfSamples + 2 ) {
+					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+				}
+				byte_t* out_p = &serialisationBuffer[0] ;
+				byte_t const* p = ploidy_p ;
+				for( ; p < (ploidy_p + numberOfSamples); ++p, buffer += 2 ) {
+					if( *p & byte_t( 0x80 ) ) {
+						// data is missing, encode as zeros.
+						*out_p++ = 0 ; *out_p++ = 0 ;
+						*out_p++ = 0 ; *out_p++ = 0 ;
+						*out_p++ = 0 ; *out_p++ = 0 ;
+					} else {
+						std::size_t const key = *reinterpret_cast< uint16_t const* >( buffer ) ;
+						assert( key < probability_encoding_table.size() ) ;
+						uint64_t const value = probability_encoding_table[ *reinterpret_cast< uint16_t const* >( buffer ) ] ;
 #if DEBUG
-			std::cerr << ( boost::format( "serialisation buffer: %d, id data Buffer: %d, result buffer: %d" ) % serialisationBuffer.size() % idDataBuffer.size() % compressionBuffer.size() ) << "\n" ;
+						std::cerr << ( boost::format( "%d, %d" ) % key % probability_encoding_table.size() ) << "\n" ;
+						std::cerr << ( boost::format( "%x: %x" ) % key % value ) << "\n" ;
+						std::cerr << "Input: " << uint64_t(*reinterpret_cast< uint8_t const* >( buffer )) << ", " << uint64_t(*reinterpret_cast< uint8_t const* >( buffer+1 )) << "\n" ;
+						std::cerr << "Output: " << uint64_t( value & 0xFFFF) << ", " << uint64_t( (value>>16) & 0xFFFF) << ", " << uint64_t( (value>>32) & 0xFFFF) << ".\n" ;
 #endif
-			std::ostreambuf_iterator< char > outIt( std::cout ) ;
-			std::copy( &idDataBuffer[0], &idDataBuffer[0]+idDataBuffer.size(), outIt ) ;
-			genfile::bgen::write_little_endian_integer(
-				std::cout,
-				uint32_t( compressionBuffer.size() )
-			) ;
-			std::copy( &compressionBuffer[0], &compressionBuffer[0]+compressionBuffer.size(), outIt ) ;
+						*out_p++ = ( (value >> 0) & 0xFF ) ;
+						*out_p++ = ( (value >> 8) & 0xFF ) ;
+						*out_p++ = ( (value >> 16) & 0xFF ) ;
+						*out_p++ = ( (value >> 24) & 0xFF ) ;
+						*out_p++ = ( (value >> 32) & 0xFF ) ;
+						*out_p++ = ( (value >> 40) & 0xFF ) ;
+					}
+				}
+			
+				// Compress it.
+				assert( out_p == &serialisationBuffer[0] + serialisationBuffer.size() ) ;
+				genfile::zlib_compress(
+					serialisationBuffer,
+					&compressionBuffer,
+					1 // compression level
+				) ;
+#if DEBUG
+				std::cerr << ( boost::format( "serialisation buffer: %d, id data Buffer: %d, result buffer: %d" ) % serialisationBuffer.size() % idDataBuffer.size() % compressionBuffer.size() ) << "\n" ;
+#endif
+				std::ostreambuf_iterator< char > outIt( std::cout ) ;
+				std::copy( &idDataBuffer[0], &idDataBuffer[0]+idDataBuffer.size(), outIt ) ;
+				genfile::bgen::write_little_endian_integer(
+					std::cout,
+					uint32_t( compressionBuffer.size() )
+				) ;
+				std::copy( &compressionBuffer[0], &compressionBuffer[0]+compressionBuffer.size(), outIt ) ;
+				progress_context( i+1, positions.size() ) ;
+			}
 		}
 		
 		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
