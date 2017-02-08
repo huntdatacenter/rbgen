@@ -1339,7 +1339,8 @@ namespace genfile {
 						zlib_compress(
 							&(*m_buffer1)[0], &(*m_buffer1)[0] + uncompressed_data_size,
 							m_buffer2,
-							offset
+							offset,
+							9 // highest compression setting.
 						) ;
 					} else if( compressionType == e_ZstdCompression ) {
 						zstd_compress(

@@ -51,7 +51,7 @@ namespace genfile {
 	 ) {
 		byte_t const* begin = reinterpret_cast< byte_t const* >( &source[0] ) ;
 		byte_t const* const end = reinterpret_cast< byte_t const* >( &source[0] + source.size() ) ;
-		return zlib_compress( begin, end, dest ) ;
+		return zlib_compress( begin, end, dest, 0, compressionLevel ) ;
 	}
 
 	template< typename T >
