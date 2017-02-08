@@ -310,11 +310,12 @@ private:
 		m_bgen_filename = options().get< std::string >( "-g" ) ;
 		m_index_filename = m_bgen_filename + ".bgi" ;
 		if( !bfs::exists( m_bgen_filename )) {
+			ui().logger() << "!! Error, the BGEN file \"" << m_bgen_filename << "\" does not exist!\n" ;
 			throw std::invalid_argument( m_bgen_filename ) ;
 		}
 		if( options().check( "-index" )) {
 			if( bfs::exists( m_index_filename ) && !options().check( "-clobber" )) {
-				std::cerr << "Index file \"" + m_index_filename + "\" already exists, use -clobber if you want to overwrite it.\n" ;
+				ui().logger() << "!! Error, the index file \"" + m_index_filename + "\" already exists, use -clobber if you want to overwrite it.\n" ;
 				throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 			} else {
 				create_bgen_index( m_bgen_filename, m_index_filename ) ;
