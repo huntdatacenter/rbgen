@@ -132,6 +132,7 @@ public:
 
 		// Option interdependencies
 		options.option_excludes_group( "-index", "Variant selection options" ) ;
+		options.option_excludes_group( "-index", "Output options" ) ;
 		options.option_implies_option( "-clobber", "-index" ) ;
 	}
 } ;
@@ -243,6 +244,9 @@ struct BgenProcessor {
 		}
 	}
 
+	// Read and parse genotype probability data, returning data using
+	// the bgen parse_probability_data API as documented on the wiki.
+	// For an example using this API, see the bgen_to_vcf.cpp example program.
 	template< typename ProbSetter >
 	void read_probability_data( ProbSetter& setter ) {
 		assert( m_state == e_ReadyForProbs ) ;
@@ -257,6 +261,21 @@ struct BgenProcessor {
 		m_state = e_ReadyForVariant ;
 	}
 	
+	// Read and uncompress genotype probability data, and unpack
+	// it into constituent parts, but don't do a full parse.
+	// This can lead to more efficient code paths than a full parse for some operations.
+	//
+	// Currently this function works for 'layout=2' files, e.g. v1.2 and above only.
+	// Data is returned in the fields of the supplied 'pack' object, which
+	// is defined in bgen.hpp.
+	void read_and_unpack_v12_probability_data(
+		genfile::bgen::v12::GenotypeDataBlock* pack
+	) {
+		assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
+		std::vector< byte_t > const& buffer = read_and_uncompress_probability_data() ;
+		pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
+	}
+
 	// Ignore genotype probability data for the SNP just read using read_variant()
 	// After calling this method it should be safe to call read_variant()
 	// to fetch the next variant from the file.
@@ -265,27 +284,6 @@ struct BgenProcessor {
 		genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
 		m_current_variant_position = m_stream->tellg() ;
 		m_state = e_ReadyForVariant ;
-	}
-
-	// Read and uncompress genotype probability data, but don't do anything with it.
-	std::vector< byte_t > const& read_and_uncompress_probability_data() {
-		assert( m_state == e_ReadyForProbs ) ;
-		genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
-		m_current_variant_position = m_stream->tellg() ;
-		m_state = e_ReadyForVariant ;
-		genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
-		return m_buffer2 ;
-	}
-	
-	// Read and uncompress genotype probability data, and unpack
-	// it into constituent parts, without doing a full parse.
-	// Data is returned by setting the values pointed to by the supplied arguments.
-	void read_and_unpack_v12_probability_data(
-		genfile::bgen::v12::GenotypeDataBlock* pack
-	) {
-		assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
-		std::vector< byte_t > const& buffer = read_and_uncompress_probability_data() ;
-		pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
 	}
 
 private:
@@ -317,6 +315,17 @@ private:
 	// Two buffers for processing
 	std::vector< byte_t > m_buffer1 ;
 	std::vector< byte_t > m_buffer2 ;
+	
+private:
+	// Read and uncompress genotype probability data.
+	std::vector< byte_t > const& read_and_uncompress_probability_data() {
+		assert( m_state == e_ReadyForProbs ) ;
+		genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
+		m_current_variant_position = m_stream->tellg() ;
+		m_state = e_ReadyForVariant ;
+		genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
+		return m_buffer2 ;
+	}
 } ;
 
 struct IndexBgenApplication: public appcontext::ApplicationContext
@@ -938,6 +947,7 @@ private:
 		std::cout << "##fileformat=VCFv4.2\n"
 			<< "FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
 			<< "FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
+			<< "FORMAT=<ID=HP,Type=Float,Number=.,Description=\"Haplotype call probabilities\">\n"
 			<< "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT" ;
 		
 		std::cout << "\n" ;
@@ -971,6 +981,12 @@ private:
 		}
 	}
 	
+	// This function implements an efficient transcode from a specific type of BGEN file
+	// To BGEN v1.1 files.
+	// Specifically we support BGEN 'layout=2' files (BGEN v1.2 and above) with 8 bits per
+	// probability.
+	// For efficiency, instead of a full parse we extract encoded data and use a lookup table
+	// to generate BGEN v1.1 values for encoding.
 	void process_selection_transcode_bgen_v11(
 		std::string const& bgen_filename,
 		std::vector< std::pair< int64_t, int64_t> > const& positions
