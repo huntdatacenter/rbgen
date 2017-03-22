@@ -119,8 +119,13 @@ public:
 			.set_description( "Suppress BGEN output; instead output a list of variants." ) ;
 		options[ "-v11" ]
 			.set_description(
-				"Transcode output to BGEN v1.1 format.  Currently, this is only supported if the input"
-				" is in v1.2 format with 8 bits per probability, diploid samples and biallelic variants."
+				"Output BGEN v1.1 format.  (Currently, this is only supported if the input"
+				" is in BGEN v1.2 format with 8 bits per probability, all samples are diploid,"
+				" and all variants biallelic)."
+			) ;
+		options[ "-vcf" ]
+			.set_description(
+				"Output vcf format instead of vcf format."
 			) ;
 		options[ "-with-rowid" ]
 			.set_description( "Create an index file without using the 'WITHOUT ROWID' tables.  These are suitable for use with sqlite versions < 3.8.2" ) ;
@@ -157,8 +162,10 @@ struct BgenProcessor {
 			m_stream->seekg( 0, std::ios::beg ) ;
 			m_first_bytes.resize( 1000, 0 ) ;
 			m_stream->read( reinterpret_cast< char* >( &m_first_bytes[0] ), 1000 ) ;
-			m_stream->seekg( 0, std::ios::beg ) ;
+			std::cerr << "gcount is " << m_stream->gcount() << ".\n" ;
+			m_first_bytes.resize( m_stream->gcount() ) ;
 			m_stream->clear() ;
+			m_stream->seekg( 0, std::ios::beg ) ;
 		}
 		
 		m_state = e_Open ;
@@ -199,7 +206,7 @@ struct BgenProcessor {
 		return m_last_write_time ;
 	}
 
-	std::vector< byte_t > const& first_1000_bytes() const {
+	std::vector< byte_t > const& first_bytes() const {
 		return m_first_bytes ;
 	}
 	
@@ -235,23 +242,50 @@ struct BgenProcessor {
 			return false ;
 		}
 	}
+
+	template< typename ProbSetter >
+	void read_probability_data( ProbSetter& setter ) {
+		assert( m_state == e_ReadyForProbs ) ;
+		genfile::bgen::read_and_parse_genotype_data_block< ProbSetter >(
+			*m_stream,
+			m_context,
+			setter,
+			&m_buffer1,
+			&m_buffer2
+		) ;
+		m_current_variant_position = m_stream->tellg() ;
+		m_state = e_ReadyForVariant ;
+	}
 	
 	// Ignore genotype probability data for the SNP just read using read_variant()
 	// After calling this method it should be safe to call read_variant()
 	// to fetch the next variant from the file.
 	void ignore_probability_data() {
+		assert( m_state == e_ReadyForProbs ) ;
 		genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
 		m_current_variant_position = m_stream->tellg() ;
 		m_state = e_ReadyForVariant ;
 	}
 
 	// Read and uncompress genotype probability data, but don't do anything with it.
-	std::vector< byte_t > const& read_raw_probability_data() {
+	std::vector< byte_t > const& read_and_uncompress_probability_data() {
+		assert( m_state == e_ReadyForProbs ) ;
 		genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
 		m_current_variant_position = m_stream->tellg() ;
 		m_state = e_ReadyForVariant ;
 		genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
 		return m_buffer2 ;
+	}
+	
+	// Read and uncompress genotype probability data, and unpack
+	// it into constituent parts, without doing a full parse.
+	// Data is returned by setting the values pointed to by the supplied arguments.
+	void read_and_unpack_v12_probability_data(
+		genfile::bgen::v12::GenotypeDataBlock* pack
+	) {
+		assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
+		std::vector< byte_t > const& buffer = read_and_uncompress_probability_data() ;
+		pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
 	}
 
 private:
@@ -376,7 +410,7 @@ private:
 			->bind( 1, bgen_filename )
 			.bind( 2, processor.file_size() )
 			.bind( 3, uint64_t( processor.last_write_time() ) )
-			.bind( 4, &processor.first_1000_bytes()[0], &processor.first_1000_bytes()[0] + processor.first_1000_bytes().size() )
+			.bind( 4, &processor.first_bytes()[0], &processor.first_bytes()[0] + processor.first_bytes().size() )
 			.bind( 5, appcontext::get_current_time_as_string() )
 			.step() ;
 
@@ -524,6 +558,8 @@ private:
 
 		if( options().check( "-list" ) ) {
 			process_selection_list( bgen_filename, positions ) ;
+		} else if( options().check( "-vcf" )) {
+			process_selection_transcode( bgen_filename, positions, "vcf" ) ;
 		} else if( options().check( "-v11" )) {
 			// peek at the file.  If already v1.1 we can do it without transcoding.
 			BgenProcessor processor( bgen_filename ) ;
@@ -556,27 +592,33 @@ private:
 				db::Connection::StatementPtr mdStmt = connection.get_statement( "SELECT file_size, last_write_time, first_1000_bytes FROM Metadata" ) ;
 				mdStmt->step() ;
 				if( !mdStmt->empty() ) {
-					int64_t md_fileSize = mdStmt->get< int64_t >( 0 ) ;
-//					int64_t md_lastWriteTime = mdStmt->get< int64_t >( 1 ) ;
-					std::vector< uint8_t > md_first_1000_bytes = mdStmt->get< std::vector< uint8_t > >( 2 ) ;
-					std::vector< uint8_t > m_first_1000_bytes( 1000, 0 ) ;
+					// Get metadata fields for comparison
+					int64_t metadata_fileSize = mdStmt->get< int64_t >( 0 ) ;
+//					int64_t metadata_lastWriteTime = mdStmt->get< int64_t >( 1 ) ;
+					std::vector< uint8_t > metadata_first_bytes = mdStmt->get< std::vector< uint8_t > >( 2 ) ;
 
-					// Verify bgen file against metadata
-//					int64_t const lastWriteTime = boost::filesystem::last_write_time( bgen_filename ) ;
-					std::ifstream bgen( bgen_filename.c_str() ) ;
-					std::ios::streampos origin = bgen.tellg() ;
-					bgen.read( reinterpret_cast< char* >( &m_first_1000_bytes[0] ), 1000 ) ;
-					bgen.clear() ;
-					bgen.seekg( 0, std::ios::end ) ;
-					std::ios::streamoff const fileSize = bgen.tellg() - origin ;
-					if( md_fileSize != fileSize ) {
+					// Now get corresponding data from file.
+					std::vector< uint8_t > file_first_bytes( 1000, 0 ) ;
+					std::ifstream bgen_file( bgen_filename.c_str() ) ;
+					std::ios::streampos origin = bgen_file.tellg() ;
+					bgen_file.read( reinterpret_cast< char* >( &file_first_bytes[0] ), 1000 ) ;
+					file_first_bytes.resize( bgen_file.gcount() ) ;
+
+					// compute file size
+					bgen_file.clear() ;
+					bgen_file.seekg( 0, std::ios::end ) ;
+					std::ios::streamoff const fileSize = bgen_file.tellg() - origin ;
+
+//					int64_t const file_lastWriteTime = boost::filesystem::last_write_time( bgen_filename ) ;
+
+					if( metadata_fileSize != fileSize ) {
 						std::cerr << "!! Size of file (\"" << bgen_filename << "\" ("
 							<< fileSize << " bytes)"
-							<< "differs from that recorded in the index file (" << md_fileSize << ").\n"
+							<< "differs from that recorded in the index file (" << metadata_fileSize << ").\n"
 							<< "Do you need to recreate the index?\n" ;
 						throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 					}
-					if( m_first_1000_bytes != md_first_1000_bytes ) {
+					if( file_first_bytes != metadata_first_bytes ) {
 						std::cerr << "!! File (\"" << bgen_filename << "\" has different initial bytes"
 							" than recorded in the index file - that can't be right.\n"
 							<< "Do you need to recreate the index?\n" ;
@@ -659,16 +701,276 @@ private:
 		std::vector< std::pair< int64_t, int64_t> > const& positions,
 		std::string const& format
 	) const {
-		if( format != "bgen_v1.1" ) {
-			std::cerr << "!! Only -transcode bgen_v1.1 is currently supported.\n" ;
+		if( format == "vcf" ) {
+			process_selection_transcode_bgen_vcf(
+				bgen_filename,
+				positions
+			) ;
+		} else if( format == "bgen_v1.1" ) {
+			process_selection_transcode_bgen_v11(
+				bgen_filename,
+				positions
+			) ;
+		} else {
 			throw std::invalid_argument( "format=\"" + format + "\"" ) ;
 		}
-		process_selection_transcode_bgen_v11(
-			bgen_filename,
-			positions
-		) ;
 	}
 
+	struct VCFProbWriter {
+		VCFProbWriter( std::ostream& out ):
+			m_out( out )
+		{}
+		
+		// Called once allowing us to set storage.
+		void initialise( std::size_t number_of_samples, std::size_t number_of_alleles ) {
+			// Nothing to do.
+			m_number_of_alleles = number_of_alleles ;
+		}
+	
+		// If present with this signature, called once after initialise()
+		// to set the minimum and maximum ploidy and numbers of probabilities among samples in the data.
+		// This enables us to set up storage for the data ahead of time.
+		void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) {
+			// Make sure we've enough space.
+			m_data.reserve( max_entries ) ;
+		}
+	
+		// Called once per sample to determine whether we want data for this sample
+		bool set_sample( std::size_t i ) {
+			// Yes, here we want info for all samples.
+			return true ;
+		}
+	
+		// Called once per sample to set the number of probabilities that are present.
+		void set_number_of_entries(
+			std::size_t ploidy,
+			std::size_t number_of_entries,
+			genfile::OrderType order_type,
+			genfile::ValueType value_type
+		) {
+			assert( value_type == genfile::eProbability ) ;
+			m_data.resize( number_of_entries ) ;
+			m_out << "\t" ;
+			m_ploidy = ploidy ;
+			m_order_type = order_type ;
+			m_missing = false ;
+		}
+
+		void set_value( uint32_t entry_i, double value ) {
+			m_data[ entry_i ] = value ;
+			if( entry_i == m_data.size() - 1 ) {
+				write_sample_entry() ;
+			}
+		}
+
+		void set_value( uint32_t entry_i, genfile::MissingValue value ) {
+			m_data[ entry_i ] = -1 ;
+			m_missing = true ;
+			if( entry_i == m_data.size() - 1 ) {
+				write_sample_entry() ;
+			}
+		}
+
+
+		// If present with this signature, called once after all data has been set.
+		void finalise() {
+			m_out << "\n" ;
+		}
+
+	private:
+		std::ostream& m_out ;
+		std::vector< double > m_data ;
+		std::size_t m_number_of_alleles ;
+
+		// Used to keep track of what we're doing.
+		std::size_t m_ploidy ;
+		genfile::OrderType m_order_type ;
+		bool m_missing ;
+		
+		// These fields are used to enumerate genotypes for the GT field.
+		std::vector< uint16_t > m_allele_count_limits ;
+		std::vector< uint16_t > m_allele_counts ;
+		
+		// space to assemble GT field.
+		std::string m_GT_buffer ;
+		void write_sample_entry() {
+			if( m_missing ) {
+				std::string const GT_separator = (m_order_type == genfile::ePerPhasedHaplotypePerAllele) ? "|" : "/" ;
+				for( uint32_t i = 0 ; i < m_ploidy; ++i ) {
+					m_out << ((i>0) ? GT_separator : "" )
+						<< "." ;
+				}
+				m_out << ":" ;
+				for( std::size_t i = 0; i < m_data.size(); ++i ) {
+					m_out << m_data[i] ;
+				}
+			} else {
+				std::string const& GT = construct_GT( m_data, 0.9 ) ;
+				
+				m_out << "\t"
+					<< GT
+					<< ":" ;
+				for( std::size_t i = 0; i < m_data.size(); ++i ) {
+					m_out << ((i>0) ? "," : "") ;
+					if( m_data[i] == -1 ) {
+						m_out << "." ;
+					} else {
+						m_out << m_data[i] ;
+					}
+				}
+			}
+		}
+
+		std::string const& construct_GT( std::vector< double > const& probs, double const threshhold ) {
+			if( m_order_type == genfile::ePerPhasedHaplotypePerAllele ) {
+				return construct_phased_GT( probs, threshhold ) ;
+			} else {
+				return construct_unphased_GT( probs, threshhold ) ;
+			}
+		}
+
+		std::string const& construct_phased_GT( std::vector< double > const& probs, double const threshhold ) {
+			m_GT_buffer.clear() ;
+			// for phased data it is simple:
+			for( uint32_t i = 0; i < m_ploidy; ++i ) {
+				uint32_t j = 0 ;
+				for( ; j < m_number_of_alleles; ++j ) {
+					if( probs[i*m_number_of_alleles+j] > threshhold ) {
+						break ;
+					}
+				}
+				if( j < m_number_of_alleles ) {
+					m_GT_buffer += std::to_string( j ) + "|" ;
+				} else {
+					m_GT_buffer += ".|" ;
+				}
+			}
+			// remove trailing separator
+			m_GT_buffer.resize( m_GT_buffer.size() - 1 ) ;
+			return m_GT_buffer ;
+		}
+
+		std::string const& construct_unphased_GT( std::vector< double > const& probs, double const threshhold ) {
+			// To construct the GT field for unphased data, we must enumerate
+			// all of the possible genotypes.
+			// These come in colex order of the the allele count representation.
+			// Specifically, we have m_ploidy = n chromosomes in total.
+			// Genotypes are all ways to put n_alleles = k alleles into those chromosomes.
+			// We represent these as k-vectors that sum to n (i.e. v_i is the count of allele i)
+			// Or (k-1)-vectors that sum to at most n.
+			// The colex order implies that lower indices are always used first.
+			// E.g. for ploidy = 3 and 3 alleles, the order is
+			// 3,0,0 = AAA
+			// 2,1,0 = AAB
+			// 1,2,0 = ABB
+			// 0,3,0 = BBB
+			// 2,0,1 = BBC
+			// 1,1,1 = ABC
+			// 0,2,1 = BBC
+			// 0,1,2 = BCC
+			// 0,0,3 = CCC
+			// Here we enumerate these and bail out when we hit a probability over the threshhold.
+			m_allele_count_limits.assign( (m_number_of_alleles-1), m_ploidy ) ;
+			m_allele_counts.assign( m_number_of_alleles, 0 ) ;
+			// Set up first genotype - all ref allele
+			m_allele_counts[0] = m_ploidy ;
+
+			// Iterate through genotypes.
+			bool metThreshhold = false ;
+			for( std::size_t index = 0; true; ++index ) {
+				if( probs[index] > threshhold ) {
+					metThreshhold = true ;
+					break ;
+				}
+				
+				// Move to next possible genotype
+				std::size_t j = 0 ;
+				for( ; j < (m_number_of_alleles-1); ++j ) {
+					uint16_t value = m_allele_counts[j+1] ;
+					if( value < m_allele_count_limits[ j ] ) {
+						++m_allele_counts[j+1] ;
+						--m_allele_counts[0] ;
+						for( std::size_t k = 0; k < j; ++k ) {
+							--m_allele_count_limits[k] ;
+						}
+						break ;
+					} else {
+						// allele count has reached its limit.
+						// Reset it to zero.
+						// Note that to get here all lower-order counts must be zero.
+						m_allele_counts[j+1] = 0 ;
+						m_allele_counts[0] += value ;
+						for( std::size_t k = 0; k < j; ++k ) {
+							m_allele_count_limits[k] += value ;
+						}
+					}
+				}
+				if( j == (m_number_of_alleles-1) ) {
+					break ;
+				}
+			}
+			
+			m_GT_buffer.clear() ;
+			if( metThreshhold ) {
+				for( std::size_t allele = 0; allele < m_number_of_alleles; ++allele ) {
+					std::string const elt = std::to_string( allele ) + "/" ;
+					for( uint16_t count = 0; count < m_allele_counts[allele]; ++count ) {
+						m_GT_buffer += elt ;
+					}
+				}
+			} else {
+				for( std::size_t i = 0; i < m_ploidy; ++i ) {
+					m_GT_buffer += "./" ;
+				}
+			}
+			// remove trailing slash.
+			m_GT_buffer.resize( m_GT_buffer.size() - 1 ) ;
+			return m_GT_buffer ;
+		}
+	} ;
+
+	void process_selection_transcode_bgen_vcf(
+		std::string const& bgen_filename,
+		std::vector< std::pair< int64_t, int64_t> > const& positions
+	) const {
+		BgenProcessor processor( bgen_filename ) ;
+		
+		std::cout << "##fileformat=VCFv4.2\n"
+			<< "FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
+			<< "FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
+			<< "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT" ;
+		
+		std::cout << "\n" ;
+		std::string SNPID, rsid, chromosome ;
+		uint32_t position ;
+		std::vector< std::string > alleles ;
+
+		for( std::size_t i = 0; i < positions.size(); ++i ) {
+			processor.seek_to( positions[i].first ) ;
+			bool success = processor.read_variant(
+				&SNPID, &rsid, &chromosome, &position, &alleles
+			) ;
+		
+			assert( alleles.size() > 1 ) ;
+			std::cout << chromosome
+				<< "\t" << position
+				<< "\t" << alleles[0]
+				<< "\t" ;
+			for( std::size_t j = 1; j < alleles.size(); ++j ) {
+				std::cout << ((j==1)?"":",") << alleles[j] ;
+			}
+			std::cout
+				<< "\t"
+				<< ".\t" // QUAL
+				<< ".\t" // FILTER
+				<< ".\t" // INFO
+				<< "GT:GP\t" // FORMAT
+			;
+			VCFProbWriter writer( std::cout ) ;
+			processor.read_probability_data( writer ) ;
+		}
+	}
+	
 	void process_selection_transcode_bgen_v11(
 		std::string const& bgen_filename,
 		std::vector< std::pair< int64_t, int64_t> > const& positions
@@ -727,54 +1029,25 @@ private:
 					uint16_t( 2 ), 
 					[&alleles](std::size_t i) { return alleles[i] ; }
 				) ;
-				
-				std::vector< byte_t > const& data = processor.read_raw_probability_data() ;
 
-				// This is as in bgen::v12::impl::parse_probability_data()
-				// TODO: can I abstract this out?
-				byte_t const* buffer = &data[0] ;
-				byte_t const* end = &data[0] + data.size() ;
+				genfile::bgen::v12::GenotypeDataBlock pack ;
+				processor.read_and_unpack_v12_probability_data( &pack ) ;
 
-				uint32_t numberOfSamples ;
-				uint16_t numberOfAlleles ;
-				byte_t ploidyExtent[2] ;
-				enum { ePhased = 1, eUnphased = 0 } ;
-				
-				if( end < buffer + 8 ) {
-					throw std::domain_error( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-				}
-				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &numberOfSamples ) ;
-				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &numberOfAlleles ) ;
-				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &ploidyExtent[0] ) ;
-				buffer = genfile::bgen::read_little_endian_integer( buffer, end, &ploidyExtent[1] ) ;
-				// Keep a pointer to the ploidy and move buffer past the ploidy information
-				byte_t const* ploidy_p = buffer ;
-				buffer += numberOfSamples ;
-				// Get the phased flag and number of bits
-				bool const phased = ((*buffer++) & 0x1 ) ;
-				int const bits = int( *reinterpret_cast< byte_t const *>( buffer++ ) ) ;
-
-				if( numberOfSamples != processor.context().number_of_samples ) {
-					std::cerr
-						<< "In -transcode, # samples for row (" << numberOfSamples
-						<< ") does not match number in header (" << processor.context().number_of_samples
-						<< ").\n" ;
+				if( pack.bits != 8 ) {
+					std::cerr << "For -v11, expected 8 bits per probability, found " << pack.bits << ".\n" ;
 					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 				}
-				if( bits != 8 ) {
-					std::cerr << "For -v11, expected 8 bits per probability, found " << bits << ".\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
-				}
-				if( phased != 0 ) {
+				if( pack.phased != 0 ) {
 					std::cerr << "For -v11, expected unphased data.\n" ;
 					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 				}
-				if( end < buffer + numberOfSamples + 2 ) {
+				if( pack.end < pack.buffer + processor.context().number_of_samples ) {
 					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
 				}
 				byte_t* out_p = &serialisationBuffer[0] ;
-				byte_t const* p = ploidy_p ;
-				for( ; p < (ploidy_p + numberOfSamples); ++p, buffer += 2 ) {
+				byte_t const* p = pack.ploidy ;
+				byte_t const* buffer = pack.buffer ;
+				for( ; p < (pack.ploidy + pack.numberOfSamples); ++p, buffer += 2 ) {
 					if( *p & byte_t( 0x80 ) ) {
 						// data is missing, encode as zeros.
 						*out_p++ = 0 ; *out_p++ = 0 ;
