@@ -8,9 +8,11 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <functional>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/optional.hpp>
 #include "appcontext/CmdLineOptionProcessor.hpp"
 #include "appcontext/ApplicationContext.hpp"
 #include "appcontext/get_current_time_as_string.hpp"
@@ -133,86 +135,284 @@ public:
 		// Option interdependencies
 		options.option_excludes_group( "-index", "Variant selection options" ) ;
 		options.option_excludes_group( "-index", "Output options" ) ;
+		options.option_excludes_option( "-list", "-v11" ) ;
+		options.option_excludes_option( "-vcf", "-list" ) ;
+		options.option_excludes_option( "-vcf", "-v11" ) ;
 		options.option_implies_option( "-clobber", "-index" ) ;
 	}
 } ;
 
 typedef uint8_t byte_t ;
 
-struct BgenProcessor {
+// 
+struct FileMetadata {
+	FileMetadata():
+		size(0)
+	{}
+
+	FileMetadata( FileMetadata const& other ):
+		filename( other.filename ),
+		size( other.size ),
+		last_write_time( other.last_write_time ),
+		first_bytes( other.first_bytes )
+	{}
+
+	FileMetadata& operator=( FileMetadata const& other ) {
+		filename = other.filename ;
+		size = other.size ;
+		last_write_time = other.last_write_time ;
+		first_bytes = other.first_bytes ;
+		return *this ;
+	}
 	
-	BgenProcessor( std::string const& filename ):
+	std::string filename ;
+	int64_t size ;
+	std::time_t last_write_time ;
+	std::vector< byte_t > first_bytes ;
+} ;
+
+// Base class for BGEN indices.
+struct BgenIndex {
+public:
+	typedef std::unique_ptr< BgenIndex > UniquePtr ;
+
+public:
+	typedef std::pair< int64_t, int64_t> FilePosition ;
+	typedef boost::tuple< std::string, uint32_t, uint32_t > Range ;
+	typedef std::function< void ( std::size_t n, boost::optional< std::size_t > total ) > ProgressCallback ;
+
+public:
+	virtual ~BgenIndex() {} ;
+	virtual FileMetadata const& file_metadata() const = 0 ;
+	virtual void initialise(
+		std::istream& stream,
+		ProgressCallback callback = ProgressCallback()
+	) = 0 ;
+	virtual std::size_t number_of_variants() const = 0 ;
+	virtual FilePosition position_of_variant( std::size_t index ) const = 0 ;
+} ;
+
+// BGEN index implemented using a sqlite file.
+struct BgenSqliteIndex: public BgenIndex {
+public:
+	typedef std::unique_ptr< BgenSqliteIndex > UniquePtr ;
+
+	BgenSqliteIndex( std::string const& filename, std::string const& table_name = "Variant" ):
+		m_connection( open_connection( filename ) ),
+		m_metadata( get_metadata( *m_connection ) ),
+		m_index_table_name( table_name ),
+		m_query_is_stale( true )
+	{
+	}
+	
+	FileMetadata const& file_metadata() const {
+		return m_metadata ;
+	}
+
+	void initialise( std::istream& stream, ProgressCallback callback = ProgressCallback() ) {
+		db::Connection::StatementPtr stmt = build_query() ;
+		if( callback ) {
+			callback( 0, boost::optional< std::size_t >() ) ;
+		}
+		m_positions.reserve( 1000000 ) ;
+		std::size_t batch_i = 0 ;
+		for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
+			int64_t const pos = stmt->get< int64_t >( 0 ) ;
+			int64_t const size = stmt->get< int64_t >( 1 ) ;
+			assert( pos >= 0 ) ;
+			assert( size >= 0 ) ;
+			m_positions.push_back( std::make_pair( int64_t( pos ), int64_t( size ))) ;
+			if( callback ) {
+				callback( m_positions.size(), boost::optional< std::size_t >() ) ;
+			}
+		}
+#if DEBUG
+		std::cerr << "BgenSqliteIndex::initialise(): read positions for " << m_positions.size() << " variants.\n" ;
+#endif
+		
+		if( m_positions.size() > 0 ) {
+			stream.seekg( m_positions[0].first ) ;
+		}
+		m_query_is_stale = false ;
+	}
+
+	std::size_t number_of_variants() const {
+		return m_positions.size() ;
+	}
+	
+	FilePosition position_of_variant( std::size_t index ) const {
+#if DEBUG
+		std::cerr << "BgenSqliteIndex::position_of_variant(" << index << ")...\n" ;
+#endif
+		assert( !m_query_is_stale ) ;
+		assert( index < m_positions.size() ) ;
+		return m_positions[index] ;
+	}
+
+public:
+	BgenIndex& include_range( Range const& range ) {
+		m_query_parts.inclusion += ((m_query_parts.inclusion.size() > 0) ? " OR " : "" ) + (
+			boost::format( "( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
+		).str() ;
+		m_query_is_stale = true ;
+		return *this ;
+	}
+
+	BgenIndex& exclude_range( Range const& range ) {
+		m_query_parts.exclusion += ( m_query_parts.exclusion.size() > 0 ? " AND" : "" ) + (
+			boost::format( " NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" )
+				% range.get<0>() % range.get<1>() % range.get<2>()
+		).str() ;
+		m_query_is_stale = true ;
+		return *this ;
+	}
+	
+	BgenIndex& include_rsids( std::vector< std::string > const& ids ) {
+		m_connection->run_statement( "CREATE TEMP TABLE IF NOT EXISTS tmpIncludedId( identifier TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
+		db::Connection::StatementPtr insert_stmt = m_connection->get_statement( "INSERT INTO tmpIncludedId( identifier ) VALUES( ? )" ) ;
+		for( auto elt: ids ) {
+			insert_stmt->bind( 1, elt ).step() ;
+			insert_stmt->reset() ;
+		}
+		if( m_query_parts.join.find( "tmpIncludedId" ) == std::string::npos ) {
+			m_query_parts.join += " LEFT OUTER JOIN tmpIncludedId TI ON TI.identifier == V.rsid" ;
+			m_query_parts.inclusion += ( m_query_parts.inclusion.size() > 0 ? " OR" : "" ) + std::string( " TI.identifier IS NOT NULL" ) ;
+		}
+		m_query_is_stale = true ;
+		return *this ;
+	}
+	
+	BgenIndex& exclude_rsids( std::vector< std::string > const& ids ) {
+		m_connection->run_statement( "CREATE TEMP TABLE IF NOT EXISTS tmpExcludedId( identifier TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
+		db::Connection::StatementPtr insert_stmt = m_connection->get_statement( "INSERT INTO tmpExcludedId( identifier ) VALUES( ? )" ) ;
+		for( auto elt: ids ) {
+			insert_stmt->bind( 1, elt ).step() ;
+			insert_stmt->reset() ;
+		}
+		if( m_query_parts.join.find( "tmpExcludedId" ) == std::string::npos ) {
+			m_query_parts.join += " LEFT OUTER JOIN tmpExcludedId TE ON TE.identifier == V.rsid" ;
+			m_query_parts.exclusion += ( m_query_parts.exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.identifier IS NULL" ) ;
+		}
+		m_query_is_stale = true ;
+		return *this ;
+	}
+
+private:
+	
+	db::Connection::UniquePtr open_connection( std::string const& filename ) const {
+		db::Connection::UniquePtr result ;
+		try {
+			result = db::Connection::create( filename, "r" ) ;
+		} catch( db::ConnectionError const& e ) {
+			throw std::invalid_argument( "Could not open index file." ) ;
+		}
+		return result ;
+	}
+	
+	FileMetadata get_metadata( db::Connection& connection ) const {
+		FileMetadata result ;
+		db::Connection::StatementPtr stmt = connection.get_statement( "SELECT * FROM sqlite_master WHERE name == 'Metadata' AND type == 'table'" ) ;
+		stmt->step() ;
+		if( stmt->empty() ) {
+			throw std::invalid_argument( "Index file appears malformed (no \"Metadata\" table)" ) ;
+		}
+		db::Connection::StatementPtr mdStmt = connection.get_statement( "SELECT filename, file_size, last_write_time, first_1000_bytes FROM Metadata" ) ;
+		mdStmt->step() ;
+
+		if( mdStmt->empty() ) {
+			throw std::invalid_argument( "Index file appears malformed (empty \"Metadata\" table)" ) ;
+		}
+		// Get metadata fields for comparison
+		result.filename = mdStmt->get< std::string >( 0 ) ;
+		result.size = mdStmt->get< int64_t >( 1 ) ;
+		result.last_write_time = mdStmt->get< int64_t >( 2 ) ;
+		result.first_bytes = mdStmt->get< std::vector< uint8_t > >( 3 ) ;
+
+		return result ;
+	}
+	
+	db::Connection::StatementPtr build_query() const {
+		std::string const select = "SELECT file_start_position, size_in_bytes FROM `"
+			+ m_index_table_name + "` V" ;
+		std::string const inclusion = ( m_query_parts.inclusion.size() > 0 ) ? ("(" + m_query_parts.inclusion + ")") : "" ;
+		std::string const exclusion = ((m_query_parts.inclusion.size() > 0 && m_query_parts.exclusion.size() > 0 ) ? "AND " : "" )
+			+ (( m_query_parts.exclusion.size() > 0 ) ? ("(" + m_query_parts.exclusion + ")") : "" ) ;
+		std::string const where = (inclusion.size() > 0 || exclusion.size() > 0) ? ("WHERE " + inclusion + exclusion) : "" ;
+		std::string const orderBy = "ORDER BY chromosome, position, rsid, allele1, allele2" ;
+		std::string const select_sql = select + " " + m_query_parts.join + " " + where + " " + orderBy ;
+#if DEBUG
+		std::cerr << "BgenIndex::build_query(): SQL is: \"" << select_sql << "\"...\n" ;
+#endif
+		
+		return m_connection->get_statement( select_sql ) ;
+	}
+	
+private:
+	db::Connection::UniquePtr m_connection ;
+	FileMetadata const m_metadata ;
+	std::string const m_index_table_name ;
+	struct QueryParts {
+		std::string join ;
+		std::string inclusion ;
+		std::string exclusion ;
+	} ;
+	QueryParts m_query_parts ;
+	bool m_query_is_stale ;
+	std::vector< std::pair< int64_t, int64_t> > m_positions ;
+} ;
+
+struct BgenView {
+public:
+	BgenView( std::string const& filename ):
 		m_filename( filename ),
+		m_variant_i(0),
 		m_state( e_NotOpen )
 	{
-		m_last_write_time = boost::filesystem::last_write_time( filename ) ;
+		setup( m_filename ) ;
+		m_file_position_of_current_variant = m_stream->tellg() ;
+	}
 
-		// Open the stream
-		m_stream.reset(
-			new std::ifstream( filename, std::ifstream::binary )
-		) ;
-		if( !*m_stream ) {
-			throw std::invalid_argument( filename ) ;
+	BgenView(
+		std::string const& filename,
+		BgenIndex::UniquePtr index,
+		BgenIndex::ProgressCallback progress_callback = BgenIndex::ProgressCallback()
+	):
+		m_filename( filename ),
+		m_variant_i(0),
+		m_state( e_NotOpen )
+	{
+		setup( m_filename ) ;
+		m_index = verify_index( index ) ;
+		m_index->initialise( *m_stream, progress_callback ) ;
+		if( m_index->number_of_variants() > 0 ) {
+			m_stream->seekg( m_index->position_of_variant(0).first ) ;
 		}
-		
-		// get file size
-		{
-			std::ios::streampos origin = m_stream->tellg() ;
-			m_stream->seekg( 0, std::ios::end ) ;
-			m_file_size = m_stream->tellg() - origin ;
-			m_stream->seekg( 0, std::ios::beg ) ;
-			m_first_bytes.resize( 1000, 0 ) ;
-			m_stream->read( reinterpret_cast< char* >( &m_first_bytes[0] ), 1000 ) ;
-			std::cerr << "gcount is " << m_stream->gcount() << ".\n" ;
-			m_first_bytes.resize( m_stream->gcount() ) ;
-			m_stream->clear() ;
-			m_stream->seekg( 0, std::ios::beg ) ;
-		}
-		
-		m_state = e_Open ;
+		m_file_position_of_current_variant = m_stream->tellg() ;
+	}
 
-		// Read the offset, header, and sample IDs if present.
-		genfile::bgen::read_offset( *m_stream, &m_offset ) ;
-		genfile::bgen::read_header_block( *m_stream, &m_context ) ;
 
-		// Skip anything else until the first variant
-		m_stream->seekg( m_offset + 4 ) ;
-
-		// We update track of the start and end of each variant
-		m_current_variant_position = ( m_offset + 4 ) ;
-
-		// We keep track of state (though it's not really needed for this implementation.)
-		m_state = e_ReadyForVariant ;
+	FileMetadata const& file_metadata() const {
+		return m_file_metadata ;
 	}
 
 	genfile::bgen::Context const& context() const {
 		return m_context ;
 	}
+	
+	std::vector< byte_t > const& postheader_data() const {
+		return m_postheader_data ;
+	}
 
 	std::streampos current_position() const {
-		return m_current_variant_position ;
+		return m_file_position_of_current_variant ;
 	}
 
-	void seek_to( std::streampos pos ) {
-		m_current_variant_position = pos ;
-		m_stream->seekg( pos ) ;
-		m_state = e_ReadyForVariant ;
-	}
-
-	int64_t file_size() const {
-		return m_file_size ;
-	}
-
-	std::time_t last_write_time() const {
-		return m_last_write_time ;
-	}
-
-	std::vector< byte_t > const& first_bytes() const {
-		return m_first_bytes ;
-	}
-	
 	uint32_t number_of_variants() const {
-		return m_context.number_of_variants ;
+		if( m_index ) {
+			return m_index->number_of_variants() ;
+		} else {
+			return m_context.number_of_variants ;
+		}
 	}
 
 	// Attempt to read identifying information about a variant from the bgen file, returning
@@ -228,7 +428,12 @@ struct BgenProcessor {
 		std::vector< std::string >* alleles
 	) {
 		assert( m_state == e_ReadyForVariant ) ;
-		
+
+		if( m_index ) {
+			BgenIndex::FilePosition const pos = m_index->position_of_variant( m_variant_i ) ;
+			m_stream->seekg( pos.first ) ;
+		}
+
 		if(
 			genfile::bgen::read_snp_identifying_data(
 				*m_stream, m_context,
@@ -257,8 +462,9 @@ struct BgenProcessor {
 			&m_buffer1,
 			&m_buffer2
 		) ;
-		m_current_variant_position = m_stream->tellg() ;
+		m_file_position_of_current_variant = m_stream->tellg() ;
 		m_state = e_ReadyForVariant ;
+		++m_variant_i ;
 	}
 	
 	// Read and uncompress genotype probability data, and unpack
@@ -274,6 +480,7 @@ struct BgenProcessor {
 		assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
 		std::vector< byte_t > const& buffer = read_and_uncompress_probability_data() ;
 		pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
+		++m_variant_i ;
 	}
 
 	// Ignore genotype probability data for the SNP just read using read_variant()
@@ -282,50 +489,130 @@ struct BgenProcessor {
 	void ignore_probability_data() {
 		assert( m_state == e_ReadyForProbs ) ;
 		genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
-		m_current_variant_position = m_stream->tellg() ;
+		m_file_position_of_current_variant = m_stream->tellg() ;
 		m_state = e_ReadyForVariant ;
+		++m_variant_i ;
 	}
 
 private:
+
+	// Open the bgen file, read header data and gather metadata.
+	void setup( std::string const& filename ) {
+		m_file_metadata.filename = filename ;
+		m_file_metadata.last_write_time = boost::filesystem::last_write_time( filename ) ;
+
+		// Open the stream
+		m_stream.reset(
+			new std::ifstream( filename, std::ifstream::binary )
+		) ;
+		if( !*m_stream ) {
+			throw std::invalid_argument( filename ) ;
+		}
+	
+		// get file size
+		{
+			std::ios::streampos origin = m_stream->tellg() ;
+			m_stream->seekg( 0, std::ios::end ) ;
+			m_file_metadata.size = m_stream->tellg() - origin ;
+			m_stream->seekg( 0, std::ios::beg ) ;
+		}
+		// read first (up to) 1000 bytes.
+		{
+			m_file_metadata.first_bytes.resize( 1000, 0 ) ;
+			m_stream->read( reinterpret_cast< char* >( &m_file_metadata.first_bytes[0] ), 1000 ) ;
+			m_file_metadata.first_bytes.resize( m_stream->gcount() ) ;
+			m_stream->clear() ;
+			m_stream->seekg( 0, std::ios::beg ) ;
+		}
+	
+		m_state = e_Open ;
+
+		// Read the offset, header, and sample IDs if present.
+		genfile::bgen::read_offset( *m_stream, &m_offset ) ;
+		genfile::bgen::read_header_block( *m_stream, &m_context ) ;
+
+		// read data up to first data block.
+		m_postheader_data.reserve( m_offset - m_context.header_size() ) ;
+		m_stream->read( reinterpret_cast< char* >( &m_postheader_data[0] ), m_postheader_data.size() ) ;
+		if( m_stream->gcount() != m_postheader_data.size() ) {
+			throw std::invalid_argument(
+				(
+					boost::format(
+						"BGEN file (\"%s\") appears malformed - offset specifies more bytes (%d) than are in the file."
+					) % filename % m_offset
+				).str()
+			) ;
+		}
+
+		// We keep track of state (though it's not really needed for this implementation.)
+		m_state = e_ReadyForVariant ;
+	}
+
+	// Verify that the given index matches this file using the supplied metadata.
+	// Throw std::invalid_argument error if they mismatch, otherwise return the index.
+	BgenIndex::UniquePtr verify_index( BgenIndex::UniquePtr& index ) const {
+		if( index->file_metadata().size != m_file_metadata.size ) {
+			std::string const message = "!! Size of file (\"" + m_filename + "\" ("
+				+ std::to_string( m_file_metadata.size ) + " bytes)"
+				+ "differs from that recorded in the index file ("
+				+ std::to_string( index->file_metadata().size ) + ").\n"
+				+ "Do you need to recreate the index?\n" ;
+			throw std::invalid_argument( message ) ;
+			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
+
+		if( index->file_metadata().first_bytes != m_file_metadata.first_bytes ) {
+			std::string const message = "!! File (\"" + m_filename + "\" has different initial bytes"
+				+ " than recorded in the index file - that can't be right.\n"
+				+ "Do you need to recreate the index?\n" ;
+			throw std::invalid_argument( message ) ;
+			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
+		return std::move( index ) ;
+	}
+
+	// Utility function to read and uncompress variant genotype probability data
+	// without further processing.
+	std::vector< byte_t > const& read_and_uncompress_probability_data() {
+		assert( m_state == e_ReadyForProbs ) ;
+		genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
+		m_file_position_of_current_variant = m_stream->tellg() ;
+		m_state = e_ReadyForVariant ;
+		genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
+		return m_buffer2 ;
+	}
+private:
 	std::string const m_filename ;
 	std::unique_ptr< std::istream > m_stream ;
+	std::size_t m_variant_i ;
+	BgenIndex::UniquePtr m_index ;
 
-	// meta-data we record to avoid using a stale index file
-	int64_t m_file_size ;
-	std::time_t m_last_write_time ;
-	std::vector< byte_t > m_first_bytes ;
+	// meta data used to avoid stale index files.
+	FileMetadata m_file_metadata ;
+
+	// offset byte from top of bgen file.
+	uint32_t m_offset ;
 
 	// bgen::Context object holds information from the header block,
 	// including bgen flags
 	genfile::bgen::Context m_context ;
 
-	// offset byte from top of bgen file.
-	uint32_t m_offset ;
+	// All data following header up to the first variant data block.
+	std::vector< byte_t > m_postheader_data ;
 
 	// We keep track of our state in the file.
-	// Not strictly necessary for this implentation but makes it clear that
-	// calls must be read_variant() followed by ignore_probability_data() or ignore_probability_data()
-	// repeatedly.
+	// This is not strictly necessary for this implentation but makes it clear that
+	// the sequence of calls must be read_variant() followed by
+	// ignore_probability_data() or ignore_probability_data() repeatedly.
 	enum State { e_NotOpen = 0, e_Open = 1, e_ReadyForVariant = 2, e_ReadyForProbs = 3, eComplete = 4 } ;
 	State m_state ;
 	
 	// To avoid issues with tellg() and failbit, we store the stream position at suitable points
-	std::streampos m_current_variant_position ;
+	std::streampos m_file_position_of_current_variant ;
 	
 	// Two buffers for processing
 	std::vector< byte_t > m_buffer1 ;
 	std::vector< byte_t > m_buffer2 ;
-	
-private:
-	// Read and uncompress genotype probability data.
-	std::vector< byte_t > const& read_and_uncompress_probability_data() {
-		assert( m_state == e_ReadyForProbs ) ;
-		genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
-		m_current_variant_position = m_stream->tellg() ;
-		m_state = e_ReadyForVariant ;
-		genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
-		return m_buffer2 ;
-	}
 } ;
 
 struct IndexBgenApplication: public appcontext::ApplicationContext
@@ -413,13 +700,13 @@ private:
 			"VALUES( ?, ?, ?, ?, ?, ?, ?, ? )"
 		) ;
 
-		BgenProcessor processor( bgen_filename ) ;
-
+		BgenView processor( bgen_filename ) ;
+		
 		insert_metadata_stmt
 			->bind( 1, bgen_filename )
-			.bind( 2, processor.file_size() )
-			.bind( 3, uint64_t( processor.last_write_time() ) )
-			.bind( 4, &processor.first_bytes()[0], &processor.first_bytes()[0] + processor.first_bytes().size() )
+			.bind( 2, processor.file_metadata().size )
+			.bind( 3, uint64_t( processor.file_metadata().last_write_time ) )
+			.bind( 4, &processor.file_metadata().first_bytes[0], &processor.file_metadata().first_bytes[0] + processor.file_metadata().first_bytes.size() )
 			.bind( 5, appcontext::get_current_time_as_string() )
 			.step() ;
 
@@ -480,7 +767,7 @@ private:
 			catch( genfile::bgen::BGenError const& e ) {
 				ui().logger() << "!! (" << e.what() << "): an error occurred reading from the input file.\n" ;
 				ui().logger() << "Last observed variant was \"" << SNPID.substr(0,10) << "\", \"" << rsid.substr(0,10) << "\"...\n" ;
-				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_size() << ".\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_metadata().size << ".\n" ;
 				throw ;
 			}
  			catch( db::StatementStepError const& e ) {
@@ -489,7 +776,7 @@ private:
 					ui().logger() << " " << alleles[i] ;
 				}
 				ui().logger() << "\n" ;
-				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_size() << ".\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_metadata().size << ".\n" ;
 				throw ;
 			}
 		}
@@ -534,111 +821,84 @@ private:
 	}
 
 	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) const {
-		db::Connection::UniquePtr connection ;
+		BgenSqliteIndex::UniquePtr index ;
 		try {
-			connection = db::Connection::create( index_filename, "r" ) ;
-			verify_metadata( *connection, bgen_filename ) ;
-		} catch( db::ConnectionError const& e ) {
-			std::cerr << "!! Unable to open index file \"" + index_filename + "\" (run bgenix -index first).\n" ;
+			index.reset( new BgenSqliteIndex( index_filename ) ) ;
+		} catch( std::invalid_argument const& e ) {
+			std::cerr << "!! Error opening index file \"" << index_filename
+				<< "\": " << e.what() << "\n" ;
+			std::cerr << "Do you need to regenerate the index file?\n" ;
 			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 		}
-		std::string const& select_sql = get_select_sql( *connection ) ;
-#if DEBUG
-		std::cerr << "Running sql: \"" << select_sql << "\"...\n" ;
-#endif
-		std::vector< std::pair< int64_t, int64_t> > positions ;
-		{
-			auto progress_context = ui().get_progress_context( "Selecting variants" ) ;
-			progress_context( 0, boost::optional< std::size_t >() ) ;
-			db::Connection::StatementPtr stmt = connection->get_statement( select_sql ) ;
-			{
-				positions.reserve( 1000000 ) ;
-				std::size_t batch_i = 0 ;
-				for( stmt->step() ; !stmt->empty(); stmt->step(), ++batch_i ) {
-					int64_t const pos = stmt->get< int64_t >( 0 ) ;
-					int64_t const size = stmt->get< int64_t >( 1 ) ;
-					assert( pos >= 0 ) ;
-					assert( size >= 0 ) ;
-					positions.push_back( std::make_pair( int64_t( pos ), int64_t( size ))) ;
-					progress_context( positions.size(), boost::optional< std::size_t >() ) ;
-				}
-			}
-		}
+		
+		setup_query( *index ) ;
+		
+		//setup_query( *index ) ;
+		bool const transcode
+			= options().check( "-list" )
+			|| options().check( "-vcf" )
+			|| options().check( "-v11" ) ;
 
-		if( options().check( "-list" ) ) {
-			process_selection_list( bgen_filename, positions ) ;
-		} else if( options().check( "-vcf" )) {
-			process_selection_transcode( bgen_filename, positions, "vcf" ) ;
-		} else if( options().check( "-v11" )) {
-			// peek at the file.  If already v1.1 we can do it without transcoding.
-			BgenProcessor processor( bgen_filename ) ;
-			uint32_t const bgen_v11_flags = (genfile::bgen::e_Layout1 | genfile::bgen::e_ZlibCompression) ;
-#if DEBUG
-			std::cerr << boost::format( "flags = %x\n" ) % processor.context().flags ;
-#endif
-			if( processor.context().flags == bgen_v11_flags ) {
-				ui().logger() << "++ Option -v11 specified, but input format is already BGEN v1.1.\n"
-					<< "++ I will copy blocks to output instead of transcoding.\n" ;
-				process_selection_notranscode(
-					bgen_filename,
-					positions
-				) ;
-			} else {
-				process_selection_transcode( bgen_filename, positions, "bgen_v1.1" ) ;
+		if( transcode ) {
+			BgenView processor( bgen_filename, std::move( index ) ) ;
+			if( options().check( "-list" ) ) {
+				process_selection_list( processor ) ;
+			} else if( options().check( "-vcf" )) {
+				process_selection_transcode( processor, "vcf" ) ;
+			} else if( options().check( "-v11" )) {
+				process_selection_transcode( processor, "bgen_v1.1" ) ;
 			}
 		} else {
-			process_selection_notranscode( bgen_filename, positions ) ;
+			process_selection_notranscode( bgen_filename, std::move( index ) ) ;
 		}
 	}
 
-	void verify_metadata( db::Connection& connection, std::string const& bgen_filename ) const {
-		{
-			// Find and verify the metadata
-			db::Connection::StatementPtr stmt = connection.get_statement( "SELECT * FROM sqlite_master WHERE name == 'Metadata' AND type == 'table'" ) ;
-			stmt->step() ;
-			
-			if( !stmt->empty() ) {
-				db::Connection::StatementPtr mdStmt = connection.get_statement( "SELECT file_size, last_write_time, first_1000_bytes FROM Metadata" ) ;
-				mdStmt->step() ;
-				if( !mdStmt->empty() ) {
-					// Get metadata fields for comparison
-					int64_t metadata_fileSize = mdStmt->get< int64_t >( 0 ) ;
-//					int64_t metadata_lastWriteTime = mdStmt->get< int64_t >( 1 ) ;
-					std::vector< uint8_t > metadata_first_bytes = mdStmt->get< std::vector< uint8_t > >( 2 ) ;
-
-					// Now get corresponding data from file.
-					std::vector< uint8_t > file_first_bytes( 1000, 0 ) ;
-					std::ifstream bgen_file( bgen_filename.c_str() ) ;
-					std::ios::streampos origin = bgen_file.tellg() ;
-					bgen_file.read( reinterpret_cast< char* >( &file_first_bytes[0] ), 1000 ) ;
-					file_first_bytes.resize( bgen_file.gcount() ) ;
-
-					// compute file size
-					bgen_file.clear() ;
-					bgen_file.seekg( 0, std::ios::end ) ;
-					std::ios::streamoff const fileSize = bgen_file.tellg() - origin ;
-
-//					int64_t const file_lastWriteTime = boost::filesystem::last_write_time( bgen_filename ) ;
-
-					if( metadata_fileSize != fileSize ) {
-						std::cerr << "!! Size of file (\"" << bgen_filename << "\" ("
-							<< fileSize << " bytes)"
-							<< "differs from that recorded in the index file (" << metadata_fileSize << ").\n"
-							<< "Do you need to recreate the index?\n" ;
-						throw appcontext::HaltProgramWithReturnCode( -1 ) ;
-					}
-					if( file_first_bytes != metadata_first_bytes ) {
-						std::cerr << "!! File (\"" << bgen_filename << "\" has different initial bytes"
-							" than recorded in the index file - that can't be right.\n"
-							<< "Do you need to recreate the index?\n" ;
-						throw appcontext::HaltProgramWithReturnCode( -1 ) ;
-					}
-				}
+	void setup_query( BgenSqliteIndex& index ) const {
+		if( options().check( "-incl-range" )) {
+			auto const elts = collect_unique_ids( options().get_values< std::string >( "-incl-range" ));
+			for( std::string const& elt: elts ) {
+				index.include_range( parse_range( elt )) ;
 			}
 		}
+		if( options().check( "-excl-range" )) {
+			auto const elts = collect_unique_ids( options().get_values< std::string >( "-excl-range" ));
+			for( std::string const& elt: elts ) {
+				index.exclude_range( parse_range( elt )) ;
+			}
+		}
+		if( options().check( "-incl-rsids" )) {
+			auto const ids = collect_unique_ids( options().get_values< std::string >( "-incl-rsids" ));
+			index.include_rsids( ids ) ;
+		}
+
+		if( options().check( "-excl-rsids" )) {
+			auto const ids = collect_unique_ids( options().get_values< std::string >( "-excl-rsids" ));
+			index.exclude_rsids( ids ) ;
+		}
+	}
+	
+	std::vector< std::string > collect_unique_ids( std::vector< std::string > const& ids_or_filenames ) const {
+		std::vector< std::string > result ;
+		for( auto elt: ids_or_filenames ) {
+			if( bfs::exists( elt )) {
+				std::ifstream f( elt ) ;
+				std::copy(
+					std::istream_iterator< std::string >( f ),
+					std::istream_iterator< std::string >(),
+					std::back_inserter< std::vector< std::string > >( result )
+				) ;
+			} else {
+				result.push_back( elt ) ;
+			}
+		}
+		// now sort and uniqueify them...
+		std::sort( result.begin(), result.end() ) ;
+		std::vector< std::string >::const_iterator newBack = std::unique( result.begin(), result.end() ) ;
+		result.resize( newBack - result.begin() ) ;
+		return result ;
 	}
 
-	void process_selection_notranscode( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
+	void process_selection_notranscode( std::string const& bgen_filename, BgenIndex::UniquePtr index ) const {
 		std::ifstream bgen_file( bgen_filename, std::ios::binary ) ;
 		uint32_t offset = 0 ;
 
@@ -648,7 +908,7 @@ private:
 		bgen::read_header_block( bgen_file, &context ) ;
 
 		// Write the new context after adjusting the variant count.
-		context.number_of_variants = positions.size() ;
+		context.number_of_variants = index->number_of_variants() ;
 		bgen::write_offset( std::cout, offset ) ;
 		bgen::write_header_block( std::cout, context ) ;
 		std::istreambuf_iterator< char > inIt( bgen_file ) ;
@@ -659,20 +919,20 @@ private:
 		std::copy_n( inIt, offset - context.header_size(), outIt ) ;
 
 		{
-			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( positions.size() ) + " variants" ) ;
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( index->number_of_variants() ) + " variants" ) ;
 			// Now we go for it
-			for( std::size_t i = 0; i < positions.size(); ++i ) {
-				bgen_file.seekg( positions[i].first ) ;
+			for( std::size_t i = 0; i < index->number_of_variants(); ++i ) {
+				std::pair< int64_t, int64_t> range = index->position_of_variant( i ) ;
+				bgen_file.seekg( range.first ) ;
 				std::istreambuf_iterator< char > inIt( bgen_file ) ;
-				std::copy_n( inIt, positions[i].second, outIt ) ;
-				progress_context( i+1, positions.size() ) ;
+				std::copy_n( inIt, range.second, outIt ) ;
+				progress_context( i+1, index->number_of_variants() ) ;
 			}
 		}
-		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % positions.size() ;
+		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % index->number_of_variants() ;
 	}
 	
-	void process_selection_list( std::string const& bgen_filename, std::vector< std::pair< int64_t, int64_t> > const& positions ) const {
-		BgenProcessor processor( bgen_filename ) ;
+	void process_selection_list( BgenView& processor ) const {
 		std::cout << boost::format( "# %s: started %s\n" ) % globals::program_name % appcontext::get_current_time_as_string() ;
 		std::cout << "alternate_ids\trsid\tchromosome\tposition\tnumber_of_alleles\tfirst_allele\talternative_alleles\n" ;
 		
@@ -680,8 +940,7 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
-		for( std::size_t i = 0; i < positions.size(); ++i ) {
-			processor.seek_to( positions[i].first ) ;
+		for( std::size_t i = 0; i < processor.number_of_variants(); ++i ) {
 			bool success = processor.read_variant(
 				&SNPID, &rsid, &chromosome, &position, &alleles
 			) ;
@@ -701,25 +960,17 @@ private:
 			}
 			processor.ignore_probability_data() ;
 		}
-		
-		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
+		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % processor.number_of_variants() ;
 	}
 
 	void process_selection_transcode(
-		std::string const& bgen_filename,
-		std::vector< std::pair< int64_t, int64_t> > const& positions,
+		BgenView& view,
 		std::string const& format
 	) const {
 		if( format == "vcf" ) {
-			process_selection_transcode_bgen_vcf(
-				bgen_filename,
-				positions
-			) ;
+			process_selection_transcode_bgen_vcf( view ) ;
 		} else if( format == "bgen_v1.1" ) {
-			process_selection_transcode_bgen_v11(
-				bgen_filename,
-				positions
-			) ;
+			process_selection_transcode_bgen_v11( view ) ;
 		} else {
 			throw std::invalid_argument( "format=\"" + format + "\"" ) ;
 		}
@@ -939,11 +1190,8 @@ private:
 	} ;
 
 	void process_selection_transcode_bgen_vcf(
-		std::string const& bgen_filename,
-		std::vector< std::pair< int64_t, int64_t> > const& positions
+		BgenView& processor
 	) const {
-		BgenProcessor processor( bgen_filename ) ;
-		
 		std::cout << "##fileformat=VCFv4.2\n"
 			<< "FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
 			<< "FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
@@ -955,12 +1203,11 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
-		for( std::size_t i = 0; i < positions.size(); ++i ) {
-			processor.seek_to( positions[i].first ) ;
+		for( std::size_t i = 0; i < processor.number_of_variants(); ++i ) {
 			bool success = processor.read_variant(
 				&SNPID, &rsid, &chromosome, &position, &alleles
 			) ;
-		
+			assert( success ) ;
 			assert( alleles.size() > 1 ) ;
 			std::cout << chromosome
 				<< "\t" << position
@@ -988,25 +1235,21 @@ private:
 	// For efficiency, instead of a full parse we extract encoded data and use a lookup table
 	// to generate BGEN v1.1 values for encoding.
 	void process_selection_transcode_bgen_v11(
-		std::string const& bgen_filename,
-		std::vector< std::pair< int64_t, int64_t> > const& positions
+		BgenView& processor
 	) const {
-		BgenProcessor processor( bgen_filename ) ;
-
 		// Currently this is only supported in a very restricted scenario.
 		// Namely, when the format is BGEN v1.2, unphased data, encoded
 		// with 8 bits per probability, converting to a BGEN v1.1 file.
 		// And all variants must be biallelic.
 		uint32_t const inputLayout = processor.context().flags & genfile::bgen::e_Layout ;
 		if( inputLayout != genfile::bgen::e_Layout2 ) {
-			throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+			throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
 		}
 
 		// specify flags for BGEN v1.1
 		// This means layout 1, no sample identifiers, zlib compression.
 		genfile::bgen::Context outputContext = processor.context() ;
 		outputContext.flags = genfile::bgen::e_Layout1 | genfile::bgen::e_ZlibCompression ;
-		outputContext.number_of_variants = positions.size() ;
 		
 		// Write offset and header
 		genfile::bgen::write_offset( std::cout, outputContext.header_size() ) ;
@@ -1025,17 +1268,16 @@ private:
 		std::vector< uint64_t > probability_encoding_table = compute_probability_encoding_table() ;
 
 		{
-			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( positions.size() ) + " variants" ) ;
-			for( std::size_t i = 0; i < positions.size(); ++i ) {
-				processor.seek_to( positions[i].first ) ;
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( processor.number_of_variants() ) + " variants" ) ;
+			for( std::size_t i = 0; i < processor.number_of_variants(); ++i ) {
 				bool success = processor.read_variant(
 					&SNPID, &rsid, &chromosome, &position, &alleles
 				) ;
-				
+				assert( success ) ;
 				if( alleles.size() != 2 ) {
 					std::cerr
 						<< "In -transcode, found variant with " << alleles.size() << " allele, only 2 alleles are supported by BGEN v1.1.\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
 				}
 				
 				genfile::bgen::write_snp_identifying_data(
@@ -1051,14 +1293,14 @@ private:
 
 				if( pack.bits != 8 ) {
 					std::cerr << "For -v11, expected 8 bits per probability, found " << pack.bits << ".\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
 				}
 				if( pack.phased != 0 ) {
 					std::cerr << "For -v11, expected unphased data.\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
 				}
 				if( pack.end < pack.buffer + processor.context().number_of_samples ) {
-					throw std::invalid_argument( "bgen_filename=\"" + bgen_filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
 				}
 				byte_t* out_p = &serialisationBuffer[0] ;
 				byte_t const* p = pack.ploidy ;
@@ -1105,11 +1347,11 @@ private:
 					uint32_t( compressionBuffer.size() )
 				) ;
 				std::copy( &compressionBuffer[0], &compressionBuffer[0]+compressionBuffer.size(), outIt ) ;
-				progress_context( i+1, positions.size() ) ;
+				progress_context( i+1, processor.number_of_variants() ) ;
 			}
 		}
 		
-		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % positions.size() ;
+		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % processor.number_of_variants() ;
 	}
 	
 	std::vector< uint64_t > compute_probability_encoding_table() const {
@@ -1162,89 +1404,7 @@ private:
 		assert( pos2 >= pos1 ) ;
 
 		return boost::make_tuple( chromosome, uint32_t( pos1 ), uint32_t( pos2 ) ) ;
-	}
-
-	std::string get_select_sql( db::Connection& connection ) const {
-		std::string result = "SELECT file_start_position, size_in_bytes FROM `"
-			+ options().get_value("-table")
-			+ "` V" ;
-		std::string join ;
-		std::string inclusion = "" ;
-		std::string exclusion = "" ;
-		if( options().check( "-incl-range" )) {
-			auto const elts = collect_unique_ids( options().get_values< std::string >( "-incl-range" ));
-			//auto elts = options().get_values< std::string >( "-incl-range" ) ;
-			for( std::string const& elt: elts ) {
-				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
-				inclusion += ((inclusion.size() > 0) ? " OR " : "" ) + (
-					boost::format( "( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
-				).str() ;
-			}
-		}
-		if( options().check( "-excl-range" )) {
-			auto const elts = collect_unique_ids( options().get_values< std::string >( "-excl-range" ));
-			for( std::string const& elt: elts ) {
-				boost::tuple< std::string, uint32_t, uint32_t > range = parse_range( elt ) ;
-				exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + (
-					boost::format( " NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
-				).str() ;
-			}
-		}
-		if( options().check( "-incl-rsids" )) {
-			auto const ids = collect_unique_ids( options().get_values< std::string >( "-incl-rsids" ));
-			connection.run_statement( "CREATE TEMP TABLE tmpIncludedId( identifier TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
-			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpIncludedId( identifier ) VALUES( ? )" ) ;
-			for( auto elt: ids ) {
-				insert_stmt
-					->bind( 1, elt )
-					.step() ;
-				insert_stmt->reset() ;
-			}
-			join += " LEFT OUTER JOIN tmpIncludedId TI ON TI.identifier == V.rsid" ;
-			inclusion += ( inclusion.size() > 0 ? " OR" : "" ) + std::string( " TI.identifier IS NOT NULL" ) ;
-		}
-		if( options().check( "-excl-rsids" )) {
-			auto const ids = collect_unique_ids( options().get_values< std::string >( "-excl-rsids" ));
-			connection.run_statement( "CREATE TEMP TABLE tmpExcludedId( identifier TEXT NOT NULL PRIMARY KEY ) WITHOUT ROWID" ) ;
-			db::Connection::StatementPtr insert_stmt = connection.get_statement( "INSERT INTO tmpExcludedId( identifier ) VALUES( ? )" ) ;
-			for( auto elt: ids ) {
-				insert_stmt
-					->bind( 1, elt )
-					.step() ;
-				insert_stmt->reset() ;
-			}
-			join += " LEFT OUTER JOIN tmpExcludedId TE ON TE.identifier == V.rsid" ;
-			exclusion += ( exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.identifier IS NULL" ) ;
-		}
-		inclusion = ( inclusion.size() > 0 ) ? ("(" + inclusion + ")") : "" ;
-		exclusion = ((inclusion.size() > 0 && exclusion.size() > 0 ) ? "AND " : "" ) + (( exclusion.size() > 0 ) ? ("(" + exclusion + ")") : "" ) ;
-		std::string const where = (inclusion.size() > 0 || exclusion.size() > 0) ? ("WHERE " + inclusion + exclusion) : "" ;
-		std::string const orderBy = "ORDER BY chromosome, position, rsid, allele1, allele2" ;
-		return result + " " + join + " " + where + " " + orderBy ;
-	}
-	
-	std::vector< std::string > collect_unique_ids( std::vector< std::string > const& ids_or_filenames ) const {
-		std::vector< std::string > result ;
-		for( auto elt: ids_or_filenames ) {
-			if( bfs::exists( elt )) {
-				std::ifstream f( elt ) ;
-				std::copy(
-					std::istream_iterator< std::string >( f ),
-					std::istream_iterator< std::string >(),
-					std::back_inserter< std::vector< std::string > >( result )
-				) ;
-			} else {
-				result.push_back( elt ) ;
-			}
-		}
-		// now sort and uniqueify them...
-		std::sort( result.begin(), result.end() ) ;
-		std::vector< std::string >::const_iterator newBack = std::unique( result.begin(), result.end() ) ;
-		result.resize( newBack - result.begin() ) ;
-		return result ;
-	}
-
-	
+	}	
 } ;
 
 int main( int argc, char** argv ) {
