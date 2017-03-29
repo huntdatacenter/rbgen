@@ -363,93 +363,37 @@ private:
 
 struct BgenView {
 public:
-	BgenView( std::string const& filename ):
-		m_filename( filename ),
-		m_variant_i(0),
-		m_state( e_NotOpen )
-	{
-		setup( m_filename ) ;
-		m_file_position_of_current_variant = m_stream->tellg() ;
-	}
-
+	BgenView( std::string const& filename ) ;
 	BgenView(
 		std::string const& filename,
 		BgenIndex::UniquePtr index,
 		BgenIndex::ProgressCallback progress_callback = BgenIndex::ProgressCallback()
-	):
-		m_filename( filename ),
-		m_variant_i(0),
-		m_state( e_NotOpen )
-	{
-		setup( m_filename ) ;
-		m_index = verify_index( index ) ;
-		m_index->initialise( *m_stream, progress_callback ) ;
-		if( m_index->number_of_variants() > 0 ) {
-			m_stream->seekg( m_index->position_of_variant(0).first ) ;
-		}
-		m_file_position_of_current_variant = m_stream->tellg() ;
-	}
-
-
-	FileMetadata const& file_metadata() const {
-		return m_file_metadata ;
-	}
-
-	genfile::bgen::Context const& context() const {
-		return m_context ;
-	}
-	
-	std::vector< byte_t > const& postheader_data() const {
-		return m_postheader_data ;
-	}
-
-	std::streampos current_position() const {
-		return m_file_position_of_current_variant ;
-	}
-
-	uint32_t number_of_variants() const {
-		if( m_index ) {
-			return m_index->number_of_variants() ;
-		} else {
-			return m_context.number_of_variants ;
-		}
-	}
+	) ;
+	FileMetadata const& file_metadata() const ;
+	genfile::bgen::Context const& context() const ;
+	std::vector< byte_t > const& postheader_data() const ;
+	std::streampos current_position() const ;
+	uint32_t number_of_variants() const ;
 
 	// Attempt to read identifying information about a variant from the bgen file, returning
 	// it in the given fields.
 	// If this method returns true, data was successfully read, and it should be safe to call
 	// read_probability_data() or ignore_probability_data().
 	// If this method returns false, data was not successfully read indicating the end of the file.
+	// Following this method, you should call one of
+	// read_probability_data()
+	// read_and_unpack_v12_probability_data()
+	// or ignore_probability_data().
 	bool read_variant(
 		std::string* SNPID,
 		std::string* rsid,
 		std::string* chromosome,
 		uint32_t* position,
 		std::vector< std::string >* alleles
-	) {
-		assert( m_state == e_ReadyForVariant ) ;
+	) ;
 
-		if( m_index ) {
-			BgenIndex::FilePosition const pos = m_index->position_of_variant( m_variant_i ) ;
-			m_stream->seekg( pos.first ) ;
-		}
-
-		if(
-			genfile::bgen::read_snp_identifying_data(
-				*m_stream, m_context,
-				SNPID, rsid, chromosome, position,
-				[&alleles]( std::size_t n ) { alleles->resize( n ) ; },
-				[&alleles]( std::size_t i, std::string const& allele ) { alleles->at(i) = allele ; }
-			)
-		) {
-			m_state = e_ReadyForProbs ;
-			return true ;
-		} else {
-			return false ;
-		}
-	}
-
-	// Read and parse genotype probability data, returning data using
+	// Option 1 is a full process.
+	// This method reads and parse genotype probability data, returning data using
 	// the bgen parse_probability_data API as documented on the wiki.
 	// For an example using this API, see the bgen_to_vcf.cpp example program.
 	template< typename ProbSetter >
@@ -467,7 +411,7 @@ public:
 		++m_variant_i ;
 	}
 	
-	// Read and uncompress genotype probability data, and unpack
+	// This method reads and uncompresses genotype probability data, and unpack
 	// it into constituent parts, but don't do a full parse.
 	// This can lead to more efficient code paths than a full parse for some operations.
 	//
@@ -476,111 +420,26 @@ public:
 	// is defined in bgen.hpp.
 	void read_and_unpack_v12_probability_data(
 		genfile::bgen::v12::GenotypeDataBlock* pack
-	) {
-		assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
-		std::vector< byte_t > const& buffer = read_and_uncompress_probability_data() ;
-		pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
-		++m_variant_i ;
-	}
+	) ;
 
 	// Ignore genotype probability data for the SNP just read using read_variant()
 	// After calling this method it should be safe to call read_variant()
 	// to fetch the next variant from the file.
-	void ignore_probability_data() {
-		assert( m_state == e_ReadyForProbs ) ;
-		genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
-		m_file_position_of_current_variant = m_stream->tellg() ;
-		m_state = e_ReadyForVariant ;
-		++m_variant_i ;
-	}
+	void ignore_probability_data() ;
 
 private:
 
 	// Open the bgen file, read header data and gather metadata.
-	void setup( std::string const& filename ) {
-		m_file_metadata.filename = filename ;
-		m_file_metadata.last_write_time = boost::filesystem::last_write_time( filename ) ;
-
-		// Open the stream
-		m_stream.reset(
-			new std::ifstream( filename, std::ifstream::binary )
-		) ;
-		if( !*m_stream ) {
-			throw std::invalid_argument( filename ) ;
-		}
-	
-		// get file size
-		{
-			std::ios::streampos origin = m_stream->tellg() ;
-			m_stream->seekg( 0, std::ios::end ) ;
-			m_file_metadata.size = m_stream->tellg() - origin ;
-			m_stream->seekg( 0, std::ios::beg ) ;
-		}
-		// read first (up to) 1000 bytes.
-		{
-			m_file_metadata.first_bytes.resize( 1000, 0 ) ;
-			m_stream->read( reinterpret_cast< char* >( &m_file_metadata.first_bytes[0] ), 1000 ) ;
-			m_file_metadata.first_bytes.resize( m_stream->gcount() ) ;
-			m_stream->clear() ;
-			m_stream->seekg( 0, std::ios::beg ) ;
-		}
-	
-		m_state = e_Open ;
-
-		// Read the offset, header, and sample IDs if present.
-		genfile::bgen::read_offset( *m_stream, &m_offset ) ;
-		genfile::bgen::read_header_block( *m_stream, &m_context ) ;
-
-		// read data up to first data block.
-		m_postheader_data.reserve( m_offset - m_context.header_size() ) ;
-		m_stream->read( reinterpret_cast< char* >( &m_postheader_data[0] ), m_postheader_data.size() ) ;
-		if( m_stream->gcount() != m_postheader_data.size() ) {
-			throw std::invalid_argument(
-				(
-					boost::format(
-						"BGEN file (\"%s\") appears malformed - offset specifies more bytes (%d) than are in the file."
-					) % filename % m_offset
-				).str()
-			) ;
-		}
-
-		// We keep track of state (though it's not really needed for this implementation.)
-		m_state = e_ReadyForVariant ;
-	}
+	void setup( std::string const& filename ) ;
 
 	// Verify that the given index matches this file using the supplied metadata.
 	// Throw std::invalid_argument error if they mismatch, otherwise return the index.
-	BgenIndex::UniquePtr verify_index( BgenIndex::UniquePtr& index ) const {
-		if( index->file_metadata().size != m_file_metadata.size ) {
-			std::string const message = "!! Size of file (\"" + m_filename + "\" ("
-				+ std::to_string( m_file_metadata.size ) + " bytes)"
-				+ "differs from that recorded in the index file ("
-				+ std::to_string( index->file_metadata().size ) + ").\n"
-				+ "Do you need to recreate the index?\n" ;
-			throw std::invalid_argument( message ) ;
-			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
-		}
-
-		if( index->file_metadata().first_bytes != m_file_metadata.first_bytes ) {
-			std::string const message = "!! File (\"" + m_filename + "\" has different initial bytes"
-				+ " than recorded in the index file - that can't be right.\n"
-				+ "Do you need to recreate the index?\n" ;
-			throw std::invalid_argument( message ) ;
-			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
-		}
-		return std::move( index ) ;
-	}
+	BgenIndex::UniquePtr verify_index( BgenIndex::UniquePtr& index ) const ;
 
 	// Utility function to read and uncompress variant genotype probability data
 	// without further processing.
-	std::vector< byte_t > const& read_and_uncompress_probability_data() {
-		assert( m_state == e_ReadyForProbs ) ;
-		genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
-		m_file_position_of_current_variant = m_stream->tellg() ;
-		m_state = e_ReadyForVariant ;
-		genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
-		return m_buffer2 ;
-	}
+	std::vector< byte_t > const& read_and_uncompress_probability_data() ;
+
 private:
 	std::string const m_filename ;
 	std::unique_ptr< std::istream > m_stream ;
@@ -615,6 +474,208 @@ private:
 	std::vector< byte_t > m_buffer2 ;
 } ;
 
+/* BgenView implementation */
+
+BgenView::BgenView( std::string const& filename ):
+	m_filename( filename ),
+	m_variant_i(0),
+	m_state( e_NotOpen )
+{
+	setup( m_filename ) ;
+	m_file_position_of_current_variant = m_stream->tellg() ;
+}
+
+BgenView::BgenView(
+	std::string const& filename,
+	BgenIndex::UniquePtr index,
+	BgenIndex::ProgressCallback progress_callback
+):
+	m_filename( filename ),
+	m_variant_i(0),
+	m_state( e_NotOpen )
+{
+	setup( m_filename ) ;
+	m_index = verify_index( index ) ;
+	m_index->initialise( *m_stream, progress_callback ) ;
+	if( m_index->number_of_variants() > 0 ) {
+		m_stream->seekg( m_index->position_of_variant(0).first ) ;
+	}
+	m_file_position_of_current_variant = m_stream->tellg() ;
+}
+
+
+FileMetadata const& BgenView::file_metadata() const {
+	return m_file_metadata ;
+}
+
+genfile::bgen::Context const& BgenView::context() const {
+	return m_context ;
+}
+
+std::vector< byte_t > const& BgenView::postheader_data() const {
+	return m_postheader_data ;
+}
+
+std::streampos BgenView::current_position() const {
+	return m_file_position_of_current_variant ;
+}
+
+uint32_t BgenView::number_of_variants() const {
+	if( m_index ) {
+		return m_index->number_of_variants() ;
+	} else {
+		return m_context.number_of_variants ;
+	}
+}
+
+// Attempt to read identifying information about a variant from the bgen file, returning
+// it in the given fields.
+// If this method returns true, data was successfully read, and it should be safe to call
+// read_probability_data() or ignore_probability_data().
+// If this method returns false, data was not successfully read indicating the end of the file.
+bool BgenView::read_variant(
+	std::string* SNPID,
+	std::string* rsid,
+	std::string* chromosome,
+	uint32_t* position,
+	std::vector< std::string >* alleles
+) {
+	assert( m_state == e_ReadyForVariant ) ;
+
+	if( m_index ) {
+		BgenIndex::FilePosition const pos = m_index->position_of_variant( m_variant_i ) ;
+		m_stream->seekg( pos.first ) ;
+	}
+
+	if(
+		genfile::bgen::read_snp_identifying_data(
+			*m_stream, m_context,
+			SNPID, rsid, chromosome, position,
+			[&alleles]( std::size_t n ) { alleles->resize( n ) ; },
+			[&alleles]( std::size_t i, std::string const& allele ) { alleles->at(i) = allele ; }
+		)
+	) {
+		m_state = e_ReadyForProbs ;
+		return true ;
+	} else {
+		return false ;
+	}
+}
+
+// Read and uncompress genotype probability data, and unpack
+// it into constituent parts, but don't do a full parse.
+// This can lead to more efficient code paths than a full parse for some operations.
+//
+// Currently this function works for 'layout=2' files, e.g. v1.2 and above only.
+// Data is returned in the fields of the supplied 'pack' object, which
+// is defined in bgen.hpp.
+void BgenView::read_and_unpack_v12_probability_data(
+	genfile::bgen::v12::GenotypeDataBlock* pack
+) {
+	assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
+	std::vector< byte_t > const& buffer = read_and_uncompress_probability_data() ;
+	pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
+	++m_variant_i ;
+}
+
+// Ignore genotype probability data for the SNP just read using read_variant()
+// After calling this method it should be safe to call read_variant()
+// to fetch the next variant from the file.
+void BgenView::ignore_probability_data() {
+	assert( m_state == e_ReadyForProbs ) ;
+	genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
+	m_file_position_of_current_variant = m_stream->tellg() ;
+	m_state = e_ReadyForVariant ;
+	++m_variant_i ;
+}
+
+// Open the bgen file, read header data and gather metadata.
+void BgenView::setup( std::string const& filename ) {
+	m_file_metadata.filename = filename ;
+	m_file_metadata.last_write_time = boost::filesystem::last_write_time( filename ) ;
+
+	// Open the stream
+	m_stream.reset(
+		new std::ifstream( filename, std::ifstream::binary )
+	) ;
+	if( !*m_stream ) {
+		throw std::invalid_argument( filename ) ;
+	}
+
+	// get file size
+	{
+		std::ios::streampos origin = m_stream->tellg() ;
+		m_stream->seekg( 0, std::ios::end ) ;
+		m_file_metadata.size = m_stream->tellg() - origin ;
+		m_stream->seekg( 0, std::ios::beg ) ;
+	}
+	// read first (up to) 1000 bytes.
+	{
+		m_file_metadata.first_bytes.resize( 1000, 0 ) ;
+		m_stream->read( reinterpret_cast< char* >( &m_file_metadata.first_bytes[0] ), 1000 ) ;
+		m_file_metadata.first_bytes.resize( m_stream->gcount() ) ;
+		m_stream->clear() ;
+		m_stream->seekg( 0, std::ios::beg ) ;
+	}
+
+	m_state = e_Open ;
+
+	// Read the offset, header, and sample IDs if present.
+	genfile::bgen::read_offset( *m_stream, &m_offset ) ;
+	genfile::bgen::read_header_block( *m_stream, &m_context ) ;
+
+	// read data up to first data block.
+	m_postheader_data.reserve( m_offset - m_context.header_size() ) ;
+	m_stream->read( reinterpret_cast< char* >( &m_postheader_data[0] ), m_postheader_data.size() ) ;
+	if( m_stream->gcount() != m_postheader_data.size() ) {
+		throw std::invalid_argument(
+			(
+				boost::format(
+					"BGEN file (\"%s\") appears malformed - offset specifies more bytes (%d) than are in the file."
+				) % filename % m_offset
+			).str()
+		) ;
+	}
+
+	// We keep track of state (though it's not really needed for this implementation.)
+	m_state = e_ReadyForVariant ;
+}
+
+// Verify that the given index matches this file using the supplied metadata.
+// Throw std::invalid_argument error if they mismatch, otherwise return the index.
+BgenIndex::UniquePtr BgenView::verify_index( BgenIndex::UniquePtr& index ) const {
+	if( index->file_metadata().size != m_file_metadata.size ) {
+		std::string const message = "!! Size of file (\"" + m_filename + "\" ("
+			+ std::to_string( m_file_metadata.size ) + " bytes)"
+			+ "differs from that recorded in the index file ("
+			+ std::to_string( index->file_metadata().size ) + ").\n"
+			+ "Do you need to recreate the index?\n" ;
+		throw std::invalid_argument( message ) ;
+		//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+	}
+
+	if( index->file_metadata().first_bytes != m_file_metadata.first_bytes ) {
+		std::string const message = "!! File (\"" + m_filename + "\" has different initial bytes"
+			+ " than recorded in the index file - that can't be right.\n"
+			+ "Do you need to recreate the index?\n" ;
+		throw std::invalid_argument( message ) ;
+		//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+	}
+	return std::move( index ) ;
+}
+
+// Utility function to read and uncompress variant genotype probability data
+// without further processing.
+std::vector< byte_t > const& BgenView::read_and_uncompress_probability_data() {
+	assert( m_state == e_ReadyForProbs ) ;
+	genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
+	m_file_position_of_current_variant = m_stream->tellg() ;
+	m_state = e_ReadyForVariant ;
+	genfile::bgen::uncompress_probability_data( m_context, m_buffer1, &m_buffer2 ) ;
+	return m_buffer2 ;
+}
+
+/* IndexBgenApplication */
 struct IndexBgenApplication: public appcontext::ApplicationContext
 {
 public:
@@ -700,18 +761,18 @@ private:
 			"VALUES( ?, ?, ?, ?, ?, ?, ?, ? )"
 		) ;
 
-		BgenView processor( bgen_filename ) ;
+		BgenView bgenView( bgen_filename ) ;
 		
 		insert_metadata_stmt
 			->bind( 1, bgen_filename )
-			.bind( 2, processor.file_metadata().size )
-			.bind( 3, uint64_t( processor.file_metadata().last_write_time ) )
-			.bind( 4, &processor.file_metadata().first_bytes[0], &processor.file_metadata().first_bytes[0] + processor.file_metadata().first_bytes.size() )
+			.bind( 2, bgenView.file_metadata().size )
+			.bind( 3, uint64_t( bgenView.file_metadata().last_write_time ) )
+			.bind( 4, &bgenView.file_metadata().first_bytes[0], &bgenView.file_metadata().first_bytes[0] + bgenView.file_metadata().first_bytes.size() )
 			.bind( 5, appcontext::get_current_time_as_string() )
 			.step() ;
 
 		ui().logger()
-			<< boost::format( "%s: Opened \"%s\" with %d variants...\n" ) % globals::program_name % bgen_filename % processor.number_of_variants() ;
+			<< boost::format( "%s: Opened \"%s\" with %d variants...\n" ) % globals::program_name % bgen_filename % bgenView.number_of_variants() ;
 		
 		std::string chromosome, rsid, SNPID ;
 		uint32_t position ;
@@ -724,15 +785,15 @@ private:
 		{
 			auto progress_context = ui().get_progress_context( "Building BGEN index" ) ;
 			std::size_t variant_count = 0;
-			int64_t file_pos = int64_t( processor.current_position() ) ;
+			int64_t file_pos = int64_t( bgenView.current_position() ) ;
 			try {
-				while( processor.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
+				while( bgenView.read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
 #if DEBUG
 					std::cerr << "read variant:" << chromosome << " " << position << " " << rsid << " " << file_pos << " " << alleles.size() << ".\n" << std::flush ;
 					std::cerr << "alleles: " << alleles[0] << ", "  << alleles[1] << ".\n" << std::flush ;
 #endif
-					processor.ignore_probability_data() ;
-					int64_t file_end_pos = int64_t( processor.current_position() ) ;
+					bgenView.ignore_probability_data() ;
+					int64_t file_end_pos = int64_t( bgenView.current_position() ) ;
 					assert( alleles.size() > 1 ) ;
 					assert( (file_end_pos - file_pos) > 0 ) ;
 					insert_variant_stmt
@@ -748,12 +809,12 @@ private:
 					;
 					insert_variant_stmt->reset() ;
 				
-					progress_context( ++variant_count, processor.number_of_variants() ) ;
+					progress_context( ++variant_count, bgenView.number_of_variants() ) ;
 			
 				// Make sure and commit every 10000 SNPs.
 					if( variant_count % chunk_size == 0 ) {
 		//				ui().logger()
-		//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % processor.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
+		//					<< boost::format( "%s: Writing variants %d-%d...\n" ) % bgenView.number_of_variants() % (variant_count-chunk_size) % (variant_count-1) ;
 					
 						transaction.reset() ;
 						transaction = connection->open_transaction( 240 ) ;
@@ -767,7 +828,7 @@ private:
 			catch( genfile::bgen::BGenError const& e ) {
 				ui().logger() << "!! (" << e.what() << "): an error occurred reading from the input file.\n" ;
 				ui().logger() << "Last observed variant was \"" << SNPID.substr(0,10) << "\", \"" << rsid.substr(0,10) << "\"...\n" ;
-				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_metadata().size << ".\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << bgenView.file_metadata().size << ".\n" ;
 				throw ;
 			}
  			catch( db::StatementStepError const& e ) {
@@ -776,7 +837,7 @@ private:
 					ui().logger() << " " << alleles[i] ;
 				}
 				ui().logger() << "\n" ;
-				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << processor.file_metadata().size << ".\n" ;
+				ui().logger() << "Reached byte " << file_pos << " in input file, which has size " << bgenView.file_metadata().size << ".\n" ;
 				throw ;
 			}
 		}
@@ -840,13 +901,13 @@ private:
 			|| options().check( "-v11" ) ;
 
 		if( transcode ) {
-			BgenView processor( bgen_filename, std::move( index ) ) ;
+			BgenView bgenView( bgen_filename, std::move( index ) ) ;
 			if( options().check( "-list" ) ) {
-				process_selection_list( processor ) ;
+				process_selection_list( bgenView ) ;
 			} else if( options().check( "-vcf" )) {
-				process_selection_transcode( processor, "vcf" ) ;
+				process_selection_transcode( bgenView, "vcf" ) ;
 			} else if( options().check( "-v11" )) {
-				process_selection_transcode( processor, "bgen_v1.1" ) ;
+				process_selection_transcode( bgenView, "bgen_v1.1" ) ;
 			}
 		} else {
 			process_selection_notranscode( bgen_filename, std::move( index ) ) ;
@@ -932,7 +993,7 @@ private:
 		std::cerr << boost::format( "%s: wrote data for %d variants to stdout.\n" ) % globals::program_name % index->number_of_variants() ;
 	}
 	
-	void process_selection_list( BgenView& processor ) const {
+	void process_selection_list( BgenView& bgenView ) const {
 		std::cout << boost::format( "# %s: started %s\n" ) % globals::program_name % appcontext::get_current_time_as_string() ;
 		std::cout << "alternate_ids\trsid\tchromosome\tposition\tnumber_of_alleles\tfirst_allele\talternative_alleles\n" ;
 		
@@ -940,8 +1001,8 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
-		for( std::size_t i = 0; i < processor.number_of_variants(); ++i ) {
-			bool success = processor.read_variant(
+		for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
+			bool success = bgenView.read_variant(
 				&SNPID, &rsid, &chromosome, &position, &alleles
 			) ;
 			if( SNPID.empty() ) {
@@ -958,9 +1019,9 @@ private:
 			if( !success ) {
 				throw std::invalid_argument( "positions" ) ;
 			}
-			processor.ignore_probability_data() ;
+			bgenView.ignore_probability_data() ;
 		}
-		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % processor.number_of_variants() ;
+		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % bgenView.number_of_variants() ;
 	}
 
 	void process_selection_transcode(
@@ -1190,7 +1251,7 @@ private:
 	} ;
 
 	void process_selection_transcode_bgen_vcf(
-		BgenView& processor
+		BgenView& bgenView
 	) const {
 		std::cout << "##fileformat=VCFv4.2\n"
 			<< "FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
@@ -1203,8 +1264,8 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
-		for( std::size_t i = 0; i < processor.number_of_variants(); ++i ) {
-			bool success = processor.read_variant(
+		for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
+			bool success = bgenView.read_variant(
 				&SNPID, &rsid, &chromosome, &position, &alleles
 			) ;
 			assert( success ) ;
@@ -1224,7 +1285,7 @@ private:
 				<< "GT:GP\t" // FORMAT
 			;
 			VCFProbWriter writer( std::cout ) ;
-			processor.read_probability_data( writer ) ;
+			bgenView.read_probability_data( writer ) ;
 		}
 	}
 	
@@ -1235,20 +1296,20 @@ private:
 	// For efficiency, instead of a full parse we extract encoded data and use a lookup table
 	// to generate BGEN v1.1 values for encoding.
 	void process_selection_transcode_bgen_v11(
-		BgenView& processor
+		BgenView& bgenView
 	) const {
 		// Currently this is only supported in a very restricted scenario.
 		// Namely, when the format is BGEN v1.2, unphased data, encoded
 		// with 8 bits per probability, converting to a BGEN v1.1 file.
 		// And all variants must be biallelic.
-		uint32_t const inputLayout = processor.context().flags & genfile::bgen::e_Layout ;
+		uint32_t const inputLayout = bgenView.context().flags & genfile::bgen::e_Layout ;
 		if( inputLayout != genfile::bgen::e_Layout2 ) {
-			throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
+			throw std::invalid_argument( "bgen_filename=\"" + bgenView.file_metadata().filename + "\"" ) ;
 		}
 
 		// specify flags for BGEN v1.1
 		// This means layout 1, no sample identifiers, zlib compression.
-		genfile::bgen::Context outputContext = processor.context() ;
+		genfile::bgen::Context outputContext = bgenView.context() ;
 		outputContext.flags = genfile::bgen::e_Layout1 | genfile::bgen::e_ZlibCompression ;
 		
 		// Write offset and header
@@ -1268,16 +1329,16 @@ private:
 		std::vector< uint64_t > probability_encoding_table = compute_probability_encoding_table() ;
 
 		{
-			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( processor.number_of_variants() ) + " variants" ) ;
-			for( std::size_t i = 0; i < processor.number_of_variants(); ++i ) {
-				bool success = processor.read_variant(
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( bgenView.number_of_variants() ) + " variants" ) ;
+			for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
+				bool success = bgenView.read_variant(
 					&SNPID, &rsid, &chromosome, &position, &alleles
 				) ;
 				assert( success ) ;
 				if( alleles.size() != 2 ) {
 					std::cerr
 						<< "In -transcode, found variant with " << alleles.size() << " allele, only 2 alleles are supported by BGEN v1.1.\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgenView.file_metadata().filename + "\"" ) ;
 				}
 				
 				genfile::bgen::write_snp_identifying_data(
@@ -1289,18 +1350,18 @@ private:
 				) ;
 
 				genfile::bgen::v12::GenotypeDataBlock pack ;
-				processor.read_and_unpack_v12_probability_data( &pack ) ;
+				bgenView.read_and_unpack_v12_probability_data( &pack ) ;
 
 				if( pack.bits != 8 ) {
 					std::cerr << "For -v11, expected 8 bits per probability, found " << pack.bits << ".\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgenView.file_metadata().filename + "\"" ) ;
 				}
 				if( pack.phased != 0 ) {
 					std::cerr << "For -v11, expected unphased data.\n" ;
-					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
+					throw std::invalid_argument( "bgen_filename=\"" + bgenView.file_metadata().filename + "\"" ) ;
 				}
-				if( pack.end < pack.buffer + processor.context().number_of_samples ) {
-					throw std::invalid_argument( "bgen_filename=\"" + processor.file_metadata().filename + "\"" ) ;
+				if( pack.end < pack.buffer + bgenView.context().number_of_samples ) {
+					throw std::invalid_argument( "bgen_filename=\"" + bgenView.file_metadata().filename + "\"" ) ;
 				}
 				byte_t* out_p = &serialisationBuffer[0] ;
 				byte_t const* p = pack.ploidy ;
@@ -1347,11 +1408,11 @@ private:
 					uint32_t( compressionBuffer.size() )
 				) ;
 				std::copy( &compressionBuffer[0], &compressionBuffer[0]+compressionBuffer.size(), outIt ) ;
-				progress_context( i+1, processor.number_of_variants() ) ;
+				progress_context( i+1, bgenView.number_of_variants() ) ;
 			}
 		}
 		
-		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % processor.number_of_variants() ;
+		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % bgenView.number_of_variants() ;
 	}
 	
 	std::vector< uint64_t > compute_probability_encoding_table() const {
