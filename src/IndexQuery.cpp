@@ -8,7 +8,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/format.hpp>
 #include "db/sqlite3.hpp"
-#include "genfile/bgen/index_query.hpp"
+#include "genfile/bgen/IndexQuery.hpp"
 
 // #define DEBUG 1
 
