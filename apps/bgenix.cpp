@@ -47,7 +47,6 @@ public:
 				"Path of bgen file to operate on.  (An optional form where \"-g\" is omitted and the filename is specified as the first argument, i.e. bgenix <filename>, can also be used)."
 			)
 			.set_takes_single_value()
-			.set_takes_value_by_position(1)
 			.set_is_required()
 		;
 
@@ -89,7 +88,6 @@ public:
 				" Position ranges are treated as closed (i.e. <pos1> and <pos2> are included in the range)."
 				"If this is specified multiple times, variants in any of the specified ranges will be included."
 			)
-			.set_takes_value_by_position(2)
 			.set_takes_values_until_next_option()
 		;
 
@@ -728,7 +726,7 @@ private:
 	genfile::bgen::IndexQuery::UniquePtr create_index_query( std::string const& filename ) const {
 		genfile::bgen::SqliteIndexQuery::UniquePtr query ;
 		try {
-			query.reset( new genfile::bgen::SqliteIndexQuery( filename ) ) ;
+			query.reset( new genfile::bgen::SqliteIndexQuery( filename, options().get< std::string >( "-table" )) ) ;
 		} catch( std::invalid_argument const& e ) {
 			std::cerr << "!! Error opening index file \"" << filename
 				<< "\": " << e.what() << "\n" ;
