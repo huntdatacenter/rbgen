@@ -45,7 +45,7 @@ def build( bld ):
 		source = bld.path.ant_glob( 'src/*.cpp' ),
 		target = 'bgen',
 		includes = 'genfile/include',
-		use = 'zlib zstd',
+		use = 'zlib zstd sqlite3 db',
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'example', 'test'] )
