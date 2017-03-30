@@ -12,8 +12,8 @@ def options( opt ):
 def configure( cfg ):
 	cfg.load( 'compiler_c')
 	cfg.load( 'compiler_cxx')
-	cfg.env.CXXFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long' ]
-	cfg.env.CFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long' ]
+	cfg.env.CXXFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', '-Wno-deprecated-declarations', '-Wno-long-long' ]
+	cfg.env.CFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', 'Wno-deprecated-declarations', '-Wno-long-long' ]
 	if cfg.options.mode == 'release':
 		cfg.env.CXXFLAGS += [ '-O3' ]
 		cfg.env.CFLAGS = [ '-O3' ]

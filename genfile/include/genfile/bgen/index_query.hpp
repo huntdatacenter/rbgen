@@ -9,7 +9,7 @@
 
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
-#include <cstdint>
+#include <stdint.h>
 #include <vector>
 #include <string>
 #include "db/sqlite3.hpp"

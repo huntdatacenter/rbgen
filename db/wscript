@@ -3,7 +3,7 @@ def build( bld ):
 		target = 'db',
 		source = bld.path.ant_glob( 'src/*.cpp' ),
 		includes='./include',
-		cxxflags = [ '-std=c++11' ],
+		cxxflags = [],
 		use = 'boost sqlite3',
 		export_includes = './include'
 	)
