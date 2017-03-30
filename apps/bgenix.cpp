@@ -161,9 +161,9 @@ void check_metadata(
 	if( file.size != index.size ) {
 		std::string const message = "!! Size of file \"" + file.filename + "\" ("
 			+ std::to_string( file.size ) + " bytes)"
-			+ "differs from that recorded in the index file \"" + index.filename + "\" ("
+			+ " differs from that recorded in the index file ("
 			+ std::to_string( index.size ) + " bytes).\n"
-			+ "Do you need to recreate the index?\n" ;
+			+ "Do you need to recreate the index?" ;
 		throw std::invalid_argument( message ) ;
 		//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 	}
@@ -171,7 +171,7 @@ void check_metadata(
 	if( file.first_bytes != index.first_bytes ) {
 		std::string const message = "!! File \"" + file.filename + "\" has different initial bytes"
 			+ " than recorded in the index file \"" + index.filename + "\" - that can't be right.\n"
-			+ "Do you need to recreate the index?\n" ;
+			+ "Do you need to recreate the index?" ;
 		throw std::invalid_argument( message ) ;
 		//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 	}
@@ -693,6 +693,10 @@ private:
 		try {
 			process_selection_unsafe( bgen_filename, index_filename ) ;
 		}
+		catch( std::invalid_argument const& e ) {
+			std::cerr << e.what() << "\n" ;
+			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
 		catch( ... ) {
 			throw ;
 		}
@@ -731,7 +735,7 @@ private:
 		} catch( std::invalid_argument const& e ) {
 			std::cerr << "!! Error opening index file \"" << filename
 				<< "\": " << e.what() << "\n" ;
-			std::cerr << "Do you need to regenerate the index file?\n" ;
+			std::cerr << "Use \"bgenix -g " + options().get< std::string >( "-g" ) + " -index\" to create the index file.\n" ;
 			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 		}
 	
