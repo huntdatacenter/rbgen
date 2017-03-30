@@ -164,7 +164,7 @@ namespace genfile {
 
 			// Open the stream
 			m_stream.reset(
-				new std::ifstream( filename, std::ifstream::binary )
+				new std::ifstream( filename.c_str(), std::ifstream::binary )
 			) ;
 			if( !*m_stream ) {
 				throw std::invalid_argument( filename ) ;
