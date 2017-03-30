@@ -210,10 +210,10 @@ public:
 	
 	std::ostream& summarise( std::ostream& o ) const ;
 
-	// Report lower-level information about the file.
+	// Report lower-level information about the file and our position in it.
 	genfile::bgen::Context const& context() const ;
-	std::streampos current_file_position() const ;
 	FileMetadata const& file_metadata() const ;
+	std::streampos current_file_position() const ;
 
 	// Attempt to read identifying information about a variant from the bgen file, returning
 	// it in the given fields.
@@ -719,6 +719,7 @@ private:
 			}
 		} else {
 			// When not transcoding we skip BgenParser and use the bgen file directly.
+			check_metadata( bgenView.file_metadata(), query->file_metadata() ) ;
 			process_selection_notranscode( bgen_filename, query ) ;
 		}
 	}
