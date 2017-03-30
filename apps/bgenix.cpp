@@ -71,6 +71,10 @@ public:
 				"Specify that bgenix should overwrite existing index file if it exists."
 			)
 		;
+		options[ "-with-rowid" ]
+			.set_description( "Create an index file that does not use the 'WITHOUT ROWID' feature."
+				" These are suitable for use with sqlite versions < 3.8.2, but may be less efficient." ) ;
+		
 
 		options.declare_group( "Variant selection options" ) ;
 		options[ "-incl-range" ]
@@ -122,16 +126,20 @@ public:
 			.set_description( "Suppress BGEN output; instead output a list of variants." ) ;
 		options[ "-v11" ]
 			.set_description(
-				"Output BGEN v1.1 format.  (Currently, this is only supported if the input"
+				"Transcode to BGEN v1.1 format.  (Currently, this is only supported if the input"
 				" is in BGEN v1.2 format with 8 bits per probability, all samples are diploid,"
 				" and all variants biallelic)."
 			) ;
+		options[ "-compression-level" ]
+			.set_description(
+				"Zlib compression level to use when transcoding to BGEN v1.1 format."
+			)
+			.set_takes_single_value()
+			.set_default_value( 6 ) ;
 		options[ "-vcf" ]
 			.set_description(
-				"Output vcf format instead of vcf format."
+				"Transcode to VCF format.  VCFs will have GP field (or 'HP' field for phased data), and a GT field inferred from the probabilities by threshholding."
 			) ;
-		options[ "-with-rowid" ]
-			.set_description( "Create an index file without using the 'WITHOUT ROWID' tables.  These are suitable for use with sqlite versions < 3.8.2" ) ;
 
 		// Option interdependencies
 		options.option_excludes_group( "-index", "Variant selection options" ) ;
@@ -140,6 +148,7 @@ public:
 		options.option_excludes_option( "-vcf", "-list" ) ;
 		options.option_excludes_option( "-vcf", "-v11" ) ;
 		options.option_implies_option( "-clobber", "-index" ) ;
+		options.option_implies_option( "-compression-level", "-v11" ) ;
 	}
 } ;
 
@@ -990,17 +999,18 @@ private:
 			// These come in colex order of the the allele count representation.
 			// Specifically, we have m_ploidy = n chromosomes in total.
 			// Genotypes are all ways to put n_alleles = k alleles into those chromosomes.
-			// We represent these as k-vectors that sum to n (i.e. v_i is the count of allele i)
-			// Or (k-1)-vectors that sum to at most n.
-			// The colex order implies that lower indices are always used first.
+			// We represent these as k-vectors that sum to n (i.e. v=(v_i) where v_i is the count of allele i),
+			// or equivalently, (k-1)-vectors that sum to at most n.
+			// Colex order is lexicographical order of these vectors, reading them right-to-left.
 			// E.g. for ploidy = 3 and 3 alleles, the order is
 			// 3,0,0 = AAA
 			// 2,1,0 = AAB
 			// 1,2,0 = ABB
 			// 0,3,0 = BBB
-			// 2,0,1 = BBC
+			// 2,0,1 = AAC
 			// 1,1,1 = ABC
 			// 0,2,1 = BBC
+			// 1,0,2 = ACC
 			// 0,1,2 = BCC
 			// 0,0,3 = CCC
 			// Here we enumerate these and bail out when we hit a probability over the threshhold.
@@ -1145,6 +1155,8 @@ private:
 
 		std::vector< uint64_t > probability_encoding_table = compute_probability_encoding_table() ;
 
+		int const compressionLevel = options().get< int >( "-compression-level" ) ;
+
 		{
 			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( bgenView.number_of_variants() ) + " variants" ) ;
 			for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
@@ -1213,7 +1225,7 @@ private:
 				genfile::zlib_compress(
 					serialisationBuffer,
 					&compressionBuffer,
-					1 // compression level
+					compressionLevel
 				) ;
 #if DEBUG
 				std::cerr << ( boost::format( "serialisation buffer: %d, id data Buffer: %d, result buffer: %d" ) % serialisationBuffer.size() % idDataBuffer.size() % compressionBuffer.size() ) << "\n" ;
