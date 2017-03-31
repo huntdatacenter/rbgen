@@ -14,8 +14,8 @@
 
 namespace genfile {
 	namespace bgen {
-		SqliteIndexQuery::UniquePtr SqliteIndexQuery::create( std::string const& filename, std::string const& table_name ) {
-			return SqliteIndexQuery::UniquePtr( new SqliteIndexQuery( filename, table_name )) ;
+		IndexQuery::UniquePtr IndexQuery::create( std::string const& filename, std::string const& table_name ) {
+			return IndexQuery::UniquePtr( new SqliteIndexQuery( filename, table_name )) ;
 		}
 
 		SqliteIndexQuery::SqliteIndexQuery( std::string const& filename, std::string const& table_name ):
