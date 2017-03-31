@@ -233,7 +233,7 @@ void output_allele_counts(
 // restrict results to the IDs listed.
 int main( int argc, char** argv ) {
 	if( argc < 2 ) {
-		std::cerr << "Usage: compute_allele_counts <name of bgen file> [id1...]\n" ;
+		std::cerr << "Usage: count_alleles <name of bgen file> [id1...]\n" ;
 		exit(-1) ;
 	}
 	std::string const filename = argv[1] ;
