@@ -295,7 +295,7 @@ private:
 					std::cerr << "read variant:" << chromosome << " " << position << " " << rsid << " " << file_pos << " " << alleles.size() << ".\n" << std::flush ;
 					std::cerr << "alleles: " << alleles[0] << ", "  << alleles[1] << ".\n" << std::flush ;
 #endif
-					bgenView.ignore_genotype_data() ;
+					bgenView.ignore_genotype_data_block() ;
 					int64_t file_end_pos = int64_t( bgenView.current_file_position() ) ;
 					assert( alleles.size() > 1 ) ;
 					assert( (file_end_pos - file_pos) > 0 ) ;
@@ -535,7 +535,7 @@ private:
 			if( !success ) {
 				throw std::invalid_argument( "positions" ) ;
 			}
-			bgenView.ignore_genotype_data() ;
+			bgenView.ignore_genotype_data_block() ;
 		}
 		std::cout << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % bgenView.number_of_variants() ;
 	}
@@ -624,8 +624,8 @@ private:
 		bool m_missing ;
 		
 		// These fields are used to enumerate genotypes for the GT field.
-		std::vector< uint16_t > m_allele_count_limits ;
-		std::vector< uint16_t > m_allele_counts ;
+		std::vector< uint16_t > m_genotype_allele_limits ;
+		std::vector< uint16_t > m_genotype ;
 		
 		// space to assemble GT field.
 		std::string m_GT_buffer ;
@@ -703,10 +703,10 @@ private:
 			// 0,1,2 = BCC
 			// 0,0,3 = CCC
 			// Here we enumerate these and bail out when we hit a probability over the threshhold.
-			m_allele_count_limits.assign( (m_number_of_alleles-1), m_ploidy ) ;
-			m_allele_counts.assign( m_number_of_alleles, 0 ) ;
+			m_genotype_allele_limits.assign( (m_number_of_alleles-1), m_ploidy ) ;
+			m_genotype.assign( m_number_of_alleles, 0 ) ;
 			// Set up first genotype - all ref allele
-			m_allele_counts[0] = m_ploidy ;
+			m_genotype[0] = m_ploidy ;
 
 			// Iterate through genotypes.
 			bool metThreshhold = false ;
@@ -719,22 +719,22 @@ private:
 				// Move to next possible genotype
 				std::size_t j = 0 ;
 				for( ; j < (m_number_of_alleles-1); ++j ) {
-					uint16_t value = m_allele_counts[j+1] ;
-					if( value < m_allele_count_limits[ j ] ) {
-						++m_allele_counts[j+1] ;
-						--m_allele_counts[0] ;
+					uint16_t value = m_genotype[j+1] ;
+					if( value < m_genotype_allele_limits[ j ] ) {
+						++m_genotype[j+1] ;
+						--m_genotype[0] ;
 						for( std::size_t k = 0; k < j; ++k ) {
-							--m_allele_count_limits[k] ;
+							--m_genotype_allele_limits[k] ;
 						}
 						break ;
 					} else {
 						// allele count has reached its limit.
 						// Reset it to zero.
 						// Note that to get here all lower-order counts must be zero.
-						m_allele_counts[j+1] = 0 ;
-						m_allele_counts[0] += value ;
+						m_genotype[j+1] = 0 ;
+						m_genotype[0] += value ;
 						for( std::size_t k = 0; k < j; ++k ) {
-							m_allele_count_limits[k] += value ;
+							m_genotype_allele_limits[k] += value ;
 						}
 					}
 				}
@@ -747,7 +747,7 @@ private:
 			if( metThreshhold ) {
 				for( std::size_t allele = 0; allele < m_number_of_alleles; ++allele ) {
 					std::string const elt = std::to_string( allele ) + "/" ;
-					for( uint16_t count = 0; count < m_allele_counts[allele]; ++count ) {
+					for( uint16_t count = 0; count < m_genotype[allele]; ++count ) {
 						m_GT_buffer += elt ;
 					}
 				}
@@ -801,7 +801,7 @@ private:
 				<< "GT:GP\t" // FORMAT
 			;
 			VCFProbWriter writer( std::cout ) ;
-			bgenView.read_genotype_data( writer ) ;
+			bgenView.read_genotype_data_block( writer ) ;
 		}
 	}
 	
@@ -868,7 +868,7 @@ private:
 				) ;
 
 				genfile::bgen::v12::GenotypeDataBlock pack ;
-				bgenView.read_and_unpack_v12_genotype_data( &pack ) ;
+				bgenView.read_and_unpack_v12_genotype_data_block( &pack ) ;
 
 				if( pack.bits != 8 ) {
 					std::cerr << "For -v11, expected 8 bits per probability, found " << pack.bits << ".\n" ;

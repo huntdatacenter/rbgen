@@ -19,8 +19,11 @@
 
 namespace genfile {
 	namespace bgen {
-		/* View implementation */
+		View::UniquePtr View::create( std::string const& filename ) {
+			return View::UniquePtr( new View( filename )) ;
+		}
 
+		/* View implementation */
 		View::View( std::string const& filename ):
 			m_filename( filename ),
 			m_variant_i(0),
@@ -94,11 +97,6 @@ namespace genfile {
 			}
 		}
 
-		// Attempt to read identifying information about a variant from the bgen file, returning
-		// it in the given fields.
-		// If this method returns true, data was successfully read, and it should be safe to call
-		// read_genotype_data() or ignore_genotype_data().
-		// If this method returns false, data was not successfully read indicating the end of the file.
 		bool View::read_variant(
 			std::string* SNPID,
 			std::string* rsid,
@@ -109,6 +107,9 @@ namespace genfile {
 			assert( m_state == e_ReadyForVariant ) ;
 
 			if( m_index_query.get() ) {
+				if( m_variant_i == m_index_query->number_of_variants() ) {
+					return false ;
+				}
 				IndexQuery::FileRange const range = m_index_query->locate_variant( m_variant_i ) ;
 				m_stream->seekg( range.first ) ;
 			}
@@ -137,11 +138,11 @@ namespace genfile {
 		// Currently this function works for 'layout=2' files, e.g. v1.2 and above only.
 		// Data is returned in the fields of the supplied 'pack' object, which
 		// is defined in bgen.hpp.
-		void View::read_and_unpack_v12_genotype_data(
+		void View::read_and_unpack_v12_genotype_data_block(
 			genfile::bgen::v12::GenotypeDataBlock* pack
 		) {
 			assert( (m_context.flags & genfile::bgen::e_Layout) == genfile::bgen::e_Layout2 ) ;
-			std::vector< byte_t > const& buffer = read_and_uncompress_genotype_data() ;
+			std::vector< byte_t > const& buffer = read_and_uncompress_genotype_data_block() ;
 			pack->initialise( m_context, &buffer[0], &buffer[0] + buffer.size() ) ;
 			++m_variant_i ;
 		}
@@ -149,7 +150,7 @@ namespace genfile {
 		// Ignore genotype probability data for the SNP just read using read_variant()
 		// After calling this method it should be safe to call read_variant()
 		// to fetch the next variant from the file.
-		void View::ignore_genotype_data() {
+		void View::ignore_genotype_data_block() {
 			assert( m_state == e_ReadyForProbs ) ;
 			genfile::bgen::ignore_genotype_data_block( *m_stream, m_context ) ;
 			m_file_position = m_stream->tellg() ;
@@ -223,7 +224,7 @@ namespace genfile {
 
 		// Utility function to read and uncompress variant genotype probability data
 		// without further processing.
-		std::vector< byte_t > const& View::read_and_uncompress_genotype_data() {
+		std::vector< byte_t > const& View::read_and_uncompress_genotype_data_block() {
 			assert( m_state == e_ReadyForProbs ) ;
 			genfile::bgen::read_genotype_data_block( *m_stream, m_context, &m_buffer1 ) ;
 			m_file_position = m_stream->tellg() ;

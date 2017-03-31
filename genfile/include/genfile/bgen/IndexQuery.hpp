@@ -9,6 +9,7 @@
 
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <stdint.h>
 #include <vector>
 #include <string>
@@ -73,10 +74,12 @@ namespace genfile {
 			// We use auto_ptr to avoid using C++11 features here.
 			typedef std::auto_ptr< SqliteIndexQuery > UniquePtr ;
 
+			static UniquePtr create( std::string const& filename, std::string const& table_name = "Variant" ) ;
+
+		public:
 			// Construct given an index file and an index table name
 			SqliteIndexQuery( std::string const& filename, std::string const& table_name = "Variant" ) ;
 
-		public:
 			// Methods for building queries
 			// Each method returns this object, allowing methods to be chained
 			SqliteIndexQuery& include_range( GenomicRange const& range ) ;

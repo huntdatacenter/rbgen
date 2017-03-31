@@ -60,7 +60,7 @@ namespace genfile {
 			// Attempt to read identifying information about the next available variant from the
 			// returning data in the given fields.
 			// If this method returns true, data was successfully read, and it should be safe to call
-			// read_genotype_data(), ignore_genotype_data(), or read_and_unpack_v12_genotype_data().
+			// read_genotype_data_block(), ignore_genotype_data_block(), or read_and_unpack_v12_genotype_data_block().
 			// If this method returns false, data could not be read indicating end of the file.
 			bool read_variant(
 				std::string* SNPID,
@@ -74,7 +74,7 @@ namespace genfile {
 			// Data is returned via a setter object, using the parse_genotype_data API documented on the wiki.
 			// An example using this API is found in the bgen_to_vcf.cpp example program.
 			template< typename ProbSetter >
-			void read_genotype_data( ProbSetter& setter ) {
+			void read_genotype_data_block( ProbSetter& setter ) {
 				assert( m_state == e_ReadyForProbs ) ;
 				genfile::bgen::read_and_parse_genotype_data_block< ProbSetter >(
 					*m_stream,
@@ -96,12 +96,12 @@ namespace genfile {
 			// The function will assert() if the data is not in this format.
 			// Data is returned in the fields of the supplied 'pack' object.  See bgen.hpp for the
 			// declaration of this object.
-			void read_and_unpack_v12_genotype_data(
+			void read_and_unpack_v12_genotype_data_block(
 				genfile::bgen::v12::GenotypeDataBlock* pack
 			) ;
 
 			// Skip over (i.e. ignore) genotype probability data for the current variant.
-			void ignore_genotype_data() ;
+			void ignore_genotype_data_block() ;
 
 		private:
 			// Open the bgen file, read header data and gather metadata.
@@ -109,7 +109,7 @@ namespace genfile {
 
 			// Utility function to read and uncompress variant genotype probability data
 			// without further processing.
-			std::vector< byte_t > const& read_and_uncompress_genotype_data() ;
+			std::vector< byte_t > const& read_and_uncompress_genotype_data_block() ;
 
 		private:
 			std::string const m_filename ;
@@ -136,7 +136,7 @@ namespace genfile {
 			// We keep track of our state in the file.
 			// This is not strictly necessary for this implentation but makes it clear that
 			// the sequence of calls must be read_variant() followed by
-			// ignore_genotype_data() or ignore_genotype_data() repeatedly.
+			// ignore_genotype_data_block() or ignore_genotype_data_block() repeatedly.
 			enum State { e_NotOpen = 0, e_Open = 1, e_ReadyForVariant = 2, e_ReadyForProbs = 3, eComplete = 4 } ;
 			State m_state ;
 	

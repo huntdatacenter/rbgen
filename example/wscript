@@ -5,3 +5,10 @@ def build( bld ):
 		use = 'bgen zlib zstd',
 		cxxflags = ['-std=c++11']
 	)
+
+	bld.program(
+		source = 'count_alleles.cpp',
+		target = 'count_alleles',
+		use = 'bgen zlib zstd',
+		cxxflags = ['-std=c++11']
+	)

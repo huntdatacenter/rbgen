@@ -14,6 +14,10 @@
 
 namespace genfile {
 	namespace bgen {
+		SqliteIndexQuery::UniquePtr SqliteIndexQuery::create( std::string const& filename, std::string const& table_name ) {
+			return SqliteIndexQuery::UniquePtr( new SqliteIndexQuery( filename, table_name )) ;
+		}
+
 		SqliteIndexQuery::SqliteIndexQuery( std::string const& filename, std::string const& table_name ):
 			m_connection( open_connection( filename ) ),
 			m_metadata( load_metadata( *m_connection ) ),
@@ -116,7 +120,7 @@ namespace genfile {
 			try {
 				result = db::Connection::create( filename, "r" ) ;
 			} catch( db::ConnectionError const& e ) {
-				throw std::invalid_argument( "Could not open index file." ) ;
+				throw std::invalid_argument( "Could not open the index file \"" + filename + "\"" ) ;
 			}
 			return result ;
 		}
