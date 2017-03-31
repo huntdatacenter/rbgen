@@ -9,6 +9,6 @@ def build( bld ):
 	bld.program(
 		source = 'count_alleles.cpp',
 		target = 'count_alleles',
-		use = 'bgen zlib zstd',
+		use = 'bgen zlib zstd dl rt pthread',
 		cxxflags = ['-std=c++11']
 	)
