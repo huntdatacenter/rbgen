@@ -57,10 +57,12 @@ struct ProbSetter {
 		m_entry_i = 0 ;
 	}
 
+	// Called once for each genotype (or haplotype) probability per sample.
 	void set_value( uint32_t, double value ) {
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = value ;
 	}
 
+	// Ditto, but called if data is missing for this sample.
 	void set_value( uint32_t, genfile::MissingValue value ) {
 		// Here we encode missing probabilities with -1
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = -1 ;

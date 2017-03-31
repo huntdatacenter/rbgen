@@ -20,24 +20,24 @@
 // for passing to bgen::read_genotype_data_block() or the synonymous method of genfile::bgen::View.
 
 // AlleleCounter is a callback object appropriate for passing to bgen::read_genotype_data_block() or
-// the synonymous method of genfile::bgen::View. See the comment in bgen.hpp above
-// bgen::read_genotype_data_block(), or the bgen wiki for a description of the API.
+// the synonymous method of genfile::bgen::View. See the comments below, comments in bgen.hpp,
+// or the bgen wiki for a description of the API.
 // The purpose of AlleleCounter is to accumulate the probability mass on each
 // allele to compute expected allele counts at each variant.
 struct AlleleCounter {
 	AlleleCounter() {}
 	
-	// Called once allowing us to set storage.
+	// Called once per variant allowing us to set storage.
 	void initialise( std::size_t number_of_samples, std::size_t number_of_alleles ) {
 		m_number_of_alleles = number_of_alleles ;
 		m_expected_allele_counts.assign( number_of_alleles, 0.0 ) ;
 	}
 
 	// If present with this signature, called once after initialise()
-	// to set the minimum and maximum ploidy and numbers of probabilities among samples in the data.
+	// to set the minimum and maximum ploidy and number of probabilities among samples in the data.
 	// This enables us to set up storage for the data ahead of time.
 	void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) {
-		// Make sure we've enough space.
+		// Make sure we've enough space to store probs
 		m_data.reserve( max_entries ) ;
 	}
 
@@ -47,8 +47,9 @@ struct AlleleCounter {
 		return true ;
 	}
 
-	// Called once per sample to set the number of probabilities that are present,
-	// whether the data is phased or unphased, etc.
+	// Called once per sample to set the number of probabilities
+	// that are present for this sample, as well as whether the data is phased
+	// or unphased, etc.
 	void set_number_of_entries(
 		std::size_t ploidy,
 		std::size_t number_of_entries,
@@ -62,6 +63,7 @@ struct AlleleCounter {
 		m_missing = false ;
 	}
 
+	// Called once for each genotype (or haplotype) probability per sample.
 	void set_value( uint32_t entry_i, double value ) {
 		m_data[ entry_i ] = value ;
 		if( entry_i == m_data.size() - 1 ) {
@@ -70,6 +72,7 @@ struct AlleleCounter {
 		}
 	}
 
+	// Ditto, but called if data is missing for this sample.
 	void set_value( uint32_t entry_i, genfile::MissingValue value ) {
 		m_data[ entry_i ] = -1 ;
 		m_missing = true ;
@@ -79,11 +82,12 @@ struct AlleleCounter {
 		}
 	}
 
+	// If present with this signature, called once after all samples have been processed.
 	void finalise() {
 		// Nothing to do here.
 	}
 	
-	// Get the results
+	// Report the results
 	std::vector< double > const& expected_allele_counts() const {
 		return m_expected_allele_counts ;
 	}
@@ -198,6 +202,30 @@ private:
 	}
 } ;
 
+void output_allele_counts(
+	std::string const& rsid,
+	std::vector< std::string > const& alleles,
+	std::vector< double > const& expected_allele_counts
+) {
+	assert( expected_allele_counts.size() == alleles.size() ) ;
+
+	std::cout << std::setprecision(2) << std::fixed ;
+	std::cout << rsid << ":  " ;
+	for( std::size_t i = 0; i < alleles.size(); ++i ) {
+		std::cout << ((i>0) ? " " : "" ) << std::setw( 6 ) << std::right << alleles[i] ;
+	}
+	std::cout << " " << std::setw(6) << "total" ;
+
+	double const total = std::accumulate( expected_allele_counts.begin(), expected_allele_counts.end(), 0.0 ) ;
+
+	std::cout << "\n" ;
+	std::cout << std::string( rsid.size() + 3, ' ' ) ;
+	for( std::size_t i = 0; i < expected_allele_counts.size(); ++i ) {
+		std::cout << ((i>0) ? " " : "" ) << std::setw( 6 ) << std::right << expected_allele_counts[i] ;
+	}
+	std::cout << " " << std::setw( 6 ) << std::right << total ;
+	std::cout << "\n" ;
+}
 
 // This example program reads data from a bgen file
 // and computes the expected count of each allele at each variant.
@@ -228,32 +256,11 @@ int main( int argc, char** argv ) {
 		std::string SNPID, rsid ;
 		std::vector< std::string > alleles ;
 		std::vector< std::vector< double > > probs ;
-	
+
 		AlleleCounter allele_counter ;
-
-		std::cout << std::setprecision(2) << std::fixed ;
-
 		while( bgenView->read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ) {
 			bgenView->read_genotype_data_block( allele_counter ) ;
-
-			std::cout << rsid << ":  " ;
-			for( std::size_t i = 0; i < alleles.size(); ++i ) {
-				std::cout << ((i>0) ? " " : "" ) << std::setw( 6 ) << std::right << alleles[i] ;
-			}
-			std::cout << " " << std::setw(6) << "total" ;
-
-			std::vector< double > const& expected_allele_counts = allele_counter.expected_allele_counts() ;
-			assert( expected_allele_counts.size() == alleles.size() ) ;
-
-			double const total = std::accumulate( expected_allele_counts.begin(), expected_allele_counts.end(), 0.0 ) ;
-
-			std::cout << "\n" ;
-			std::cout << std::string( rsid.size() + 3, ' ' ) ;
-			for( std::size_t i = 0; i < expected_allele_counts.size(); ++i ) {
-				std::cout << ((i>0) ? " " : "" ) << std::setw( 6 ) << std::right << expected_allele_counts[i] ;
-			}
-			std::cout << " " << std::setw( 6 ) << std::right << total ;
-			std::cout << "\n" ;
+			output_allele_counts( rsid, alleles, allele_counter.expected_allele_counts() ) ;
 		}
 		return 0 ;
 	}
@@ -266,3 +273,4 @@ int main( int argc, char** argv ) {
 		return -1 ;
 	}
 }
+
