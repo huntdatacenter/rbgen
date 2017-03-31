@@ -210,18 +210,19 @@ int main( int argc, char** argv ) {
 	}
 	std::string const filename = argv[1] ;
 	try {
-		genfile::bgen::View::UniquePtr bgenView = genfile::bgen::View::create( filename ) ;
+		using namespace genfile ;
+		bgen::View::UniquePtr bgenView = bgen::View::create( filename ) ;
 
 		// If further arguments are given, use them as a query on the file.
 		if( argc > 2 ) {
-			genfile::bgen::SqliteIndexQuery::UniquePtr query = genfile::bgen::SqliteIndexQuery::create( filename + ".bgi" ) ;
+			genfile::bgen::SqliteIndexQuery::UniquePtr query = bgen::SqliteIndexQuery::create( filename + ".bgi" ) ;
 			std::vector< std::string > ids ;
 			for( int i = 2; i < argc; ++i ) {
 				ids.push_back( argv[i] ) ;
 			}
 			query->include_rsids( ids ) ;
 			query->initialise() ;
-			bgenView->set_query( genfile::bgen::IndexQuery::UniquePtr( query.release() )) ;
+			bgenView->set_query( bgen::IndexQuery::UniquePtr( query.release() )) ;
 		}
 		
 		// Now iterate through variants.
