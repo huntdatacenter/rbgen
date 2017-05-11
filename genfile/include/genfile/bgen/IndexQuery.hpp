@@ -9,7 +9,6 @@
 
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <stdint.h>
 #include <vector>
 #include <string>
@@ -28,7 +27,44 @@ namespace genfile {
 
 		public:
 			struct FileMetadata ;
-			typedef boost::tuple< std::string, uint32_t, uint32_t > GenomicRange ;
+			struct GenomicRange {
+				GenomicRange(): m_start(0), m_end(0) {}
+				GenomicRange( GenomicRange const& other ):
+					m_chromosome( other.m_chromosome ),
+					m_start( other.m_start ),
+					m_end( other.m_end )
+				{}
+					
+				GenomicRange& operator=( GenomicRange const& other ) {
+					m_chromosome = other.m_chromosome ;
+					m_start = other.m_start ;
+					m_end = other.m_end ;
+					return *this ;
+				}
+				GenomicRange(
+					std::string const& chromosome,
+					uint32_t start,
+					uint32_t end
+				):
+					m_chromosome( chromosome ),
+					m_start( start ),
+					m_end( end )
+				{
+					if( m_end < m_start ) {
+						throw std::invalid_argument( "end" ) ;
+					}
+				}
+
+				std::string const& chromosome() const { return m_chromosome ; }
+				uint32_t const& start() const { return m_start ; }
+				uint32_t const& end() const { return m_end ; }
+				
+			private:
+				std::string m_chromosome ;
+				uint32_t m_start ;
+				uint32_t m_end ;
+			} ;
+			//typedef boost::tuple< std::string, uint32_t, uint32_t > GenomicRange ;
 			typedef std::pair< int64_t, int64_t> FileRange ;
 			typedef boost::function< void ( std::size_t n, boost::optional< std::size_t > total ) > ProgressCallback ;
 
