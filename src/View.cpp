@@ -35,7 +35,6 @@ namespace genfile {
 		}
 
 		void View::set_query( IndexQuery::UniquePtr query ) {
-			//impl::check_metadata( m_file_metadata, query->file_metadata() ) ;
 			m_index_query = query ;
 			if( m_index_query->number_of_variants() > 0 ) {
 				m_stream->seekg( m_index_query->locate_variant(0).first ) ;

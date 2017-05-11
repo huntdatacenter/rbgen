@@ -5,7 +5,6 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 #include <memory>
-#include <boost/tuple/tuple.hpp>
 #include <boost/format.hpp>
 #include "db/sqlite3.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
@@ -69,8 +68,16 @@ namespace genfile {
 		}
 
 		SqliteIndexQuery& SqliteIndexQuery::include_range( GenomicRange const& range ) {
+			m_connection->run_statement( "CREATE TEMP TABLE IF NOT EXISTS tmpIncludedRange( id INT NOT NULL ) WITHOUT ROWID" ) ;
+			m_connection->run_statement(
+				boost::format(
+					"INSERT INTO tmpIncludedRange SELECT id FROM %s WHERE chromosome == '%s' AND position BETWEEN '%d' AND '%d'",
+					m_index_table_name,
+					range.chromosome()% range.start() % range.end()
+				).str()
+			) ;
 			m_query_parts.inclusion += ((m_query_parts.inclusion.size() > 0) ? " OR " : "" ) + (
-				boost::format( "( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.get<0>() % range.get<1>() % range.get<2>()
+				boost::format( "id IN ( SELECT id FROM tmpIncludedRange )" )
 			).str() ;
 			m_initialised = false ;
 			return *this ;
@@ -79,7 +86,7 @@ namespace genfile {
 		SqliteIndexQuery& SqliteIndexQuery::exclude_range( GenomicRange const& range ) {
 			m_query_parts.exclusion += ( m_query_parts.exclusion.size() > 0 ? " AND" : "" ) + (
 				boost::format( " NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" )
-					% range.get<0>() % range.get<1>() % range.get<2>()
+					% range.chromosome() % range.start() % range.end()
 			).str() ;
 			m_initialised = false ;
 			return *this ;

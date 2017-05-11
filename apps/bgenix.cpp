@@ -957,7 +957,7 @@ private:
 		return result ;
 	}
 	
-	boost::tuple< std::string, uint32_t, uint32_t > parse_range( std::string const& spec ) const {
+	genfile::bgen::IndexQuery::GenomicRange parse_range( std::string const& spec ) const {
 		std::size_t colon_pos = spec.find( ':' ) ;
 		if ( colon_pos == std::string::npos ) {
 			throw std::invalid_argument( "spec=\"" + spec + "\"" ) ;
@@ -982,7 +982,7 @@ private:
 		assert( pos1 >= 0 ) ;
 		assert( pos2 >= pos1 ) ;
 
-		return boost::make_tuple( chromosome, uint32_t( pos1 ), uint32_t( pos2 ) ) ;
+		return genfile::bgen::IndexQuery::GenomicRange( chromosome, pos1, pos2 ) ;
 	}	
 } ;
 
