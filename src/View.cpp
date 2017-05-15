@@ -34,6 +34,10 @@ namespace genfile {
 			m_file_position = m_stream->tellg() ;
 		}
 
+		std::size_t View::number_of_samples() const {
+			return m_context.number_of_samples ;
+		}
+
 		void View::set_query( IndexQuery::UniquePtr query ) {
 			m_index_query = query ;
 			if( m_index_query->number_of_variants() > 0 ) {
