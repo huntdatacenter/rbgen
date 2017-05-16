@@ -27,8 +27,8 @@ namespace genfile {
 		View::View( std::string const& filename ):
 			m_filename( filename ),
 			m_variant_i(0),
-			m_state( e_NotOpen ),
-			m_have_sample_ids( false )
+			m_have_sample_ids( false ),
+			m_state( e_NotOpen )
 		{
 			setup( m_filename ) ;
 			m_file_position = m_stream->tellg() ;
