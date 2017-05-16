@@ -4,12 +4,14 @@
 
 #define DEBUG 0
 
+typedef genfile::bgen::uint32_t uint32_t ;
+
 namespace {
 	struct DataFiller {
 		typedef Rcpp::IntegerVector IntegerVector ;
 		typedef Rcpp::NumericVector NumericVector ;
 		typedef Rcpp::Dimension Dimension ;
-		
+	
 		DataFiller(
 			IntegerVector* ploidy,
 			Dimension const& ploidy_dimension,
@@ -50,7 +52,7 @@ namespace {
 		// If present with this signature, called once after initialise()
 		// to set the minimum and maximum ploidy and numbers of probabilities among samples in the data.
 		// This enables us to set up storage for the data ahead of time.
-		void set_min_max_ploidy( uint32_t min_ploidy, uint32_t max_ploidy, uint32_t min_entries, uint32_t max_entries ) {
+		void set_min_max_ploidy( genfile::bgen::uint32_t min_ploidy, genfile::bgen::uint32_t max_ploidy, genfile::bgen::uint32_t min_entries, genfile::bgen::uint32_t max_entries ) {
 			assert( min_ploidy == 2 ) ;
 			assert( max_ploidy == 2 ) ;
 			// Now to do here given our assumptions
@@ -80,7 +82,7 @@ namespace {
 			(*m_ploidy)[ flatIndex ] = ploidy ;
 		}
 
-		void set_value( uint32_t entry_i, double value ) {
+		void set_value( genfile::bgen::uint32_t entry_i, double value ) {
 			int flatIndex = m_variant_i + m_sample_i * m_data_dimension[0] + entry_i * m_data_dimension[0] * m_data_dimension[1] ;
 #if DEBUG
 			std::cerr << "Setting data for index " << m_variant_i << ", " << m_sample_i << ", " << entry_i << ": index " << flatIndex << "...\n" << std::flush ;
@@ -88,7 +90,7 @@ namespace {
 			(*m_data)[ flatIndex ] = value ;
 		}
 
-		void set_value( uint32_t entry_i, genfile::MissingValue value ) {
+		void set_value( genfile::bgen::uint32_t entry_i, genfile::MissingValue value ) {
 			int flatIndex = m_variant_i + m_sample_i * m_data_dimension[0] + entry_i * m_data_dimension[0] * m_data_dimension[1] ;
 #if DEBUG
 			std::cerr << "Setting data for index " << m_variant_i << ", " << m_sample_i << ", " << entry_i << ": index " << flatIndex << "...\n" << std::flush ;
@@ -134,8 +136,8 @@ namespace {
 Rcpp::List giveMeMyData(
 	std::string const& filename,
 	std::string const& chromosome,
-	uint32_t start,
-	uint32_t end
+	genfile::bgen::uint32_t start,
+	genfile::bgen::uint32_t end
 ) {
 	using namespace genfile::bgen ;
 	using namespace Rcpp ;
@@ -161,7 +163,7 @@ Rcpp::List giveMeMyData(
 		std::string SNPID ;
 		std::string rsid ;
 		std::string chromosome ;
-		uint32_t position ;
+		genfile::bgen::uint32_t position ;
 		std::vector< std::string > alleles ;
 	
 		Dimension ploidy_dimension = Dimension( NV, view->number_of_samples() ) ;
