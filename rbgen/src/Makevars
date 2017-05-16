@@ -1,4 +1,13 @@
-PKG_CPPFLAGS = -I ../../genfile/include -I ../../db/include -I ../../3rd_party/boost_1_55_0 -I ../../3rd_party/zstd-1.1.0 -I ../../3rd_party/zstd-1.1.0/lib -I boost_1_55_0/ -I zstd-1.1.0/ -I zstd-1.1.0/lib/common -I ../../3rd_party/zstd-1.1.0/lib/compress -I ../../3rd_party/zstd-1.1.0/lib/decompress -I ../../3rd_party/sqlite3 -D SQLITE_ENABLE_COLUMN_METADATA -fPIC -O3 -Wall
+PKG_CPPFLAGS = \
+-I ../../../genfile/include \
+-I ../../../db/include \
+-I ../../../3rd_party/boost_1_55_0 \
+-I ../../../3rd_party/zstd-1.1.0 \
+-I ../../../3rd_party/zstd-1.1.0/lib \
+-I ../../../3rd_party/zstd-1.1.0/lib/compress \
+-I ../../../3rd_party/zstd-1.1.0/lib/decompress \
+-I ../../../3rd_party/sqlite3 \
+-D SQLITE_ENABLE_COLUMN_METADATA -fPIC -O3 -Wall
 PKG_LIBS = -Wl,-all_load
 OBJECTS = RcppExports.o giveMeMyData.o $(wildcard ../../build/src/*.o) ../../build/db/libdb.a ../../build/3rd_party/zstd-1.1.0/libzstd.a  ../../build/3rd_party/sqlite3/libsqlite3.a ../../build/3rd_party/boost_1_55_0/libboost.a
 
