@@ -174,7 +174,7 @@ Rcpp::List load(
 	view->get_sample_ids( set_sample_names( &sampleNames ) ) ;
 
 	std::string SNPID, rsid, chromosome ;
-	uint32_t position ;
+	genfile::bgen::uint32_t position ;
 	std::vector< std::string > alleles ;
 
 	for( std::size_t variant_i = 0; variant_i < number_of_variants; ++variant_i ) {
