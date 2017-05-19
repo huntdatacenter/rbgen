@@ -9,7 +9,7 @@ PKG_CPPFLAGS = \
 -I ../../../../3rd_party/sqlite3 \
 -D SQLITE_ENABLE_COLUMN_METADATA -fPIC -O3 -Wall
 #PKG_LIBS = -Wl,-all_load
-OBJECTS = RcppExports.o giveMeMyData.o $(wildcard ../../../src/*.o) ../../../db/libdb.a ../../../3rd_party/zstd-1.1.0/libzstd.a  ../../../3rd_party/sqlite3/libsqlite3.a ../../../3rd_party/boost_1_55_0/libboost.a
+OBJECTS = RcppExports.o load.o $(wildcard ../../../src/*.o) ../../../db/libdb.a ../../../3rd_party/zstd-1.1.0/libzstd.a  ../../../3rd_party/sqlite3/libsqlite3.a ../../../3rd_party/boost_1_55_0/libboost.a
 
 all: $(SHLIB)
 $(SHLIB): ${OBJECTS} Makevars

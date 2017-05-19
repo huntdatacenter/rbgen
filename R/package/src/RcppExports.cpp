@@ -5,17 +5,15 @@
 
 using namespace Rcpp;
 
-// giveMeMyData
-Rcpp::List giveMeMyData(std::string const& filename, std::string const& chromosome, uint32_t start, uint32_t end);
-RcppExport SEXP rbgen_giveMeMyData(SEXP filenameSEXP, SEXP chromosomeSEXP, SEXP startSEXP, SEXP endSEXP) {
+// bgen.load
+Rcpp::List load(std::string const& filename, Rcpp::DataFrame const& ranges);
+RcppExport SEXP rbgen_load(SEXP filenameSEXP, SEXP rangesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string const& >::type filename(filenameSEXP);
-    Rcpp::traits::input_parameter< std::string const& >::type chromosome(chromosomeSEXP);
-    Rcpp::traits::input_parameter< uint32_t >::type start(startSEXP);
-    Rcpp::traits::input_parameter< uint32_t >::type end(endSEXP);
-    rcpp_result_gen = Rcpp::wrap(giveMeMyData(filename, chromosome, start, end));
+    Rcpp::traits::input_parameter< Rcpp::DataFrame const& >::type ranges(rangesSEXP);
+    rcpp_result_gen = Rcpp::wrap(load(filename, ranges));
     return rcpp_result_gen;
 END_RCPP
 }
