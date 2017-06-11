@@ -16,6 +16,7 @@ namespace {
 	struct DataSetter {
 		typedef Rcpp::IntegerVector IntegerVector ;
 		typedef Rcpp::NumericVector NumericVector ;
+		typedef Rcpp::LogicalVector LogicalVector ;
 		typedef Rcpp::Dimension Dimension ;
 
 		DataSetter(
@@ -23,26 +24,25 @@ namespace {
 			Dimension const& ploidy_dimension,
 			NumericVector* data,
 			Dimension const& data_dimension,
+			LogicalVector* phased,
 			std::size_t variant_i
 		):
 			m_ploidy( ploidy ),
 			m_ploidy_dimension( ploidy_dimension ),
 			m_data( data ),
 			m_data_dimension( data_dimension ),
+			m_phased( phased ),
 			m_variant_i( variant_i )
 		{
 			assert( m_data_dimension[0] == m_ploidy_dimension[0] ) ;
 			assert( m_data_dimension[1] == m_ploidy_dimension[1] ) ;
 			assert( m_variant_i < m_data_dimension[0] ) ;
 			assert( m_data_dimension[2] >= 3 ) ;
+			assert( m_phased->size() == m_data_dimension[0] ) ;
 		}
 	
 		// Called once allowing us to set storage.
 		void initialise( std::size_t number_of_samples, std::size_t number_of_alleles ) {
-			// Nothing to do, but check storage is big enough.
-			if( number_of_alleles != 2 ) {
-				throw std::invalid_argument( "number_of_samples != 2" ) ;
-			}
 			if( m_data_dimension[1] != number_of_samples ) {
 				throw std::invalid_argument( "Wrong number of samples ("
 					+ atoi( number_of_samples ) + ", expected " + atoi( m_data_dimension[1] ) + ")" ) ;
@@ -52,9 +52,13 @@ namespace {
 		// If present with this signature, called once after initialise()
 		// to set the minimum and maximum ploidy and numbers of probabilities among samples in the data.
 		// This enables us to set up storage for the data ahead of time.
-		void set_min_max_ploidy( genfile::bgen::uint32_t min_ploidy, genfile::bgen::uint32_t max_ploidy, genfile::bgen::uint32_t min_entries, genfile::bgen::uint32_t max_entries ) {
-			if( max_ploidy > 2 ) {
-				throw std::invalid_argument( "max_ploidy=" + atoi( max_ploidy ) + " (expected at most 2)" ) ;
+		void set_min_max_ploidy(
+			genfile::bgen::uint32_t min_ploidy, genfile::bgen::uint32_t max_ploidy,
+			genfile::bgen::uint32_t min_entries, genfile::bgen::uint32_t max_entries
+		) {
+			if( max_entries > m_data_dimension[2] ) {
+				throw std::invalid_argument( "max_entries=" + atoi( max_entries )
+					+ " (expected at most " + atoi( m_data_dimension[2] ) + ")" ) ;
 			}
 		}
 
@@ -78,7 +82,12 @@ namespace {
 					+ atoi( genfile::eProbability ) + "=genfile::eProbability)"
 				) ;
 			}
-			m_order_type = order_type ;
+			if( m_sample_i == 0 ) {
+				m_order_type = order_type ;
+				(*m_phased)( m_variant_i ) = ( m_order_type == genfile::ePerPhasedHaplotypePerAllele ) ;
+			} else {
+				assert( order_type == m_order_type ) ;
+			}
 			int const index = m_variant_i + m_sample_i * m_ploidy_dimension[0] ;
 			(*m_ploidy)[ index ] = ploidy ;
 		}
@@ -108,6 +117,7 @@ namespace {
 		Rcpp::Dimension const m_ploidy_dimension ;
 		Rcpp::NumericVector* m_data ;
 		Rcpp::Dimension const m_data_dimension ;
+		Rcpp::LogicalVector* m_phased ;
 
 		std::size_t const m_variant_i ;
 		std::size_t m_sample_i ;
@@ -130,29 +140,41 @@ namespace {
 		Rcpp::StringVector* m_result ;
 		std::size_t m_index ;
 	} ;
+	
+	genfile::bgen::View::UniquePtr construct_view(
+		std::string const& filename,
+		Rcpp::DataFrame const& ranges
+	) {
+		using namespace genfile::bgen ;
+		using namespace Rcpp ;
+
+		View::UniquePtr view = View::create( filename ) ;
+		{
+			StringVector const& chromosome = ranges["chromosome"] ;
+			IntegerVector const& start = ranges["start"] ;
+			IntegerVector const& end = ranges["end"] ;
+		
+			IndexQuery::UniquePtr query = IndexQuery::create( filename + ".bgi" ) ;
+			for( int i = 0; i < ranges.nrows(); ++i ) {
+				query->include_range( IndexQuery::GenomicRange( std::string( chromosome[i] ), start[i], end[i] )) ;
+			}
+			query->initialise() ;
+			view->set_query( query ) ;
+		}
+		return view ;
+	}
 }
 
 // [[Rcpp::export]]
 Rcpp::List load(
 	std::string const& filename,
-	Rcpp::DataFrame const& ranges
+	Rcpp::DataFrame const& ranges,
+	std::size_t max_entries_per_sample
 ) {
 	using namespace genfile::bgen ;
 	using namespace Rcpp ;
 
-	View::UniquePtr view = View::create( filename ) ;
-	{
-		StringVector const& chromosome = ranges["chromosome"] ;
-		IntegerVector const& start = ranges["start"] ;
-		IntegerVector const& end = ranges["end"] ;
-		
-		IndexQuery::UniquePtr query = IndexQuery::create( filename + ".bgi" ) ;
-		for( int i = 0; i < ranges.nrows(); ++i ) {
-			query->include_range( IndexQuery::GenomicRange( std::string( chromosome[i] ), start[i], end[i] )) ;
-		}
-		query->initialise() ;
-		view->set_query( query ) ;
-	}
+	View::UniquePtr view = construct_view( filename, ranges ) ;
 
 	std::size_t const number_of_variants = view->number_of_variants() ;
 	std::size_t const number_of_samples = view->number_of_samples() ;
@@ -161,15 +183,17 @@ Rcpp::List load(
 	StringVector chromosomes( number_of_variants ) ;
 	IntegerVector positions( number_of_variants ) ;
 	StringVector rsids( number_of_variants ) ;
+	IntegerVector number_of_alleles( number_of_variants ) ;
 	StringVector allele0s( number_of_variants ) ;
 	StringVector allele1s( number_of_variants ) ;
 	StringVector sampleNames( number_of_samples ) ;
 
-	Dimension data_dimension = Dimension( number_of_variants, number_of_samples, 3ul ) ;
+	Dimension data_dimension = Dimension( number_of_variants, number_of_samples, max_entries_per_sample ) ;
 	Dimension ploidy_dimension = Dimension( number_of_variants, number_of_samples ) ;
 
-	NumericVector data = NumericVector( data_dimension ) ;
-	IntegerVector ploidy = IntegerVector( ploidy_dimension ) ;
+	NumericVector data = NumericVector( data_dimension, NA_REAL ) ;
+	IntegerVector ploidy = IntegerVector( ploidy_dimension, NA_INTEGER ) ;
+	LogicalVector phased = LogicalVector( number_of_variants, NA_LOGICAL ) ;
 
 	view->get_sample_ids( set_sample_names( &sampleNames ) ) ;
 
@@ -182,12 +206,14 @@ Rcpp::List load(
 		chromosomes[variant_i] = chromosome ;
 		positions[variant_i] = position ;
 		rsids[variant_i] = rsid ;
+		number_of_alleles[variant_i] = alleles.size() ;
 		allele0s[variant_i] = alleles[0] ;
 		allele1s[variant_i] = alleles[1] ;
 
 	DataSetter setter(
 		&ploidy, ploidy_dimension,
 		&data, data_dimension,
+		&phased,
 		variant_i
 	) ;
 		view->read_genotype_data_block( setter ) ; // will be fixed later
@@ -197,15 +223,16 @@ Rcpp::List load(
 		Named("chromosome") = chromosomes,
 		Named("position") = positions,
 		Named("rsid") = rsids,
+		Named("number_of_alleles") = number_of_alleles,
 		Named("allele0") = allele0s,
 		Named("allele1") = allele1s
 	) ;
 	variants.attr( "row.names" ) = rsids ;
 
-	StringVector genotypeNames(3) ;
-	genotypeNames[0] = "0" ;
-	genotypeNames[1] = "1" ;
-	genotypeNames[2] = "2" ;
+	StringVector genotypeNames(max_entries_per_sample) ;
+	for( std::size_t i = 0; i < max_entries_per_sample; ++i ) {
+		genotypeNames[i] = "g=" + atoi(i) ;
+	}
 
 	List dataNames = List(3) ;
 	dataNames[0] = rsids ;
@@ -223,6 +250,7 @@ Rcpp::List load(
 	result[ "variants" ] = variants ;
 	result[ "samples" ] = sampleNames ;
 	result[ "ploidy" ] = ploidy ;
+	result[ "phased" ] = phased ;
 	result[ "data" ] = data ;
 
 	return( result ) ;

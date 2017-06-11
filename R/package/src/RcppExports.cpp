@@ -6,14 +6,15 @@
 using namespace Rcpp;
 
 // bgen.load
-Rcpp::List load(std::string const& filename, Rcpp::DataFrame const& ranges);
-RcppExport SEXP rbgen_load(SEXP filenameSEXP, SEXP rangesSEXP) {
+Rcpp::List load(std::string const& filename, Rcpp::DataFrame const& ranges, std::size_t max_entries_per_sample);
+RcppExport SEXP rbgen_load(SEXP filenameSEXP, SEXP rangesSEXP, SEXP max_entries_per_sampleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string const& >::type filename(filenameSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame const& >::type ranges(rangesSEXP);
-    rcpp_result_gen = Rcpp::wrap(load(filename, ranges));
+    Rcpp::traits::input_parameter< std::size_t >::type max_entries_per_sample(max_entries_per_sampleSEXP);
+    rcpp_result_gen = Rcpp::wrap(load(filename, ranges, max_entries_per_sample));
     return rcpp_result_gen;
 END_RCPP
 }
