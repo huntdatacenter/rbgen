@@ -27,6 +27,7 @@ namespace genfile {
 
 		public:
 			struct FileMetadata ;
+			typedef boost::optional< FileMetadata > OptionalFileMetadata ;
 			struct GenomicRange {
 				GenomicRange(): m_start(0), m_end(0) {}
 				GenomicRange( GenomicRange const& other ):
@@ -70,7 +71,7 @@ namespace genfile {
 
 		public:
 			virtual ~IndexQuery() {} ;
-			virtual FileMetadata const& file_metadata() const = 0 ;
+			virtual OptionalFileMetadata const& file_metadata() const = 0 ;
 
 			// Methods for building queries
 			// Each method returns this object, allowing methods to be chained
@@ -88,7 +89,7 @@ namespace genfile {
 
 			struct FileMetadata {
 				FileMetadata():
-					size(0)
+					size(-1)
 				{}
 
 				FileMetadata( FileMetadata const& other ):
@@ -133,18 +134,18 @@ namespace genfile {
 		public:
 			// IndexQuery methods
 			void initialise( ProgressCallback callback = ProgressCallback() ) ;
-			FileMetadata const& file_metadata() const ;
+			OptionalFileMetadata const& file_metadata() const ;
 			std::size_t number_of_variants() const ;
 			FileRange locate_variant( std::size_t index ) const ;
 
 		private:
 			db::Connection::UniquePtr open_connection( std::string const& filename ) const ;
-			FileMetadata load_metadata( db::Connection& connection ) const ;
+			OptionalFileMetadata load_metadata( db::Connection& connection ) const ;
 			db::Connection::StatementPtr build_query() const ;
 	
 		private:
 			db::Connection::UniquePtr m_connection ;
-			FileMetadata const m_metadata ;
+			OptionalFileMetadata const m_metadata ;
 			std::string const m_index_table_name ;
 			struct QueryParts {
 				std::string join ;

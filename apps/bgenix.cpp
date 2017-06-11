@@ -157,24 +157,26 @@ typedef uint8_t byte_t ;
 // Throw std::invalid_argument error if they mismatch, otherwise return the index.
 void check_metadata(
 	genfile::bgen::IndexQuery::FileMetadata const& file,
-	genfile::bgen::IndexQuery::FileMetadata const& index
+	boost::optional< genfile::bgen::IndexQuery::FileMetadata > const& index
 ) {
-	if( file.size != index.size ) {
-		std::string const message = "!! Size of file \"" + file.filename + "\" ("
-			+ std::to_string( file.size ) + " bytes)"
-			+ " differs from that recorded in the index file ("
-			+ std::to_string( index.size ) + " bytes).\n"
-			+ "Do you need to recreate the index?" ;
-		throw std::invalid_argument( message ) ;
-		//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
-	}
+	if( index ) {
+		if( file.size != (*index).size ) {
+			std::string const message = "!! Size of file \"" + file.filename + "\" ("
+				+ std::to_string( file.size ) + " bytes)"
+				+ " differs from that recorded in the index file ("
+				+ std::to_string( (*index).size ) + " bytes).\n"
+				+ "Do you need to recreate the index?" ;
+			throw std::invalid_argument( message ) ;
+			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
 
-	if( file.first_bytes != index.first_bytes ) {
-		std::string const message = "!! File \"" + file.filename + "\" has different initial bytes"
-			+ " than recorded in the index file \"" + index.filename + "\" - that can't be right.\n"
-			+ "Do you need to recreate the index?" ;
-		throw std::invalid_argument( message ) ;
-		//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		if( file.first_bytes != (*index).first_bytes ) {
+			std::string const message = "!! File \"" + file.filename + "\" has different initial bytes"
+				+ " than recorded in the index file \"" + (*index).filename + "\" - that can't be right.\n"
+				+ "Do you need to recreate the index?" ;
+			throw std::invalid_argument( message ) ;
+			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
 	}
 }
 

@@ -5,8 +5,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 #include <memory>
-#include <boost/tuple/tuple.hpp>
 #include <boost/format.hpp>
+#include <boost/optional.hpp>
 #include "db/sqlite3.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
 
@@ -26,7 +26,8 @@ namespace genfile {
 		{
 		}
 	
-		SqliteIndexQuery::FileMetadata const& SqliteIndexQuery::file_metadata() const {
+		boost::optional< SqliteIndexQuery::FileMetadata > const&
+		SqliteIndexQuery::file_metadata() const {
 			return m_metadata ;
 		}
 
@@ -125,25 +126,27 @@ namespace genfile {
 			return result ;
 		}
 
-		SqliteIndexQuery::FileMetadata SqliteIndexQuery::load_metadata( db::Connection& connection ) const {
-			FileMetadata result ;
+		SqliteIndexQuery::OptionalFileMetadata
+		SqliteIndexQuery::load_metadata( db::Connection& connection ) const {
+			OptionalFileMetadata result ;
 			db::Connection::StatementPtr stmt = connection.get_statement( "SELECT * FROM sqlite_master WHERE name == 'Metadata' AND type == 'table'" ) ;
 			stmt->step() ;
-			if( stmt->empty() ) {
-				throw std::invalid_argument( "Index file appears malformed (no \"Metadata\" table)" ) ;
-			}
-			db::Connection::StatementPtr mdStmt = connection.get_statement( "SELECT filename, file_size, last_write_time, first_1000_bytes FROM Metadata" ) ;
-			mdStmt->step() ;
+			if( !stmt->empty() ) {
+				db::Connection::StatementPtr mdStmt = connection.get_statement( "SELECT filename, file_size, last_write_time, first_1000_bytes FROM Metadata" ) ;
+				mdStmt->step() ;
 
-			if( mdStmt->empty() ) {
-				throw std::invalid_argument( "Index file appears malformed (empty \"Metadata\" table)" ) ;
+				if( mdStmt->empty() ) {
+					throw std::invalid_argument( "Index file appears malformed (empty \"Metadata\" table)" ) ;
+				}
+				FileMetadata metadata ;
+				// Get metadata fields for comparison
+				metadata.filename = mdStmt->get< std::string >( 0 ) ;
+				metadata.size = mdStmt->get< int64_t >( 1 ) ;
+				metadata.last_write_time = mdStmt->get< int64_t >( 2 ) ;
+				metadata.first_bytes = mdStmt->get< std::vector< uint8_t > >( 3 ) ;
+				
+				result = metadata ;
 			}
-			// Get metadata fields for comparison
-			result.filename = mdStmt->get< std::string >( 0 ) ;
-			result.size = mdStmt->get< int64_t >( 1 ) ;
-			result.last_write_time = mdStmt->get< int64_t >( 2 ) ;
-			result.first_bytes = mdStmt->get< std::vector< uint8_t > >( 3 ) ;
-
 			return result ;
 		}
 
