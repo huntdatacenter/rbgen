@@ -10,7 +10,8 @@ def build( bld ):
 			bld.path.ant_glob( 'libs/system/src/*.cpp' ) +
 			bld.path.ant_glob( 'libs/regex/src/*.cpp' ) +
 			bld.path.ant_glob( 'libs/thread/src/*.cpp' ) +
-			bld.path.ant_glob( 'libs/thread/src/pthread/*.cpp' ) +
+			bld.path.ant_glob( 'libs/thread/src/pthread/once_atomic.cpp' ) +
+			bld.path.ant_glob( 'libs/thread/src/pthread/thread.cpp' ) +
 			bld.path.ant_glob( 'libs/filesystem/src/*.cpp' ) +
 			bld.path.ant_glob( 'libs/date_time/src/posix_time/*.cpp' ) +
 			bld.path.ant_glob( 'libs/timer/src/*.cpp' ) +

@@ -12,8 +12,8 @@ def options( opt ):
 def configure( cfg ):
 	cfg.load( 'compiler_c')
 	cfg.load( 'compiler_cxx')
-	cfg.env.CXXFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', '-Wno-deprecated-declarations', '-Wno-long-long' ]
-	cfg.env.CFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', 'Wno-deprecated-declarations', '-Wno-long-long' ]
+	cfg.env.CXXFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', '-Wno-deprecated-declarations', '-Wno-long-long', '-fPIC' ]
+	cfg.env.CFLAGS = [ '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long', 'Wno-deprecated-declarations', '-Wno-long-long', '-fPIC' ]
 	if cfg.options.mode == 'release':
 		cfg.env.CXXFLAGS += [ '-O3' ]
 		cfg.env.CFLAGS = [ '-O3' ]
@@ -48,4 +48,4 @@ def build( bld ):
 		use = 'zlib zstd sqlite3 db',
 		export_includes = 'genfile/include'
 	)
-	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'example', 'test'] )
+	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'example', 'test', 'R' ] )

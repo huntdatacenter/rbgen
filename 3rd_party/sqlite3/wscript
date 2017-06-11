@@ -4,6 +4,7 @@ def build( bld ):
 		source = [ 'sqlite3/sqlite3.c' ],
 		features = [ 'c' ],
 		includes = './',
+		cflags = '-fPIC',
 		defines = 'SQLITE_ENABLE_COLUMN_METADATA SQLITE_ENABLE_STAT4 SQLITE_MAX_EXPR_DEPTH=10000',
 		#uselib = 'DL',
 		export_includes = './'
