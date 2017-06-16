@@ -25,7 +25,7 @@ The following programs are currently built with the BGEN repository.
 R package
 ========
 
-An R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  ee the [wiki page for rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more info.  **Warning**: this package is currently considered experimental - it may or may not work correctly.  I blogged about how this is built [here](https://gavinband.github.io/biobank/bgen/2017/05/16/Getting_biobank_data_into_R.html).
+An R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  See the [wiki page for rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more information on using this package.  **Warning**: this package is currently considered experimental - it may or may not work correctly.  I blogged about how this is built [here](https://gavinband.github.io/biobank/bgen/2017/05/16/Getting_biobank_data_into_R.html).
 
 Download
 ========
