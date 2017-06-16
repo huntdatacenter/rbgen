@@ -87,7 +87,9 @@ will install the applications listed above into a specified system or user direc
 ```
 The programs listed above will be installed into a folder called `usr/bin/` under the prefix dir, e.g. `bgenix` will be installed as `/path/to/installation/directory/usr/bin/bgenix` etc.
 
-(**Note**: in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.)
+Note that in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.
+
+For example, I typically specify an installation directory within my home dir (e.g. `~gav/projects/software/`).  Then development changes don't affect the installed version until I run `waf install`.
 
 Branches
 ========
