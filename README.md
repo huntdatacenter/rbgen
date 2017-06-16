@@ -82,10 +82,10 @@ The command
 ```
 will install the applications listed above into a specified system or user directory.  By default this is `/usr/local`.  To change it, specify the prefix at the configure step:
 ```sh
-./waf-1.8.13 configure --prefix=/path/to/installation/dir
+./waf-1.8.13 configure --prefix=/path/to/installation/directory
 ./waf-1.8.13 install
 ```
-The programs listed above will be installed into a folder called `usr/bin/` under the prefix dir.
+The programs listed above will be installed into a folder called `usr/bin/` under the prefix dir, e.g. `bgenix` will be installed as `/path/to/installation/directory/usr/bin/bgenix` etc.
 
 (**Note**: in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.)
 
