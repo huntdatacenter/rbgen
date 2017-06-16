@@ -73,6 +73,22 @@ by typing
 ```
 which should output vcf-formatted data to stdout.  We've provided further example bgen files in the `example/` subdirectory.
 
+Installation
+========
+
+The command
+```sh
+./waf-1.8.13 install
+```
+will install the applications listed above into a specified system or user directory.  By default this is `/usr/local`.  To change it, specify the prefix at the configure step:
+```sh
+./waf-1.8.13 configure --prefix=/path/to/installation/dir
+./waf-1.8.13 install
+```
+The programs listed above will be installed into a folder called `usr/bin/` under the prefix dir.
+
+(**Note**: in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.)
+
 Branches
 ========
 
