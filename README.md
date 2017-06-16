@@ -92,7 +92,7 @@ The programs listed above will be installed into a folder called `bin/` under th
 
 Note that in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.
 
-For example, I typically specify an installation directory within my home dir (e.g. `~gav/projects/software/`).  Then development changes don't affect the installed version until I run `waf install`.
+(The installation prefix need not be a system-wide directory.  For example, I typically specify an installation directory within my home dir, e.g. `~gav/projects/software/`.
 
 Branches
 ========
