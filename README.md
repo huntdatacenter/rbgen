@@ -22,7 +22,7 @@ The following programs are currently built with the BGEN repository.
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
 * [edit-bgen](https://bitbucket.org/gavinband/bgen/wiki/edit-bgen) - a tool to edit BGEN file metadata.
 
-Click on the names to see the wiki pages.
+In addition, an experimental R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is built in the build directory.  See the [wiki page for rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more info.  (I blogged about how this is built [here](https://gavinband.github.io/biobank/bgen/2017/05/16/Getting_biobank_data_into_R.html)).
 
 Download
 ========
