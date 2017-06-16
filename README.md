@@ -88,7 +88,7 @@ will install the applications listed above into a specified system or user direc
 ./waf-1.8.13 configure --prefix=/path/to/installation/directory
 ./waf-1.8.13 install
 ```
-The programs listed above will be installed into a folder called `usr/bin/` under the prefix dir, e.g. `bgenix` will be installed as `/path/to/installation/directory/usr/bin/bgenix` etc.
+The programs listed above will be installed into a folder called `bin/` under the prefix dir, e.g. `bgenix` will be installed as `/path/to/installation/directory/bin/bgenix` etc.
 
 Note that in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.
 
