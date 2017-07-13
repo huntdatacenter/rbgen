@@ -13,6 +13,7 @@
 #include <iostream>
 #include <boost/lexical_cast.hpp>
 #include "genfile/bgen/bgen.hpp"
+#include "genfile/bgen/Query.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
 
 namespace genfile {
@@ -20,7 +21,7 @@ namespace genfile {
 		struct View {
 		public:
 			typedef std::auto_ptr< View > UniquePtr ;
-			typedef genfile::bgen::IndexQuery IndexQuery ;
+			typedef genfile::bgen::Query Query ;
 			typedef genfile::bgen::IndexQuery::FileMetadata FileMetadata ;
 
 			static UniquePtr create( std::string const& filename ) ;
@@ -28,8 +29,13 @@ namespace genfile {
 		public:
 			View( std::string const& filename ) ;
 
-			// Restrict this reader to a set of variants specified by the given query
-			void set_query( IndexQuery::UniquePtr query ) ;
+			// Restrict this view to a set of variants specified by the given query
+			void set_query(
+				Query const& query,
+				std::string const& index_filename,
+				IndexQuery::ProgressCallback callback = IndexQuery::ProgressCallback(),
+				std::string const& table_name = "Variant"
+			) ;
 
 			// Report high-level information about the file
 			uint32_t number_of_variants() const ;
@@ -112,6 +118,9 @@ namespace genfile {
 			std::vector< byte_t > const& read_and_uncompress_genotype_data_block() ;
 
 		private:
+
+			typedef genfile::bgen::IndexQuery IndexQuery ;
+			
 			std::string const m_filename ;
 			std::auto_ptr< std::istream > m_stream ;
 			std::size_t m_variant_i ;

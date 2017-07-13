@@ -19,11 +19,11 @@
 
 namespace genfile {
 	namespace bgen {
+		/* View implementation */
 		View::UniquePtr View::create( std::string const& filename ) {
 			return View::UniquePtr( new View( filename )) ;
 		}
 
-		/* View implementation */
 		View::View( std::string const& filename ):
 			m_filename( filename ),
 			m_variant_i(0),
@@ -38,12 +38,14 @@ namespace genfile {
 			return m_context.number_of_samples ;
 		}
 
-		void View::set_query( IndexQuery::UniquePtr query ) {
-			m_index_query = query ;
-			if( m_index_query->number_of_variants() > 0 ) {
-				m_stream->seekg( m_index_query->locate_variant(0).first ) ;
-			}
-			m_file_position = m_stream->tellg() ;
+		void View::set_query(
+			Query const& query,
+			std::string const& index_filename,
+			IndexQuery::ProgressCallback callback,
+			std::string const& table_name
+		) {
+			m_index_query = IndexQuery::create( query, index_filename, callback, table_name ) ;
+			// Check metadata
 		}
 
 		View::FileMetadata const& View::file_metadata() const {

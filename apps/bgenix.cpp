@@ -170,9 +170,9 @@ void check_metadata(
 			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
 		}
 
-		if( file.first_bytes != (*index).first_bytes ) {
+		if( file.first_bytes != index->first_bytes ) {
 			std::string const message = "!! File \"" + file.filename + "\" has different initial bytes"
-				+ " than recorded in the index file \"" + (*index).filename + "\" - that can't be right.\n"
+				+ " than recorded in the index file \"" + index->filename + "\" - that can't be right.\n"
 				+ "Do you need to recreate the index?" ;
 			throw std::invalid_argument( message ) ;
 			//throw appcontext::HaltProgramWithReturnCode( -1 ) ;
@@ -392,8 +392,8 @@ private:
 
 	void process_selection_unsafe( std::string const& bgen_filename, std::string const& index_filename ) const {
 		genfile::bgen::View bgenView( bgen_filename ) ;
-		genfile::bgen::IndexQuery::UniquePtr query = create_index_query( index_filename ) ;
-
+		genfile::bgen::Query::UniquePtr query = construct_query() ;
+		
 		//setup_query( *index ) ;
 		bool const transcode
 			= options().check( "-list" )
@@ -401,7 +401,12 @@ private:
 			|| options().check( "-v11" ) ;
 
 		if( transcode ) {
-			bgenView.set_query( query ) ;
+			// When transcoding we use bgen::View directly.
+			{
+				auto progress_context = ui().get_progress_context( "Building query" ) ;
+				bgenView.set_query( *query, index_filename, progress_context, options().get< std::string >( "-table" ) ) ;
+			}
+
 			if( options().check( "-list" ) ) {
 				process_selection_list( bgenView ) ;
 			} else if( options().check( "-vcf" )) {
@@ -410,23 +415,23 @@ private:
 				process_selection_transcode( bgenView, "bgen_v1.1" ) ;
 			}
 		} else {
-			// When not transcoding we skip BgenParser and use the bgen file directly.
+			// When not transcoding we currently use bgen::View to check metadata, but otherwise
+			// we use the bgen file directly.  To this end we create the index query again;
 			check_metadata( bgenView.file_metadata(), query->file_metadata() ) ;
-			process_selection_notranscode( bgen_filename, query ) ;
+			genfile::bgen::IndexQuery::UniquePtr index_query ;
+			{
+				index_query = genfile::bgen::IndexQuery::create(
+					*query,
+					index_filename,
+					progress_callback
+				) ;
+			}
+			process_selection_notranscode( bgen_filename, index_query ) ;
 		}
 	}
 
-	genfile::bgen::IndexQuery::UniquePtr create_index_query( std::string const& filename ) const {
-		genfile::bgen::SqliteIndexQuery::UniquePtr query ;
-		try {
-			query.reset( new genfile::bgen::SqliteIndexQuery( filename, options().get< std::string >( "-table" )) ) ;
-		} catch( std::invalid_argument const& e ) {
-			std::cerr << "!! Error opening index file \"" << filename
-				<< "\": " << e.what() << "\n" ;
-			std::cerr << "Use \"bgenix -g " + options().get< std::string >( "-g" ) + " -index\" to create the index file.\n" ;
-			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
-		}
-	
+	genfile::bgen::Query::UniquePtr construct_query() const {
+		genfile::bgen::Query::UniquePtr query = genfile::bgen::Query::create() ;
 		if( options().check( "-incl-range" )) {
 			auto const elts = collect_unique_ids( options().get_values< std::string >( "-incl-range" ));
 			for( std::string const& elt: elts ) {
@@ -449,11 +454,7 @@ private:
 			query->exclude_rsids( ids ) ;
 		}
 
-		{
-			auto progress_context = ui().get_progress_context( "Building query" ) ;
-			query->initialise( progress_context ) ;
-		}
-		return( genfile::bgen::IndexQuery::UniquePtr( query.release() )) ; // Using std::auto_ptr so we need these gymnastics
+		return query ;
 	}
 	
 	std::vector< std::string > collect_unique_ids( std::vector< std::string > const& ids_or_filenames ) const {
@@ -959,7 +960,7 @@ private:
 		return result ;
 	}
 	
-	genfile::bgen::IndexQuery::GenomicRange parse_range( std::string const& spec ) const {
+	genfile::bgen::Query::GenomicRange parse_range( std::string const& spec ) const {
 		std::size_t colon_pos = spec.find( ':' ) ;
 		if ( colon_pos == std::string::npos ) {
 			throw std::invalid_argument( "spec=\"" + spec + "\"" ) ;

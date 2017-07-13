@@ -14,16 +14,34 @@
 
 namespace genfile {
 	namespace bgen {
-		IndexQuery::UniquePtr IndexQuery::create( std::string const& filename, std::string const& table_name ) {
-			return IndexQuery::UniquePtr( new SqliteIndexQuery( filename, table_name )) ;
+		IndexQuery::UniquePtr IndexQuery::create(
+			Query const& query,
+			std::string const& filename,
+			ProgressCallback callback,
+			std::string const& table_name
+		) {
+			return IndexQuery::UniquePtr( new SqliteIndexQuery( query, filename, callback, table_name )) ;
 		}
 
-		SqliteIndexQuery::SqliteIndexQuery( std::string const& filename, std::string const& table_name ):
+		SqliteIndexQuery::SqliteIndexQuery(
+			Query const& query,
+			std::string const& filename,
+			ProgressCallback callback,
+			std::string const& table_name
+		):
 			m_connection( open_connection( filename ) ),
 			m_metadata( load_metadata( *m_connection ) ),
-			m_index_table_name( table_name ),
-			m_initialised( false )
+			m_index_table_name( table_name )
 		{
+			include_rsids( query.included_rsids() ) ;
+			exclude_rsids( query.excluded_rsids() ) ;
+			for( std::size_t i = 0; i < query.included_ranges().size(); ++i ) {
+				include_range( query.included_ranges()[i] ) ;
+			}
+			for( std::size_t i = 0; i < query.excluded_ranges().size(); ++i ) {
+				exclude_range( query.excluded_ranges()[i] ) ;
+			}
+			initialise( callback ) ;
 		}
 	
 		boost::optional< SqliteIndexQuery::FileMetadata > const&
@@ -51,12 +69,9 @@ namespace genfile {
 	#if DEBUG
 			std::cerr << "SqliteIndexQuery::initialise(): read positions for " << m_positions.size() << " variants.\n" ;
 	#endif
-	
-			m_initialised = true ;
 		}
 
 		std::size_t SqliteIndexQuery::number_of_variants() const {
-			assert( m_initialised ) ;
 			return m_positions.size() ;
 		}
 
@@ -64,7 +79,6 @@ namespace genfile {
 	#if DEBUG
 			std::cerr << "SqliteIndexQuery::locate_variant(" << index << ")...\n" ;
 	#endif
-			assert( m_initialised ) ;
 			assert( index < m_positions.size() ) ;
 			return m_positions[index] ;
 		}
@@ -73,7 +87,6 @@ namespace genfile {
 			m_query_parts.inclusion += ((m_query_parts.inclusion.size() > 0) ? " OR " : "" ) + (
 				boost::format( "( chromosome == '%s' AND position BETWEEN %d AND %d )" ) % range.chromosome() % range.start() % range.end()
 			).str() ;
-			m_initialised = false ;
 			return *this ;
 		}
 
@@ -82,7 +95,6 @@ namespace genfile {
 				boost::format( " NOT ( chromosome == '%s' AND position BETWEEN %d AND %d )" )
 					% range.chromosome() % range.start() % range.end()
 			).str() ;
-			m_initialised = false ;
 			return *this ;
 		}
 
@@ -97,7 +109,6 @@ namespace genfile {
 				m_query_parts.join += " LEFT OUTER JOIN tmpIncludedId TI ON TI.identifier == V.rsid" ;
 				m_query_parts.inclusion += ( m_query_parts.inclusion.size() > 0 ? " OR" : "" ) + std::string( " TI.identifier IS NOT NULL" ) ;
 			}
-			m_initialised = false ;
 			return *this ;
 		}
 
@@ -112,7 +123,6 @@ namespace genfile {
 				m_query_parts.join += " LEFT OUTER JOIN tmpExcludedId TE ON TE.identifier == V.rsid" ;
 				m_query_parts.exclusion += ( m_query_parts.exclusion.size() > 0 ? " AND" : "" ) + std::string( " TE.identifier IS NULL" ) ;
 			}
-			m_initialised = false ;
 			return *this ;
 		}
 
