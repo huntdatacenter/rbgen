@@ -9,7 +9,7 @@ An example program, `bgen_to_vcf`, is also provided; as the name suggests it con
 
 **!! Important note on the UK Biobank data**
 
-The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index are not named in the way `bgenix` expects by default*.  Options for fixing this are:
+The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index files are not named in the way `bgenix` expects by default*.  Options for fixing this are:
 
 1. Use `bgenix` to recreate the index files.  This typically takes a few minutes per file, and is the recommended option because it includes additional metadata in the index file.)
 2. Rename or copy each index files to the expected name, e.g. rename `ukb_imp_chr[N]_v2.bgi` to  `ukb_imp_chr[N]_v2.bgen.bgi`.
