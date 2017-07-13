@@ -1,6 +1,7 @@
 #!/bin/bash
-R CMD INSTALL build/R/rbgen
-R --vanilla << HERE_DOC
+R="$1"
+${R} CMD INSTALL build/R/rbgen
+${R} --vanilla << HERE_DOC
 library( rbgen )
 D = bgen.load( "example/example.16bits.bgen", data.frame( chromosome = '01', start = 0, end = 100000 ))
 str( D )
