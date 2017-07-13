@@ -15,7 +15,7 @@ def build( bld ):
 			'lib/compress/zbuff_compress.c',
 			'lib/compress/zstd_compress.c'
 		],
-		cflags = '-O3',
+		cflags = '-fPIC',
 		includes = [ 'lib', 'lib/common', 'lib/compress', 'lib/decompress' ],
 		export_includes = 'lib/'
 	)

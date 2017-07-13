@@ -81,9 +81,13 @@ namespace appcontext {
 		}
 		catch( OptionProcessingException const& e ) {
 			ui().logger() << "!! Error (" << e.what() << "): " << e.message() << ".\n" ;
+			ui().logger() << "Please use \""
+			<< m_application_name << " " << m_options->get_help_option_name()
+			<< "\" for more information.\n" ;
 			throw HaltProgramWithReturnCode( 0 );
 		}
 		catch( OptionProcessorHelpRequestedException const& ) {
+			write_start_banner() ;
 			std::cout << "Usage: "
 				<< m_application_name << " <options>\n"
 				<< "\nOPTIONS:\n"
@@ -136,7 +140,7 @@ namespace appcontext {
 		if( m_application_version != "" ) {
 			m_ui->logger() << "(revision: " << m_application_version << ")\n" ;
 		}
-		m_ui->logger() << "\n(C) 2009-2015 University of Oxford\n\n";
+		m_ui->logger() << "\n(C) 2009-2017 University of Oxford\n\n";
 	}
 
 	void ApplicationContext::write_end_banner() {

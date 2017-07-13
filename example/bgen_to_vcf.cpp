@@ -1,3 +1,9 @@
+
+//          Copyright Gavin Band 2008 - 2012.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #include <iostream>
 #include <fstream>
 #include <cassert>
@@ -5,10 +11,10 @@
 #include <memory>
 #include "genfile/bgen/bgen.hpp"
 
-// ProbSetter is a callback object appropriate
-// for passing to bgen::read_genotype_data_block().
-// See the comment about bgen::read_genotype_data_block() for more info.
-// Its purpose is to store genotype probability values in the desired
+// ProbSetter is a callback object appropriate for passing to bgen::read_genotype_data_block() or
+// the synonymous method of genfile::bgen::View. See the comment in bgen.hpp above
+// bgen::read_genotype_data_block(), or the bgen wiki for a description of the API.
+// The purpose of this object is to store genotype probability values in the desired
 // data structure (which here is a vector of vectors of doubles).
 struct ProbSetter {
 	typedef std::vector< std::vector< double > > Data ;
@@ -51,10 +57,12 @@ struct ProbSetter {
 		m_entry_i = 0 ;
 	}
 
+	// Called once for each genotype (or haplotype) probability per sample.
 	void set_value( uint32_t, double value ) {
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = value ;
 	}
 
+	// Ditto, but called if data is missing for this sample.
 	void set_value( uint32_t, genfile::MissingValue value ) {
 		// Here we encode missing probabilities with -1
 		m_result->at( m_sample_i ).at( m_entry_i++ ) = -1 ;

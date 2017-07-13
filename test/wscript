@@ -4,5 +4,6 @@ def build( bld ):
 		target = 'test_bgen',
 		use = 'bgen zlib zstd',
 		cxxflags = ['-std=c++11'],
-		includes = './'
+		includes = './',
+		install_path = None
 	)

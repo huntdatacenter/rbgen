@@ -22,7 +22,10 @@ The following programs are currently built with the BGEN repository.
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
 * [edit-bgen](https://bitbucket.org/gavinband/bgen/wiki/edit-bgen) - a tool to edit BGEN file metadata.
 
-Click on the names to see the wiki pages.
+R package
+========
+
+An experimental R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  See the [rbgen wiki page](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more information on using this package.
 
 Download
 ========
@@ -72,6 +75,24 @@ by typing
 ./build/example/bgen_to_vcf example/example.8bits.bgen
 ```
 which should output vcf-formatted data to stdout.  We've provided further example bgen files in the `example/` subdirectory.
+
+Installation
+========
+
+The command
+```sh
+./waf-1.8.13 install
+```
+will install the applications listed above into a specified system or user directory.  By default this is `/usr/local`.  To change it, specify the prefix at the configure step:
+```sh
+./waf-1.8.13 configure --prefix=/path/to/installation/directory
+./waf-1.8.13 install
+```
+The programs listed above will be installed into a folder called `bin/` under the prefix dir, e.g. `bgenix` will be installed as `/path/to/installation/directory/bin/bgenix` etc.
+
+Note that in many cases there's no need for installation; the executables are self-contained.  The install step simply copies them into the destination directory.
+
+(The installation prefix need not be a system-wide directory.  For example, I typically specify an installation directory within my home dir, e.g. `~gav/projects/software/`.
 
 Branches
 ========
