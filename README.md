@@ -13,7 +13,7 @@ The UK Biobank has released imputed data for the full release in BGEN format, wi
 
 1. Use `bgenix` to recreate the index files (e.g. run `bgenix -g ukb_imp_chr[N]_v2.bgen -index` for each chromosome).  This typically takes a few minutes per file, and is the recommended option because it includes additional metadata in the index file.)
 2. Rename or copy each index files to the expected name, e.g. rename `ukb_imp_chr[N]_v2.bgi` to  `ukb_imp_chr[N]_v2.bgen.bgi`.
-3. Use the `-i` option to tell `bgenix` to use a non-default index file.  (This option is not recommended because it makes it more of a burden to get command lines right.  Additionally it may not work with other tools that use these files.)
+3. Specify a non-default index filename to `bgenix` (via the `-i` option).  While this option will work, it is not generally recommended because of the need to get command lines right.  It may not work with other tools.)
 
 See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for further technical information on the UK Biobank data.
 
