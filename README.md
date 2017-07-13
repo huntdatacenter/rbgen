@@ -10,7 +10,14 @@ An example program, `bgen_to_vcf`, is also provided; as the name suggests it con
 Important note on the UK Biobank data
 =========
 
-`bgenix` can be used to access the UK Biobank full release imputed data.  See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for information on getting this working.
+**Important note**
+
+The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index are not named in the way `bgenix` expects by default*.  (`bgenix` expects the index file for <filename>.bgen to be <filename>.bgen.bgi).  Options for fixing this are:
+
+1. Rename or copy each index file to the expected name, e.g. rename `ukb_imp_chr[N]_v2.bgi` to  `ukb_imp_chr[N]_v2.bgen.bgi`.
+2. Use the latest version of `bgenix` to recreate the index files.  (This typically takes a few minutes per file).
+
+See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for technical information on these files.
 
 License
 ========
