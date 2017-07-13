@@ -11,7 +11,7 @@ An example program, `bgen_to_vcf`, is also provided; as the name suggests it con
 
 **!! Important note on the UK Biobank data**
 
-The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index files appear not to be named in the way `bgenix` expects by default*. Please see [here](https://bitbucket.org/gavinband/bgen/wiki/Using the UK Biobank full release index files) for information on working around this.
+The UK Biobank has released imputed data for the full release in BGEN format, with accompanying bgenix index files.  However, *these index files appear not to be named in the way bgenix expects by default*. Please see [here](https://bitbucket.org/gavinband/bgen/wiki/Using the UK Biobank full release index files) for information on working around this.
 
 ---
 
