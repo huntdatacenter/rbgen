@@ -30,7 +30,8 @@ namespace bfs = boost::filesystem ;
 
 namespace globals {
 	std::string const program_name = "bgenix" ;
-	std::string const program_version = bgen_revision ;
+	std::string const program_version = bgen_version ;
+	std::string const program_revision = std::string( bgen_revision ).substr( 0, 7 ) ;
 }
 
 struct IndexBgenOptionProcessor: public appcontext::CmdLineOptionProcessor
@@ -52,7 +53,7 @@ public:
 		;
 
 		options[ "-table" ]
-			.set_description( "Specify the table (or view) that bgenix should read the file index from."
+			.set_description( "Specify the table (or view) that bgenix should read the file index from. "
 				"This only affects reading the index file.  The named table or view should have the"
 				" same schema as the Variant table written by bgenix on index creation."
 			)
@@ -187,7 +188,7 @@ public:
 	IndexBgenApplication( int argc, char** argv ):
 		appcontext::ApplicationContext(
 			globals::program_name,
-			globals::program_version,
+			globals::program_version + ", revision " + globals::program_revision,
 			std::auto_ptr< appcontext::OptionProcessor >( new IndexBgenOptionProcessor ),
 			argc,
 			argv,
