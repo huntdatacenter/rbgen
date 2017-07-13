@@ -7,6 +7,11 @@ See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation
 
 An example program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  This is intended as an example program that shows how to use the BGEN file reading API.
 
+Important note on the UK Biobank data
+=========
+
+`bgenix` can be used to access the UK Biobank full release imputed data.  See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for information on getting this working.
+
 License
 ========
 This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
