@@ -7,17 +7,15 @@ See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation
 
 An example program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  This is intended as an example program that shows how to use the BGEN file reading API.
 
-Important note on the UK Biobank data
-=========
+**!! Important note on the UK Biobank data**
 
-**Important note**
-
-The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index are not named in the way `bgenix` expects by default*.  (`bgenix` expects the index file for <filename>.bgen to be <filename>.bgen.bgi).  Options for fixing this are:
+The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index are not named in the way `bgenix` expects by default*.  Options for fixing this are:
 
 1. Rename or copy each index file to the expected name, e.g. rename `ukb_imp_chr[N]_v2.bgi` to  `ukb_imp_chr[N]_v2.bgen.bgi`.
 2. Use the latest version of `bgenix` to recreate the index files.  (This typically takes a few minutes per file).
+3. We will add an option to `bgenix` to allow specifying the index files. 
 
-See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for technical information on these files.
+See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for technical information on the format of this data release.
 
 License
 ========
