@@ -11,7 +11,7 @@ An example program, `bgen_to_vcf`, is also provided; as the name suggests it con
 
 The UK Biobank has released imputed data for the full release in BGEN format, with accompanying `bgenix` index files.  However, *these index files are not named in the way `bgenix` expects by default*.  Options for fixing this are:
 
-1. Use `bgenix` to recreate the index files (e.g. run `bgenix -g ukb_imp_chr[N]_v2.bgen -index` for each chromosome).  This typically takes a few minutes per file, and is the recommended option because it includes additional metadata in the index file.)
+1. Use `bgenix` to recreate the index files (e.g. run `bgenix -g ukb_imp_chr[N]_v2.bgen -index` for each chromosome).  This typically takes a few minutes per file, and is the recommended option.  Doing this will additionally include file metadata in the index file which `bgenix` uses for sanity checking.)
 2. Rename or copy each index files to the expected name, e.g. rename `ukb_imp_chr[N]_v2.bgi` to  `ukb_imp_chr[N]_v2.bgen.bgi`.
 3. Specify a non-default index filename to `bgenix` (via the `-i` option).  While this option will work, it is not generally recommended because it makes it harder to get the command line right.  It also may not solve the problem for tools other than `bgenix`.
 
