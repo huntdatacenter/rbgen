@@ -2,7 +2,7 @@ BGEN reference implementation
 ========
 
 This repository contains a reference implementation of the [BGEN format](http://www.well.ox.ac.uk/~gav/bgen_format/bgen_format_v1.2.html) in C++, 
-originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  In addition three utilities - `bgenix`, which indexes BGEN files, `cat-bgen` which efficiently concatenates BGEN files, and `edit-bgen` which is used to manipulate BGEN metadata - are provided.
+originally sourced from the [qctool](https://bitbucket.org/gavinband/bgen) implementation.  In addition three utilities - [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix), which provides indexed access to BGEN files, cat-bgen which efficiently concatenates BGEN files, and edit-bgen which is used to manipulate BGEN metadata - are provided.
 See the [wiki](https://bitbucket.org/gavinband/bgen/wiki/Home) for documentation on these programs.
 
 An example program, `bgen_to_vcf`, is also provided; as the name suggests it converts a BGEN file to VCF.  This is intended as an example program that shows how to use the BGEN file reading API.
@@ -17,16 +17,10 @@ The UK Biobank has released imputed data for the full release in BGEN format, wi
 
 See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for further technical information on the UK Biobank data.
 
-License
-========
-This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
-
-This repository also contains code from  the [sqlite](www.sqlite.org) and [boost](www.boost.org) libraries.  The former is [available in the public domain](http://www.sqlite.org/copyright.html) and the latter under the boost software license.  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
-
-Apps
+Applications
 =====
 
-The following programs are currently built with the BGEN repository.
+The following programs are built with the BGEN repository.
 
 * [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
@@ -36,6 +30,12 @@ R package
 ========
 
 An experimental R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  See the [rbgen wiki page](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more information on using this package.
+
+License
+========
+This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
+
+This repository also contains code from  the [sqlite](www.sqlite.org), [boost](www.boost.org), and [zstandard](http://www.zstd.net) libraries, which comes with their own respective licenses. (respectively, [public domain](http://www.sqlite.org/copyright.html), the boost software license, and the [BSD license](https://github.com/facebook/zstd/blob/dev/LICENSE).  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
 
 Download
 ========
