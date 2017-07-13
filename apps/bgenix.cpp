@@ -51,6 +51,13 @@ public:
 			.set_takes_single_value()
 			.set_is_required()
 		;
+		options[ "-i" ]
+			.set_description(
+				"Path of index file to use. If not specified, " + globals::program_name + " will look for an index file of the form '<filename>.bgen.bgi' "
+				" where '<filename>.bgen' is the bgen file name specified by the -g option."
+			)
+			.set_takes_single_value()
+		;
 
 		options[ "-table" ]
 			.set_description( "Specify the table (or view) that bgenix should read the file index from. "
@@ -205,7 +212,7 @@ private:
 private:
 	void setup() {
 		m_bgen_filename = options().get< std::string >( "-g" ) ;
-		m_index_filename = m_bgen_filename + ".bgi" ;
+		m_index_filename = options().check( "-i" ) ? options().get< std::string > ( "-i" ) : (m_bgen_filename + ".bgi") ;
 		if( !bfs::exists( m_bgen_filename )) {
 			ui().logger() << "!! Error, the BGEN file \"" << m_bgen_filename << "\" does not exist!\n" ;
 			throw std::invalid_argument( m_bgen_filename ) ;

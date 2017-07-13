@@ -49,3 +49,40 @@ def build( bld ):
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'example', 'test', 'R' ] )
+
+class ReleaseBuilder:
+	def __init__( self, APPNAME, VERSION ):
+		self.APPNAME = APPNAME
+		self.VERSION = VERSION
+		self.apps = [ 'bgenix', 'cat-bgen', 'edit-bgen' ]
+
+	def build( self ):
+		import os, tempfile, shutil, subprocess
+		tempdir = tempfile.mkdtemp()
+		import platform
+		if platform.system() == 'Darwin':
+			release_stub = '%s_v%s-osx' % ( self.APPNAME, self.VERSION )
+		elif platform.system() == 'Linux':
+			distro = platform.linux_distribution()
+			release_stub = '%s_v%s-%s%s-%s' % ( self.APPNAME, self.VERSION, distro[0], distro[1], platform.machine() )
+		release_dir = os.path.join( tempdir, release_stub )
+		os.mkdir( release_dir )
+		shutil.copyfile( "LICENSE_1_0.txt", os.path.join( release_dir, "LICENSE_1_0.txt" ) )
+		for app in self.apps:
+			source = os.path.join( 'build', 'apps', app )
+			target = os.path.join( release_dir, app )
+			shutil.copyfile( source, target )
+			shutil.copymode( source, target )
+		shutil.copytree( 'example', os.path.join( release_dir, 'example' ), ignore = shutil.ignore_patterns( '*.cpp', 'wscript' ))
+		target_tarball = '%s/%s.tgz' % ( tempdir, release_stub )
+		process = subprocess.Popen( [ 'tar', '-czf', target_tarball, release_stub ], cwd = tempdir )
+		process.wait()
+		print 'Created %s release tarball in "%s"' % ( self.APPNAME, target_tarball )
+		print "Contents are:"
+		print subprocess.Popen( [ 'tar', '-tzf', target_tarball ], stdout = subprocess.PIPE ).communicate()[0]
+		return { "release_tarball": target_tarball }
+
+def release( bld ):
+	release = ReleaseBuilder( APPNAME, VERSION )
+	result = release.build()
+	print "Created %s release tarball in \"%s\"" % ( APPNAME, result['release_tarball'] )
