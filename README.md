@@ -15,7 +15,7 @@ The UK Biobank has released imputed data for the full release in BGEN format, wi
 2. Rename or copy each index files to the expected name, e.g. rename `ukb_imp_chr[N]_v2.bgi` to  `ukb_imp_chr[N]_v2.bgen.bgi`.
 3. We will shortly add an option to `bgenix` to allow specifying the index files. 
 
-See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for further technical information on this data release.
+See the [BGEN in the UK Biobank](https://bitbucket.org/gavinband/bgen/wiki/BGEN_in_the_UK_Biobank) page for further technical information on the UK Biobank data.
 
 License
 ========
