@@ -143,6 +143,7 @@ namespace {
 	
 	genfile::bgen::View::UniquePtr construct_view(
 		std::string const& filename,
+		std::string const& index_filename,
 		Rcpp::DataFrame const& ranges
 	) {
 		using namespace genfile::bgen ;
@@ -154,8 +155,11 @@ namespace {
 			IntegerVector const& start = ranges["start"] ;
 			IntegerVector const& end = ranges["end"] ;
 		
-			IndexQuery::UniquePtr query = IndexQuery::create( filename + ".bgi" ) ;
+			IndexQuery::UniquePtr query = IndexQuery::create( index_filename ) ;
 			for( int i = 0; i < ranges.nrows(); ++i ) {
+				if( end[i] < start[i] ) {
+					throw std::invalid_argument( "Range (" + chromosome[i] + ":" + atoi( start[i] ) + "-" + atoi( end[i] ) + ") is malformed." ) ;
+				}
 				query->include_range( IndexQuery::GenomicRange( std::string( chromosome[i] ), start[i], end[i] )) ;
 			}
 			query->initialise() ;
@@ -165,16 +169,16 @@ namespace {
 	}
 }
 
-// [[Rcpp::export]]
-Rcpp::List load(
+Rcpp::List load_unsafe(
 	std::string const& filename,
+	std::string const& index_filename,
 	Rcpp::DataFrame const& ranges,
 	std::size_t max_entries_per_sample
 ) {
 	using namespace genfile::bgen ;
 	using namespace Rcpp ;
 
-	View::UniquePtr view = construct_view( filename, ranges ) ;
+	View::UniquePtr view = construct_view( filename, index_filename, ranges ) ;
 
 	std::size_t const number_of_variants = view->number_of_variants() ;
 	std::size_t const number_of_samples = view->number_of_samples() ;
@@ -255,3 +259,23 @@ Rcpp::List load(
 
 	return( result ) ;
 }
+
+// [[Rcpp::export]]
+Rcpp::List load(
+	std::string const& filename,
+	std::string const& index_filename,
+	Rcpp::DataFrame const& ranges,
+	std::size_t max_entries_per_sample
+) {
+	try {
+		return load_unsafe( filename, index_filename, ranges, max_entries_per_sample ) ;
+	}
+	catch( std::exception const& e ) {
+		forward_exception_to_r( e ) ;
+	}
+	catch( ... ) {
+		::Rf_error("A C++ exception occurred (unknown reason)") ;
+	}
+	return Rcpp::List() ;
+}
+

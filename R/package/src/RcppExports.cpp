@@ -6,15 +6,16 @@
 using namespace Rcpp;
 
 // bgen.load
-Rcpp::List load(std::string const& filename, Rcpp::DataFrame const& ranges, std::size_t max_entries_per_sample);
-RcppExport SEXP rbgen_load(SEXP filenameSEXP, SEXP rangesSEXP, SEXP max_entries_per_sampleSEXP) {
+Rcpp::List load(std::string const& filename, std::string const& index_filename, Rcpp::DataFrame const& ranges, std::size_t max_entries_per_sample);
+RcppExport SEXP rbgen_load(SEXP filenameSEXP, SEXP index_filenameSEXP, SEXP rangesSEXP, SEXP max_entries_per_sampleSEXP ) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string const& >::type filename(filenameSEXP);
+    Rcpp::traits::input_parameter< std::string const& >::type index_filename(index_filenameSEXP);
     Rcpp::traits::input_parameter< Rcpp::DataFrame const& >::type ranges(rangesSEXP);
     Rcpp::traits::input_parameter< std::size_t >::type max_entries_per_sample(max_entries_per_sampleSEXP);
-    rcpp_result_gen = Rcpp::wrap(load(filename, ranges, max_entries_per_sample));
+    rcpp_result_gen = Rcpp::wrap(load(filename, index_filename, ranges, max_entries_per_sample));
     return rcpp_result_gen;
 END_RCPP
 }
