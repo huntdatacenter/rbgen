@@ -188,7 +188,7 @@ public:
 	IndexBgenApplication( int argc, char** argv ):
 		appcontext::ApplicationContext(
 			globals::program_name,
-			globals::program_revision,
+			globals::program_version + ", revision " + globals::program_revision,
 			std::auto_ptr< appcontext::OptionProcessor >( new IndexBgenOptionProcessor ),
 			argc,
 			argv,

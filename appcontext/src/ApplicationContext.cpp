@@ -81,7 +81,7 @@ namespace appcontext {
 		}
 		catch( OptionProcessingException const& e ) {
 			ui().logger() << "!! Error (" << e.what() << "): " << e.message() << ".\n" ;
-			ui().logger() << "Please use \""
+			ui().logger() << "Please consult the documentation, or use \""
 			<< m_application_name << " " << m_options->get_help_option_name()
 			<< "\" for more information.\n" ;
 			throw HaltProgramWithReturnCode( 0 );
@@ -138,7 +138,7 @@ namespace appcontext {
 	void ApplicationContext::write_start_banner() {
 		m_ui->logger() << "\nWelcome to " << m_application_name << "\n" ;
 		if( m_application_version != "" ) {
-			m_ui->logger() << "(revision: " << m_application_version << ")\n" ;
+			m_ui->logger() << "(version: " << m_application_version << ")\n" ;
 		}
 		m_ui->logger() << "\n(C) 2009-2017 University of Oxford\n\n";
 	}
