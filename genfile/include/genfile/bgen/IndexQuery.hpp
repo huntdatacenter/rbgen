@@ -13,6 +13,7 @@
 #include <vector>
 #include <string>
 #include "db/sqlite3.hpp"
+#include "genfile/bgen/Query.hpp"
 
 namespace genfile {
 	namespace bgen {
@@ -23,65 +24,25 @@ namespace genfile {
 			typedef std::auto_ptr< IndexQuery > UniquePtr ;
 			typedef uint8_t byte_t ;
 
-			static UniquePtr create( std::string const& filename, std::string const& table_name = "Variant" ) ;
-
-		public:
 			struct FileMetadata ;
 			typedef boost::optional< FileMetadata > OptionalFileMetadata ;
-			struct GenomicRange {
-				GenomicRange(): m_start(0), m_end(0) {}
-				GenomicRange( GenomicRange const& other ):
-					m_chromosome( other.m_chromosome ),
-					m_start( other.m_start ),
-					m_end( other.m_end )
-				{}
-					
-				GenomicRange& operator=( GenomicRange const& other ) {
-					m_chromosome = other.m_chromosome ;
-					m_start = other.m_start ;
-					m_end = other.m_end ;
-					return *this ;
-				}
-				GenomicRange(
-					std::string const& chromosome,
-					uint32_t start,
-					uint32_t end
-				):
-					m_chromosome( chromosome ),
-					m_start( start ),
-					m_end( end )
-				{
-					if( m_end < m_start ) {
-						throw std::invalid_argument( "end" ) ;
-					}
-				}
 
-				std::string const& chromosome() const { return m_chromosome ; }
-				uint32_t const& start() const { return m_start ; }
-				uint32_t const& end() const { return m_end ; }
-				
-			private:
-				std::string m_chromosome ;
-				uint32_t m_start ;
-				uint32_t m_end ;
-			} ;
 			//typedef boost::tuple< std::string, uint32_t, uint32_t > GenomicRange ;
 			typedef std::pair< int64_t, int64_t> FileRange ;
 			typedef boost::function< void ( std::size_t n, boost::optional< std::size_t > total ) > ProgressCallback ;
 
 		public:
+			static UniquePtr create(
+				Query const& query,
+				std::string const& filename,
+				ProgressCallback callback = ProgressCallback(),
+				std::string const& table_name = "Variant"
+			) ;
+
+		public:
 			virtual ~IndexQuery() {} ;
 			virtual OptionalFileMetadata const& file_metadata() const = 0 ;
 
-			// Methods for building queries
-			// Each method returns this object, allowing methods to be chained
-			virtual IndexQuery& include_range( GenomicRange const& range ) = 0 ;
-			virtual IndexQuery& exclude_range( GenomicRange const& range ) = 0 ;
-			virtual IndexQuery& include_rsids( std::vector< std::string > const& ids ) = 0 ;
-			virtual IndexQuery& exclude_rsids( std::vector< std::string > const& ids ) = 0 ;
-
-			// Initialise must be called before calling number_of_variants() or locate_variant().
-			virtual void initialise( ProgressCallback callback = ProgressCallback() ) = 0 ;
 			// Report the number of variants in this query.
 			virtual std::size_t number_of_variants() const = 0 ;
 			// Report the number of variants in this query.
@@ -119,22 +80,16 @@ namespace genfile {
 		public:
 			// We use auto_ptr to avoid using C++11 features here.
 			typedef std::auto_ptr< SqliteIndexQuery > UniquePtr ;
+			typedef Query::GenomicRange GenomicRange ;
 
 		public:
 			// Construct given an index file and an index table name
-			SqliteIndexQuery( std::string const& filename, std::string const& table_name = "Variant" ) ;
-
-			// Methods for building queries
-			// Each method returns this object, allowing methods to be chained
-
-			// Include variants in a range
-			SqliteIndexQuery& include_range( GenomicRange const& range ) ;
-			// Exclude variants in a range
-			SqliteIndexQuery& exclude_range( GenomicRange const& range ) ;
-			// Include variants with one of the given rsids.  The list provided must be unique.
-			SqliteIndexQuery& include_rsids( std::vector< std::string > const& ids ) ;
-			// Exclude variants with one of the given rsids.  The list provided must be unique.
-			SqliteIndexQuery& exclude_rsids( std::vector< std::string > const& ids ) ;
+			SqliteIndexQuery(
+				Query const& query,
+				std::string const& filename,
+				ProgressCallback callback = ProgressCallback(),
+				std::string const& table_name = "Variant"
+			) ;
 
 		public:
 			// IndexQuery methods
@@ -146,6 +101,14 @@ namespace genfile {
 		private:
 			db::Connection::UniquePtr open_connection( std::string const& filename ) const ;
 			OptionalFileMetadata load_metadata( db::Connection& connection ) const ;
+	
+			// Methods for building queries
+			// Each method returns this object, allowing methods to be chained
+			SqliteIndexQuery& include_range( GenomicRange const& range ) ;
+			SqliteIndexQuery& exclude_range( GenomicRange const& range ) ;
+			SqliteIndexQuery& include_rsids( std::vector< std::string > const& ids ) ;
+			SqliteIndexQuery& exclude_rsids( std::vector< std::string > const& ids ) ;
+
 			db::Connection::StatementPtr build_query() const ;
 	
 		private:
@@ -158,7 +121,6 @@ namespace genfile {
 				std::string exclusion ;
 			} ;
 			QueryParts m_query_parts ;
-			bool m_initialised ;
 			std::vector< std::pair< int64_t, int64_t> > m_positions ;
 		} ;
 		

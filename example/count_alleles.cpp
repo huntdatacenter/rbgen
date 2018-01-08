@@ -243,11 +243,9 @@ int main( int argc, char** argv ) {
 
 		// If further arguments are given, use them as a query on the file.
 		if( argc > 2 ) {
-			genfile::bgen::IndexQuery::UniquePtr query = bgen::IndexQuery::create( filename + ".bgi" ) ;
-			query
-				->include_rsids( std::vector< std::string >( &argv[0] + 2, &argv[0] + argc ) )
-				.initialise() ;
-			bgenView->set_query( query ) ;
+			genfile::bgen::Query::UniquePtr query = bgen::Query::create() ;
+			query->include_rsids( std::vector< std::string >( &argv[0] + 2, &argv[0] + argc ) ) ;
+			bgenView->set_query( *query, filename + ".bgi" ) ;
 		}
 		
 		// Now iterate through variants.
