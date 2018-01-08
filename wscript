@@ -1,4 +1,4 @@
-import platform
+import platform, os.path
  
 srcdir="."
 APPNAME = "bgen"
@@ -41,14 +41,18 @@ def build( bld ):
 		on_results = False
 	)
 
+	bgen_sources =bld.path.ant_glob( 'src/*.cpp' )
 	bld.stlib(
-		source = bld.path.ant_glob( 'src/*.cpp' ),
+		source = bgen_sources,
 		target = 'bgen',
 		includes = 'genfile/include',
 		use = 'zlib zstd sqlite3 db',
 		export_includes = 'genfile/include'
 	)
 	bld.recurse( [ '3rd_party', 'appcontext', 'db', 'apps', 'example', 'test', 'R' ] )
+	# Copy files into rbgen package directory
+	for source in bgen_sources:
+		bld( rule = 'cp ${SRC} ${TGT}', source = source, target = 'R/rbgen/src/bgen/' + os.path.basename( source.abspath() ), always = True )
 
 class ReleaseBuilder:
 	def __init__( self, APPNAME, VERSION ):

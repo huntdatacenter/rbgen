@@ -1,4 +1,5 @@
+import os, glob
 def build( bld ):
-	sources = [ 'NAMESPACE', 'DESCRIPTION', 'src/RcppExports.cpp', 'src/Makevars', 'R/RcppExports.R', 'src/load.cpp' ]
-	for source in sources:
+	pkg_sources = [ 'NAMESPACE', 'DESCRIPTION', 'src/RcppExports.cpp', 'src/Makevars', 'R/RcppExports.R', 'src/load.cpp' ]
+	for source in pkg_sources:
 		bld( rule = 'cp ${SRC} ${TGT}', source = 'package/' + source, target = 'rbgen/' + source, always = True )

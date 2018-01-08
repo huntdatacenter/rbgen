@@ -1,7 +1,10 @@
+import os.path
+
 def build( bld ):
+	sources = [ 'sqlite3/sqlite3.c' ]
 	bld.stlib(
 		target = 'sqlite3',
-		source = [ 'sqlite3/sqlite3.c' ],
+		source = sources,
 		features = [ 'c' ],
 		includes = './',
 		cflags = '-fPIC',
@@ -9,3 +12,7 @@ def build( bld ):
 		#uselib = 'DL',
 		export_includes = './'
 	)
+	# Copy files into rbgen package directory
+	# This needs extra files not among the cpp files above, so we recursively copy directories
+	for source in sources:
+		bld( rule = 'cp ${SRC} ${TGT}', source = source, target = '../../R/rbgen/src/sqlite3/' + os.path.basename( source ), always = True )
