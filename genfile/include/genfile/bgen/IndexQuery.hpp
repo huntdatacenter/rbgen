@@ -126,9 +126,14 @@ namespace genfile {
 
 			// Methods for building queries
 			// Each method returns this object, allowing methods to be chained
+
+			// Include variants in a range
 			SqliteIndexQuery& include_range( GenomicRange const& range ) ;
+			// Exclude variants in a range
 			SqliteIndexQuery& exclude_range( GenomicRange const& range ) ;
+			// Include variants with one of the given rsids.  The list provided must be unique.
 			SqliteIndexQuery& include_rsids( std::vector< std::string > const& ids ) ;
+			// Exclude variants with one of the given rsids.  The list provided must be unique.
 			SqliteIndexQuery& exclude_rsids( std::vector< std::string > const& ids ) ;
 
 		public:
