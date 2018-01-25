@@ -638,8 +638,13 @@ namespace genfile {
 				}
 
 				bool set_sample( std::size_t i ) {
-					assert( m_state == eInitialised || m_state == eBaked ) ;
+					assert( m_state == eInitialised || m_state == eBaked || m_state == eSampleSet ) ;
 					assert(( m_sample_i == 0 && i == 0 ) || ( i == m_sample_i + 1 )) ;
+					if( m_state == eSampleSet ) {
+						// last sample had no data, write zeroes
+						m_values[0] = m_values[1] = m_values[2] = 0.0 ;
+						bake( &m_values[0] ) ;
+					}
 					m_sample_i = i ;
 					m_state = eSampleSet ;
 					return true ;
@@ -1055,10 +1060,12 @@ namespace genfile {
 				
 				ProbabilityDataWriter(
 					uint8_t const number_of_bits,
-					double const max_rounding_error_per_prob = 0.005
+					double const max_rounding_error_per_prob = 0.0005
 				):
 					m_number_of_bits( number_of_bits ),
-					m_max_rounding_error_per_prob( max_rounding_error_per_prob ),
+					// Actually likely rounding error is rounding error from limit precision
+					// number, plus error in floating point representation (which is at most epsilon).
+					m_max_error_per_prob( max_rounding_error_per_prob + std::numeric_limits< double >::epsilon() ),
 					m_state( eUninitialised ),
 					m_order_type( eUnknownOrderType ),
 					m_number_of_samples(0),
@@ -1103,9 +1110,13 @@ namespace genfile {
 				}
 
 				bool set_sample( std::size_t i ) {
-					assert( m_state == eInitialised || m_state == eBaked ) ;
+					assert( m_state == eInitialised || m_state == eBaked || m_state == eSampleSet ) ;
 					// ensure samples are visited in order.
 					assert(( m_sample_i == 0 && i == 0 ) || ( i == m_sample_i + 1 )) ;
+					if( m_state == eSampleSet ) {
+						// Last sample was completely missing, mark as 0 ploid & missing
+						m_buffer[ePloidyBytes + m_sample_i] = 0x80 ;
+					}
 					m_sample_i = i ;
 					m_state = eSampleSet ;
 					return true ;
@@ -1175,6 +1186,12 @@ namespace genfile {
 #if DEBUG_BGEN_FORMAT
 					std::cerr << "set_value( " << entry_i << ", " << value << "); m_entry_i = " << m_entry_i << "\n" ;
 #endif
+					if( value != value || value < 0.0 || value > (1.0+m_max_error_per_prob) ) {
+						std::cerr << "Sample " << m_sample_i << ", value " << entry_i << " is "
+							<< std::setprecision(17) << value
+							<< ", expected within bounds 0 - " << (1.0+m_max_error_per_prob) << ".\n" ;
+						throw BGenError() ;
+					}
 					if( value != 0.0 ) {
 						m_missing = eNotMissing ;
 					}
@@ -1242,7 +1259,7 @@ namespace genfile {
 				byte_t* m_p ;
 				byte_t* m_end ;
 				uint8_t const m_number_of_bits ;
-				double const m_max_rounding_error_per_prob ;
+				double const m_max_error_per_prob ;
 				State m_state ;
 				uint8_t m_ploidyExtent[2] ;
 				OrderType m_order_type ;
@@ -1275,7 +1292,7 @@ namespace genfile {
 						// flag this sample as missing.
 						m_buffer[ePloidyBytes + m_sample_i] |= 0x80 ;
 					} else {
-						double const max_error_in_sum = count * m_max_rounding_error_per_prob ;
+						double const max_error_in_sum = (count * m_max_error_per_prob) ;
 						if( ( sum != sum ) || (sum > (1.0+max_error_in_sum)) || (sum < (1.0-max_error_in_sum))) {
 							std::cerr << "These " << count << " values sum to " << std::fixed << std::setprecision(17) << sum << ", "
 								<< "I expected the sum to be in the range " << (1.0-max_error_in_sum) << " - " << (1.0+max_error_in_sum) << ".\n" ;
