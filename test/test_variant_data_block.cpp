@@ -30,65 +30,99 @@ TEST_CASE( "Test probability bound", "[bgen][biallelic][unphased]" ) {
 	std::vector< genfile::byte_t > buffer( 1000 ) ;
 	double epsilon = std::numeric_limits< double >::epsilon() ; // Something small and nonzero.
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16 ) ;
 		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
 		writer.set_sample( 0 ) ;
 		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_NOTHROW( writer.set_value( 0, 1.01 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 1 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
 		REQUIRE_NOTHROW( writer.finalise() ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.001 ) ;
-		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_THROWS_AS( writer.set_value( 0, 1.01 ), genfile::bgen::BGenError ) ;
-	}
-
-	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.001 ) ;
-		writer.initialise( 1, 2,&buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_NOTHROW( writer.set_value( 0, 1.001 ) ) ;
-	}
-
-	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
-		writer.initialise( 1, 2,&buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_THROWS_AS( writer.set_value( 0, 1.01 + epsilon ), genfile::bgen::BGenError ) ;
-	}
-
-	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
-		writer.initialise( 1, 2,&buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
-		REQUIRE_NOTHROW( writer.set_value( 1, 0.5 ) ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 1.015 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
 		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
 		REQUIRE_NOTHROW( writer.finalise() ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
-		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
-		REQUIRE_NOTHROW( writer.set_value( 1, 0.5 ) ) ;
-		REQUIRE_NOTHROW( writer.set_value( 2, 0.01 ) ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 0.985 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
 		REQUIRE_NOTHROW( writer.finalise() ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
-		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
-		REQUIRE_NOTHROW( writer.set_value( 1, 0.5 ) ) ;
-		REQUIRE_THROWS_AS( writer.set_value( 2, 0.01 + epsilon ), genfile::bgen::BGenError ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 1.015 + epsilon ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_THROWS_AS( writer.set_value( 2, 0 ), genfile::bgen::BGenError ) ;
 	}
 
 	{
-		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 1.01 ) ;
-		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ; writer.set_sample( 0 ) ; writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
-		REQUIRE_NOTHROW( writer.set_value( 0, 0.5 ) ) ;
-		REQUIRE_THROWS_AS( writer.set_value( 1, 0.51 + epsilon ), genfile::bgen::BGenError ) ;
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 0.984 - epsilon ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_THROWS_AS( writer.set_value( 2, 0 ), genfile::bgen::BGenError ) ;
+	}
+
+
+	{
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 0.001 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 1.003 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
+		REQUIRE_NOTHROW( writer.finalise() ) ;
+	}
+
+	{
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 0.001 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 0.997 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 2, 0 ) ) ;
+		REQUIRE_NOTHROW( writer.finalise() ) ;
+	}
+
+	{
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 0.001 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 1.003 + epsilon ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_THROWS_AS( writer.set_value( 2, 0 ), genfile::bgen::BGenError ) ;
+	}
+
+	{
+		genfile::bgen::v12::ProbabilityDataWriter writer( 16, 0.001 ) ;
+		writer.initialise( 1, 2, &buffer[0], &buffer[0] + buffer.size() ) ;
+		writer.set_sample( 0 ) ;
+		writer.set_number_of_entries( 3, 3, genfile::ePerUnorderedGenotype, genfile::eProbability ) ;
+		REQUIRE_NOTHROW( writer.set_value( 0, 0.997 - epsilon ) ) ;
+		REQUIRE_NOTHROW( writer.set_value( 1, 0 ) ) ;
+		REQUIRE_THROWS_AS( writer.set_value( 2, 0 ), genfile::bgen::BGenError ) ;
 	}
 }
 
