@@ -618,7 +618,6 @@ private:
 			}
 		}
 
-		// If present with this signature, called once after all data has been set.
 		void finalise() {
 			m_out << "\n" ;
 		}
@@ -649,8 +648,7 @@ private:
 				m_out << ":" ;
 			} else {
 				std::string const& GT = construct_GT( m_data, 0.9 ) ;
-				m_out << "\t"
-					<< GT
+				m_out << GT
 					<< ":" ;
 			}
 			for( std::size_t i = 0; i < m_data.size(); ++i ) {
@@ -776,9 +774,9 @@ private:
 		genfile::bgen::View& bgenView
 	) const {
 		std::cout << "##fileformat=VCFv4.2\n"
-			<< "FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
-			<< "FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
-			<< "FORMAT=<ID=HP,Type=Float,Number=.,Description=\"Haplotype call probabilities\">\n"
+			<< "##FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
+			<< "##FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
+			<< "##FORMAT=<ID=HP,Type=Float,Number=.,Description=\"Haplotype call probabilities\">\n"
 			<< "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT" ;
 		
 		bgenView.get_sample_ids(
@@ -809,7 +807,7 @@ private:
 				<< ".\t" // QUAL
 				<< ".\t" // FILTER
 				<< ".\t" // INFO
-				<< "GT:GP\t" // FORMAT
+				<< "GT:GP" // FORMAT
 			;
 			VCFProbWriter writer( std::cout ) ;
 			bgenView.read_genotype_data_block( writer ) ;
