@@ -1116,7 +1116,6 @@ namespace genfile {
 				// These values are specific bit combinations and should not be changed.
 				enum SampleStatus { eIgnore = 0, eSetThisSample = 1, eSetAsMissing = 3 } ;
 				byte_t const* ploidy_p = pack.ploidy ;
-
 	#if DEBUG_BGEN_FORMAT
 				std::cerr << "parse_probability_data_v12(): numberOfSamples = " << numberOfSamples
 					<< ", phased = " << phased << ".\n" ;
@@ -1179,7 +1178,8 @@ namespace genfile {
 								case SampleStatus::eSetThisSample:
 									setter.set_value( 0, value1 ) ;
 									setter.set_value( 1, value2 ) ;
-									setter.set_value( 2, 1.0 - value1 - value2 ) ;
+									// Clamp the value to 0 to avoid small -ve values
+									setter.set_value( 2, std::max( 1.0 - value1 - value2, 0.0 ) ) ;
 									break ;
 							}
 						}
