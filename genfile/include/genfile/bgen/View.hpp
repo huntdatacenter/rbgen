@@ -40,7 +40,7 @@ namespace genfile {
 			// (If there are no sample IDs in the file, report a dummy identifier).
 			// Setter object must be callable as setter( index of sample, sample identifier ).
 			template< typename Setter >
-			void get_sample_ids( Setter setter ) {
+			void get_sample_ids( Setter setter ) const {
 				if( m_have_sample_ids ) {
 					for( std::size_t i = 0; i < m_context.number_of_samples; ++i ) {
 						setter( m_sample_ids[i] ) ;
