@@ -90,6 +90,7 @@ std::vector< double > compute_lookup_table() ;
 // This example program reads data from a bgen file specified as the first argument
 // and outputs it as a VCF file.
 int main( int argc, char** argv ) {
+	std::ios_base::sync_with_stdio( false ) ;
 	if( argc != 2 ) {
 		std::cerr << "You must supply an argument, the name of the bgen file to process.\n" ;
 		exit(-1) ;
