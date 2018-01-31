@@ -996,9 +996,10 @@ private:
 } ;
 
 int main( int argc, char** argv ) {
-    try {
+	std::ios_base::sync_with_stdio( false ) ;
+	try {
 		IndexBgenApplication app( argc, argv ) ;
-    }
+	}
 	catch( appcontext::HaltProgramWithReturnCode const& e ) {
 		return e.return_code() ;
 	}

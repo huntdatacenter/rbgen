@@ -14,3 +14,11 @@ def build( bld ):
 		cxxflags = ['-std=c++11'],
 		install_path = None
 	)
+
+	bld.program(
+		source = 'compute_dosages.cpp',
+		target = 'compute_dosages',
+		use = 'bgen zlib zstd dl rt pthread',
+		cxxflags = ['-std=c++11'],
+		install_path = None
+	)
