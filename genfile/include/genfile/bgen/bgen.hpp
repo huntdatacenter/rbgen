@@ -1142,12 +1142,12 @@ namespace genfile {
 							for( uint32_t hap = 0; hap < 2; ++hap ) {
 								double const value = valueConsumer.next() ;
 								switch( sample_status ) {
-									case SampleStatus::eIgnore: break ;
-									case SampleStatus::eSetAsMissing:
+									case eIgnore: break ;
+									case eSetAsMissing:
 										setter.set_value( 2*hap + 0, genfile::MissingValue() ) ;
 										setter.set_value( 2*hap + 1, genfile::MissingValue() ) ;
 										break ;
-									case SampleStatus::eSetThisSample:
+									case eSetThisSample:
 										setter.set_value( 2*hap + 0, value ) ;
 										setter.set_value( 2*hap + 1, 1.0 - value ) ;
 										break ;
@@ -1169,13 +1169,13 @@ namespace genfile {
 							double const value2 = valueConsumer.next() ;
 
 							switch( sample_status ) {
-								case SampleStatus::eIgnore: break ;
-								case SampleStatus::eSetAsMissing:
+								case eIgnore: break ;
+								case eSetAsMissing:
 									setter.set_value( 0, genfile::MissingValue() ) ;
 									setter.set_value( 1, genfile::MissingValue() ) ;
 									setter.set_value( 2, genfile::MissingValue() ) ;
 									break ;
-								case SampleStatus::eSetThisSample:
+								case eSetThisSample:
 									setter.set_value( 0, value1 ) ;
 									setter.set_value( 1, value2 ) ;
 									// Clamp the value to 0 to avoid small -ve values
@@ -1244,11 +1244,11 @@ namespace genfile {
 								for( uint32_t allele = 0; allele < (pack.numberOfAlleles-1); ++allele ) {
 									double const value = valueConsumer.next() ;
 									switch( sample_status ) {
-										case SampleStatus::eIgnore: break ;
-										case SampleStatus::eSetAsMissing:
+										case eIgnore: break ;
+										case eSetAsMissing:
 											setter.set_value( reportedValueCount++, genfile::MissingValue() ) ;
 											break ;
-										case SampleStatus::eSetThisSample:
+										case eSetThisSample:
 											setter.set_value( reportedValueCount++, value ) ;
 											sum += value ;
 											break ;
@@ -1257,11 +1257,11 @@ namespace genfile {
 								
 								// set value for kth allele
 								switch( sample_status ) {
-									case SampleStatus::eIgnore: break ;
-									case SampleStatus::eSetAsMissing:
+									case eIgnore: break ;
+									case eSetAsMissing:
 										setter.set_value( reportedValueCount++, genfile::MissingValue() ) ;
 										break ;
-									case SampleStatus::eSetThisSample:
+									case eSetThisSample:
 										setter.set_value( reportedValueCount++, 1 - sum ) ;
 										sum = 0.0 ;
 										break ;
@@ -1299,11 +1299,11 @@ namespace genfile {
 							for( uint32_t h = 0; h < storedValueCount; ++h ) {
 								double const value = valueConsumer.next() ;
 								switch( sample_status ) {
-									case SampleStatus::eIgnore: break ;
-									case SampleStatus::eSetAsMissing:
+									case eIgnore: break ;
+									case eSetAsMissing:
 										setter.set_value( reportedValueCount++, genfile::MissingValue() ) ;
 										break ;
-									case SampleStatus::eSetThisSample:
+									case eSetThisSample:
 										setter.set_value( reportedValueCount++, value ) ;
 										sum += value ;
 										break ;
@@ -1312,11 +1312,11 @@ namespace genfile {
 							
 							// set final value
 							switch( sample_status ) {
-								case SampleStatus::eIgnore: break ;
-								case SampleStatus::eSetAsMissing:
+								case eIgnore: break ;
+								case eSetAsMissing:
 									setter.set_value( reportedValueCount++, genfile::MissingValue() ) ;
 									break ;
-								case SampleStatus::eSetThisSample:
+								case eSetThisSample:
 									setter.set_value( reportedValueCount++, 1.0 - sum ) ;
 									break ;
 							}
