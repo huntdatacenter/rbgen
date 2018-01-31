@@ -142,7 +142,7 @@ public:
 				"Zlib compression level to use when transcoding to BGEN v1.1 format."
 			)
 			.set_takes_single_value()
-			.set_default_value( 6 ) ;
+			.set_default_value( 9 ) ;
 		options[ "-vcf" ]
 			.set_description(
 				"Transcode to VCF format.  VCFs will have GP field (or 'HP' field for phased data), and a GT field inferred from the probabilities by threshholding."
