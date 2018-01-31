@@ -12,11 +12,11 @@
 #include "genfile/bgen/bgen.hpp"
 #include "genfile/bgen/View.hpp"
 
-// ProbSetter is a callback object appropriate for passing to bgen::read_genotype_data_block() or
-// the synonymous method of genfile::bgen::View. See the comment in bgen.hpp above
-// bgen::read_genotype_data_block(), or the bgen wiki for a description of the API.
-// The purpose of this object is to store genotype probability values in the desired
-// data structure (which here is a vector of vectors of doubles).
+// DosageSetter is a callback object appropriate for passing to bgen::read_genotype_data_block() or
+// the synonymous method of genfile::bgen::View.
+// Its job is to compute genotype dosage (dosage of the 2nd allele).
+// This implementation assumes samples are diploid, data unphased, and variants are biallelic
+// and will assert() if not.
 struct DosageSetter {
 	typedef std::vector< double > Data ;
 	DosageSetter( Data* result ):
@@ -53,8 +53,10 @@ struct DosageSetter {
 		genfile::ValueType value_type
 	) {
 		assert( value_type == genfile::eProbability ) ;
+		assert( order_type == genfile::ePerUnorderedGenotype ) ;
 		assert( ploidy == 2 ) ;
 		assert( number_of_entries == 3 ) ;
+
 		(*m_result)[ m_sample_i ] = 0 ;
 		m_entry_i = 0 ;
 	}
@@ -81,7 +83,7 @@ private:
 	std::size_t m_entry_i ;
 } ;
 
-void process_data_slow( genfile::bgen::View& view ) ;
+void process_data_using_dosage_setter( genfile::bgen::View& view ) ;
 void process_data_using_lookup_table( genfile::bgen::View& view ) ;
 std::vector< double > compute_lookup_table() ;
 
@@ -96,7 +98,7 @@ int main( int argc, char** argv ) {
 	try {
 		genfile::bgen::View view( filename ) ;
 #if 0
-		process_data_slow( view ) ;
+		process_data_using_dosage_setter( view ) ;
 #else
 		process_data_using_lookup_table( view ) ;
 #endif
@@ -111,7 +113,7 @@ int main( int argc, char** argv ) {
 	}
 }
 
-void process_data_slow( genfile::bgen::View& view ) {
+void process_data_using_dosage_setter( genfile::bgen::View& view ) {
 	std::string SNPID, rsid, chromosome ;
 	uint32_t position ;
 	std::vector< std::string > alleles ;
