@@ -230,18 +230,29 @@ private:
 	}
 
 	void create_bgen_index( std::string const& bgen_filename, std::string const& index_filename ) {
+		try {
+			create_bgen_index_unsafe( bgen_filename, index_filename ) ;
+		}
+		catch( std::exception const& e ) {
+			ui().logger() << "\n!! " << e.what() << "\n" ;
+			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
+	}
+
+	void create_bgen_index_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
 		db::Connection::UniquePtr result ;
 		ui().logger()
 			<< boost::format( "%s: creating index for \"%s\" in \"%s\"...\n" ) % globals::program_name % bgen_filename % index_filename ;
 
+		if( bfs::exists( index_filename + ".tmp" ) && !options().check( "-clobber" ) ) {
+			throw std::invalid_argument( "Error: an incomplete index file \"" + (index_filename + ".tmp") + "\" already exists.\n"
+				"This probably reflects a previous bgenix run that was terminated.\n"
+				"Please delete the file (or use -clobber to overwrite it automatically).\n"
+			) ;
+		}
+
 		try {
-			if( bfs::exists( index_filename + ".tmp" ) && !options().check( "-clobber" ) ) {
-				ui().logger() << "!! Error, an incomplete index file \"" + (index_filename + ".tmp") + "\" exists.\n"
-					"This probably reflects a bgenix job that was terminated.\n"
-					"Use -clobber to overwrite (or delete the file).\n" ;
-				throw std::invalid_argument( index_filename ) ;
-			}
-			result = create_bgen_index_unsafe( bgen_filename, index_filename + ".tmp" ) ;
+			result = create_bgen_index_direct( bgen_filename, index_filename + ".tmp" ) ;
 			bfs::rename( index_filename + ".tmp", index_filename ) ;
 		} catch( db::StatementStepError const& e ) {
 			ui().logger() << "!! Error in \"" << e.spec() << "\": " << e.description() << ".\n" ;
@@ -254,7 +265,7 @@ private:
 		}
 	}
 	
-	db::Connection::UniquePtr create_bgen_index_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
+	db::Connection::UniquePtr create_bgen_index_direct( std::string const& bgen_filename, std::string const& index_filename ) {
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "rw" ) ;
 
 		connection->run_statement( "PRAGMA locking_mode = EXCLUSIVE ;" ) ;
