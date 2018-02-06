@@ -12,8 +12,7 @@ PKG_CPPFLAGS = \
 -D SQLITE_ENABLE_STAT4 \
 -D SQLITE_MAX_EXPR_DEPTH=10000 \
 -Wno-unused-local-typedefs \
--fPIC -O3 \
--std=c++11
+-fPIC -O3
 
 C_SOURCES = $(wildcard zstd-1.1.0/*.c) $(wildcard sqlite3/*.c)
 C_OBJECTS = $(patsubst %.c,%.o,$(C_SOURCES))

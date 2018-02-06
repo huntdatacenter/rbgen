@@ -251,7 +251,7 @@ void get_requested_samples(
 	// convert requested sample IDs to a map of requested indices.
 	std::map< std::string, std::size_t > requestedSamplesByName ;
 	for( std::size_t i = 0; i < requestedSamples.size(); ++i ) {
-		requestedSamplesByName.insert( std::make_pair( requestedSamples[i], i )) ;
+		requestedSamplesByName.insert( std::map< std::string, std::size_t >::value_type( std::string( requestedSamples[i] ), i )) ;
 	}
 	if( requestedSamplesByName.size() != requestedSamples.size() ) {
 		throw std::invalid_argument(
