@@ -51,10 +51,6 @@ namespace {
 	
 		// Called once allowing us to set storage.
 		void initialise( std::size_t number_of_samples, std::size_t number_of_alleles ) {
-			if( m_data_dimension[1] != number_of_samples ) {
-				throw std::invalid_argument( "Wrong number of samples ("
-					+ atoi( number_of_samples ) + ", expected " + atoi( m_data_dimension[1] ) + ")" ) ;
-			}
 		}
 
 		// If present with this signature, called once after initialise()
@@ -208,7 +204,8 @@ namespace {
 	genfile::bgen::View::UniquePtr construct_view(
 		std::string const& filename,
 		std::string const& index_filename,
-		Rcpp::DataFrame const& ranges
+		Rcpp::DataFrame const& ranges,
+		std::vector< std::string > const& rsids = std::vector< std::string >()
 	) {
 		using namespace genfile::bgen ;
 		using namespace Rcpp ;
@@ -226,6 +223,7 @@ namespace {
 				}
 				query->include_range( IndexQuery::GenomicRange( std::string( chromosome[i] ), start[i], end[i] )) ;
 			}
+			query->include_rsids( rsids ) ;
 			query->initialise() ;
 			view->set_query( query ) ;
 		}
@@ -267,6 +265,9 @@ void get_requested_samples(
 	view.get_sample_ids( set_requested_sample_names( sampleNames, requestedSamplesByIndexInDataIndex, requestedSamplesByName ) ) ;
 
 	// Check each requested sample has been asked for exactly once
+	// We count distinct samples, among those requested, that we've found in the data
+	// And we also count the min and max index of those samples.
+	// If min = 0 and max = (#requested samples-1) and each sample was unique, we're ok.
 	std::set< std::size_t > checkSamples ;
 	std::size_t minIndex = std::numeric_limits< std::size_t >::max() ;
 	std::size_t maxIndex = 0 ;
@@ -280,7 +281,17 @@ void get_requested_samples(
 		minIndex = std::min( minIndex, p->second ) ;
 		maxIndex = std::max( maxIndex, p->second ) ;
 	}
-	if( checkSamples.size() != requestedSamples.size() || minIndex != 0 || maxIndex != requestedSamples.size() ) {
+	if( checkSamples.size() != requestedSamples.size() || minIndex != 0 || maxIndex != (requestedSamples.size()-1) ) {
+		// Huh.  To be most useful, let's print diagnostics
+		std::cerr << "!! Uh-oh: requested sample indices (data, request) are:\n" ;
+		for(
+			std::map< std::size_t, std::size_t >::const_iterator p = requestedSamplesByIndexInDataIndex->begin();
+			p != requestedSamplesByIndexInDataIndex->end();
+			++p
+		 ) {
+			std::cerr << p->first << ", " << p->second << ".\n" ;
+		}
+		
 		throw std::invalid_argument(
 			"load_unsafe(): requiredSamples contains a sample not present in the data, or data contains a repeated sample ID."
 		) ;
@@ -291,18 +302,20 @@ Rcpp::List load_unsafe(
 	std::string const& filename,
 	std::string const& index_filename,
 	Rcpp::DataFrame const& ranges,
+	std::vector< std::string > const& requested_rsids,
 	std::size_t max_entries_per_sample,
 	Rcpp::StringVector const* const requestedSamples
 ) {
 	using namespace genfile::bgen ;
 	using namespace Rcpp ;
 
-	View::UniquePtr view = construct_view( filename, index_filename, ranges ) ;
+	View::UniquePtr view = construct_view( filename, index_filename, ranges, requested_rsids ) ;
 
 	std::size_t const number_of_variants = view->number_of_variants() ;
 	std::size_t number_of_samples = 0 ;
 
-	// build list of sample names as a std::vector, Rcpp will convert it to StringVector on return
+	// Build list of sample names as a std::vector.
+	// Note: Rcpp will convert it to StringVector on return
 	std::vector< std::string > sampleNames ;
 	std::map< std::size_t, std::size_t > requestedSamplesByIndexInDataIndex ;
 	
@@ -312,7 +325,7 @@ Rcpp::List load_unsafe(
 		get_all_samples( *view, &number_of_samples, &sampleNames, &requestedSamplesByIndexInDataIndex ) ;
 	}
 
-	// For this example we assume diploid samples and two alleles
+	// Declare storage for all the things we need
 	StringVector chromosomes( number_of_variants ) ;
 	IntegerVector positions( number_of_variants ) ;
 	StringVector rsids( number_of_variants ) ;
@@ -331,6 +344,7 @@ Rcpp::List load_unsafe(
 	genfile::bgen::uint32_t position ;
 	std::vector< std::string > alleles ;
 
+	// Iterate through variants
 	for( std::size_t variant_i = 0; variant_i < number_of_variants; ++variant_i ) {
 		view->read_variant( &SNPID, &rsid, &chromosome, &position, &alleles ) ;
 		chromosomes[variant_i] = chromosome ;
@@ -393,10 +407,11 @@ Rcpp::List load(
 	std::string const& filename,
 	std::string const& index_filename,
 	Rcpp::DataFrame const& ranges,
+	std::vector< std::string > const& rsids,
 	std::size_t max_entries_per_sample
 ) {
 	try {
-		return load_unsafe( filename, index_filename, ranges, max_entries_per_sample, 0 ) ;
+		return load_unsafe( filename, index_filename, ranges, rsids, max_entries_per_sample, 0 ) ;
 	}
 	catch( std::exception const& e ) {
 		forward_exception_to_r( e ) ;
@@ -412,11 +427,12 @@ Rcpp::List load(
 	std::string const& filename,
 	std::string const& index_filename,
 	Rcpp::DataFrame const& ranges,
+	std::vector< std::string > const& rsids,
 	std::size_t max_entries_per_sample,
 	Rcpp::StringVector const& requestedSamples
 ) {
 	try {
-		return load_unsafe( filename, index_filename, ranges, max_entries_per_sample, &requestedSamples ) ;
+		return load_unsafe( filename, index_filename, ranges, rsids, max_entries_per_sample, &requestedSamples ) ;
 	}
 	catch( std::exception const& e ) {
 		forward_exception_to_r( e ) ;

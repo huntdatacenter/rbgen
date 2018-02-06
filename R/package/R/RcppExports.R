@@ -3,15 +3,26 @@
 
 bgen.load <- function(
 	filename,
-	ranges,
+	ranges = NULL,
+	rsids = NULL,
 	max_entries_per_sample = 3,
 	samples = NULL,
 	index.filename = sprintf( "%s.bgi", filename )
 ) {
+	# Convert null arguments into 
+	if( is.null( ranges )) {
+		ranges = data.frame( chromosome = character(0), start = integer(0), end = integer(0) ) ;
+	}
+	if( is.null( rsids )) {
+		rsids = character(0)
+	}
+	if( nrow(ranges) == 0 && length(rsids) == 0 ) {
+		warning( "bgen.load(): you haven't specified any ranges or rsids - result will be empty" )
+	}
 	if( !is.null( samples )) {
-		.Call('rbgen_load_samples', PACKAGE = 'rbgen', filename, index.filename, ranges, max_entries_per_sample, samples)
+		.Call('rbgen_load_samples', PACKAGE = 'rbgen', filename, index.filename, ranges, rsids, max_entries_per_sample, samples)
 	} else {
-		.Call('rbgen_load', PACKAGE = 'rbgen', filename, index.filename, ranges, max_entries_per_sample)
+		.Call('rbgen_load', PACKAGE = 'rbgen', filename, index.filename, ranges, rsids, max_entries_per_sample)
 	}
 }
 
