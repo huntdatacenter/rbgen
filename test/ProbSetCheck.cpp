@@ -102,6 +102,7 @@ void ProbSetCheck::set_value( uint32_t value_i, double const value ) {
 		 || (value_i > 0 && m_state == eSetValue)
 	) ;
 	REQUIRE( correctEntry ) ;
+	REQUIRE( value >= 0.0 ) ;
 #if DEBUG > 2
 	std::cerr << format( "ProbabilitySetter: sample %d, entry %d of %d.\n", m_sample_i, m_entry_i, m_number_of_entries ) ;
 #endif

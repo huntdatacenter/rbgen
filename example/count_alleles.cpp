@@ -16,6 +16,9 @@
 #include "genfile/bgen/View.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
 
+// AlleleCounter is a callback object appropriate
+// for passing to bgen::read_genotype_data_block() or the synonymous method of genfile::bgen::View.
+
 // AlleleCounter is a callback object appropriate for passing to bgen::read_genotype_data_block() or
 // the synonymous method of genfile::bgen::View. See the comments below, comments in bgen.hpp,
 // or the bgen wiki for a description of the API.
@@ -135,7 +138,7 @@ private:
 		}
 	}
 
-	// compute expected allele counts given genotype probabilities
+	// compute expected allele counts given haplotype probabilities
 	void compute_expected_allele_counts_unphased(
 		std::vector< double > const& probs,
 		std::vector< double >* result

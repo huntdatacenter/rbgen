@@ -142,7 +142,7 @@ public:
 				"Zlib compression level to use when transcoding to BGEN v1.1 format."
 			)
 			.set_takes_single_value()
-			.set_default_value( 6 ) ;
+			.set_default_value( 9 ) ;
 		options[ "-vcf" ]
 			.set_description(
 				"Transcode to VCF format.  VCFs will have GP field (or 'HP' field for phased data), and a GT field inferred from the probabilities by threshholding."
@@ -230,18 +230,29 @@ private:
 	}
 
 	void create_bgen_index( std::string const& bgen_filename, std::string const& index_filename ) {
+		try {
+			create_bgen_index_unsafe( bgen_filename, index_filename ) ;
+		}
+		catch( std::exception const& e ) {
+			ui().logger() << "\n!! " << e.what() << "\n" ;
+			throw appcontext::HaltProgramWithReturnCode( -1 ) ;
+		}
+	}
+
+	void create_bgen_index_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
 		db::Connection::UniquePtr result ;
 		ui().logger()
 			<< boost::format( "%s: creating index for \"%s\" in \"%s\"...\n" ) % globals::program_name % bgen_filename % index_filename ;
 
+		if( bfs::exists( index_filename + ".tmp" ) && !options().check( "-clobber" ) ) {
+			throw std::invalid_argument( "Error: an incomplete index file \"" + (index_filename + ".tmp") + "\" already exists.\n"
+				"This probably reflects a previous bgenix run that was terminated.\n"
+				"Please delete the file (or use -clobber to overwrite it automatically).\n"
+			) ;
+		}
+
 		try {
-			if( bfs::exists( index_filename + ".tmp" ) && !options().check( "-clobber" ) ) {
-				ui().logger() << "!! Error, an incomplete index file \"" + (index_filename + ".tmp") + "\" exists.\n"
-					"This probably reflects a bgenix job that was terminated.\n"
-					"Use -clobber to overwrite (or delete the file).\n" ;
-				throw std::invalid_argument( index_filename ) ;
-			}
-			result = create_bgen_index_unsafe( bgen_filename, index_filename + ".tmp" ) ;
+			result = create_bgen_index_direct( bgen_filename, index_filename + ".tmp" ) ;
 			bfs::rename( index_filename + ".tmp", index_filename ) ;
 		} catch( db::StatementStepError const& e ) {
 			ui().logger() << "!! Error in \"" << e.spec() << "\": " << e.description() << ".\n" ;
@@ -254,7 +265,7 @@ private:
 		}
 	}
 	
-	db::Connection::UniquePtr create_bgen_index_unsafe( std::string const& bgen_filename, std::string const& index_filename ) {
+	db::Connection::UniquePtr create_bgen_index_direct( std::string const& bgen_filename, std::string const& index_filename ) {
 		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "rw" ) ;
 
 		connection->run_statement( "PRAGMA locking_mode = EXCLUSIVE ;" ) ;
@@ -618,7 +629,6 @@ private:
 			}
 		}
 
-		// If present with this signature, called once after all data has been set.
 		void finalise() {
 			m_out << "\n" ;
 		}
@@ -649,8 +659,7 @@ private:
 				m_out << ":" ;
 			} else {
 				std::string const& GT = construct_GT( m_data, 0.9 ) ;
-				m_out << "\t"
-					<< GT
+				m_out << GT
 					<< ":" ;
 			}
 			for( std::size_t i = 0; i < m_data.size(); ++i ) {
@@ -776,9 +785,9 @@ private:
 		genfile::bgen::View& bgenView
 	) const {
 		std::cout << "##fileformat=VCFv4.2\n"
-			<< "FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
-			<< "FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
-			<< "FORMAT=<ID=HP,Type=Float,Number=.,Description=\"Haplotype call probabilities\">\n"
+			<< "##FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
+			<< "##FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
+			<< "##FORMAT=<ID=HP,Type=Float,Number=.,Description=\"Haplotype call probabilities\">\n"
 			<< "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT" ;
 		
 		bgenView.get_sample_ids(
@@ -809,7 +818,7 @@ private:
 				<< ".\t" // QUAL
 				<< ".\t" // FILTER
 				<< ".\t" // INFO
-				<< "GT:GP\t" // FORMAT
+				<< "GT:GP" // FORMAT
 			;
 			VCFProbWriter writer( std::cout ) ;
 			bgenView.read_genotype_data_block( writer ) ;
@@ -998,9 +1007,10 @@ private:
 } ;
 
 int main( int argc, char** argv ) {
-    try {
+	std::ios_base::sync_with_stdio( false ) ;
+	try {
 		IndexBgenApplication app( argc, argv ) ;
-    }
+	}
 	catch( appcontext::HaltProgramWithReturnCode const& e ) {
 		return e.return_code() ;
 	}
