@@ -1,6 +1,5 @@
 #include <sstream>
 #include <map>
-#include <unordered_map>
 #include "genfile/bgen/View.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
 #include <Rcpp.h>
@@ -165,7 +164,7 @@ namespace {
 	} ;
 	
 	struct set_requested_sample_names {
-		typedef std::unordered_map< std::string, std::size_t > RequestedSamples ;
+		typedef std::map< std::string, std::size_t > RequestedSamples ;
 		typedef std::map< std::size_t, std::size_t > SampleIndexMap ;
 		
 		set_requested_sample_names(
@@ -250,9 +249,9 @@ void get_requested_samples(
 	std::map< std::size_t, std::size_t >* requestedSamplesByIndexInDataIndex
 ) {
 	// convert requested sample IDs to a map of requested indices.
-	std::unordered_map< std::string, std::size_t > requestedSamplesByName ;
+	std::map< std::string, std::size_t > requestedSamplesByName ;
 	for( std::size_t i = 0; i < requestedSamples.size(); ++i ) {
-		requestedSamplesByName.insert( std::make_pair( requestedSamples[i], i )) ;
+		requestedSamplesByName.insert( std::map< std::string, std::size_t >::value_type( std::string( requestedSamples[i] ), i )) ;
 	}
 	if( requestedSamplesByName.size() != requestedSamples.size() ) {
 		throw std::invalid_argument(

@@ -18,7 +18,7 @@ C_SOURCES = $(wildcard zstd-1.1.0/*.c) $(wildcard sqlite3/*.c)
 C_OBJECTS = $(patsubst %.c,%.o,$(C_SOURCES))
 CXX_SOURCES = $(wildcard bgen/*.cpp) $(wildcard boost/*.cpp) $(wildcard db/*.cpp)
 CXX_OBJECTS = $(patsubst %.cpp,%.o,$(CXX_SOURCES))
-OBJECTS = RcppExports.o load.o $(CXX_OBJECTS) $(C_OBJECTS) ../../../db/libdb.a
+OBJECTS = RcppExports.o load.o $(CXX_OBJECTS) $(C_OBJECTS)
 
 $(info $(C_OBJECTS))
 $(info $(CXX_OBJECTS))
