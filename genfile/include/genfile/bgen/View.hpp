@@ -11,9 +11,17 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include <boost/lexical_cast.hpp>
+#include <sstream>
 #include "genfile/bgen/bgen.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
+
+namespace {
+	std::string to_string( std::size_t i ) {
+		std::stringstream s ;
+		s << i ;
+		return s.str() ;
+	}
+}
 
 namespace genfile {
 	namespace bgen {
@@ -47,7 +55,7 @@ namespace genfile {
 					}
 				} else {
 					for( std::size_t i = 0; i < m_context.number_of_samples; ++i ) {
-						setter( "(unknown_sample_" + boost::lexical_cast< std::string >( i+1 ) + ")" ) ;
+						setter( "(unknown_sample_" + to_string( i+1 ) + ")" ) ;
 					}
 				}
 			}
