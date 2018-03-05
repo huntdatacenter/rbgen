@@ -86,26 +86,36 @@ void process_data_using_dosage_setter( genfile::bgen::View& view ) ;
 void process_data_using_lookup_table( genfile::bgen::View& view ) ;
 std::vector< double > compute_lookup_table() ;
 
-std::string const mode = "floating point" ;
-//std::string const mode = "lookup table" ;
-
 // This example program reads data from a bgen file specified as the first argument
 // and outputs it as a VCF file.
 int main( int argc, char** argv ) {
 	std::ios_base::sync_with_stdio( false ) ;
-	if( argc != 2 ) {
+	if( argc < 2 ) {
 		std::cerr << "You must supply an argument, the name of the bgen file to process.\n" ;
+		std::cerr << "Usage: compute_expected_dosage <bgen filename> [<method>]\n" ;
+		std::cerr << "Where <method> can be \"default\" or \"lookup-table\".\n" ;
+		exit(-1) ;
+	}
+	if( argc > 3 ) {
+		std::cerr << "Usage: compute_expected_dosage <bgen filename> [<method>]\n" ;
+		std::cerr << "Where <method> can be \"default\" or \"lookup-table\".\n" ;
+		std::cerr << "The lookup-table method is only implemented for 8-bit BGEN files.\n" ;
 		exit(-1) ;
 	}
 	std::string const filename = argv[1] ;
+	std::string mode = "default" ;
+	if( argc == 3 ) {
+		mode = argv[2] ;
+	}
 	try {
 		genfile::bgen::View view( filename ) ;
-		if( mode == "floating point" ) {
+		if( mode == "default" ) {
 			process_data_using_dosage_setter( view ) ;
-		} else if( mode == "lookup table" ) {
+		} else if( mode == "lookup-table" ) {
 			process_data_using_lookup_table( view ) ;
 		} else {
-			assert(0) ;
+			std::cerr << "method \"" + mode + "\" is not supported.  Use \"default\" or \"lookup-table\".\n" ;
+			exit(-1) ;
 		}
 	}
 	catch( std::invalid_argument const& e ) {

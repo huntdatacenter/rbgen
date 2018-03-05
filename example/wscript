@@ -16,8 +16,8 @@ def build( bld ):
 	)
 
 	bld.program(
-		source = 'compute_dosages.cpp',
-		target = 'compute_dosages',
+		source = 'compute_expected_dosage.cpp',
+		target = 'compute_expected_dosage',
 		use = 'bgen zlib zstd dl rt pthread',
 		cxxflags = ['-std=c++11'],
 		install_path = None
