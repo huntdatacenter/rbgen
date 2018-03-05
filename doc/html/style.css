@@ -220,3 +220,31 @@ table.allele_counts td {
 	font-size: 80% ;
 	padding-right: 80px ;
 }
+
+div.logo_container {
+	position: relative ;
+	font-size: 150%;
+	width: 100% ;
+	padding-left: 75px;
+	padding-right: 75px;
+	padding-bottom: 20px ;
+	padding-top: 20px ;
+}
+
+div.logo_container > a {
+	float: left ;
+	display: block ;
+	min-width: 20% ;
+	height: 50px ;
+	width: 250px ;
+	text-decoration: none ;
+	text-color: "black" ;
+}
+
+div.logo_container + p {
+	clear: both;
+	padding-top: 20px ;
+}
+
+
+

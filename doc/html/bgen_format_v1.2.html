@@ -107,28 +107,37 @@
 	<div id = "tools" class="section">
 		<h3>Software support</h3>
 		<p>A freely available C++ implementation of the BGEN format is available
-			<a href="http://bitbucket.org/gavinband/bgen">on bitbucket</a>.  This repository also contains utilities:
+			<a href="http://bitbucket.org/gavinband/bgen">on bitbucket</a>.  This repository also contains a number of useful tools:
 		</p>
-		<ul>
-			<li>A bgen indexing tool <a href="https://bitbucket.org/gavinband/bgen/src/master/apps/bgenix.cpp"><code>bgenix</code></a>.</li>
-			<li>A tool <a href="https://bitbucket.org/gavinband/bgen/src/master/apps/cat-bgen.cpp"><code>cat-bgen</code></a> for efficiently concatenating bgen files.
-				We have found this useful for joining together chunks of imputed data after a genome-wide
-				imputation run.</li>
-			<li>An example program, <a href="https://bitbucket.org/gavinband/bgen/src/master/example/bgen_to_vcf.cpp?at=default&fileviewer=file-view-default"><code>bgen_to_vcf</code></a>, which converts bgen-formatted files to
-				<a href="https://samtools.github.io/hts-specs/">Variant Call Format</a>.  This is intended as an example
-				of use of the API.</li>
-		</ul>
+		<dl>
+			<dt><a href="http://bitbucket.org/gavinband/bgen/wiki/bgenix"><code>bgenix</code></a><dt>
+				<dd>A tool which provides random access to data in a BGEN file by creating an index.</dd>
+			<dt><a href="http://bitbucket.org/gavinband/bgen/wiki/cat-bgen"><code>cat-bgen</code></a><dt>
+				<dd>A program to efficiently concatenate BGEN files.  Together with <code>bgenix</code> this effectively
+					enables map/reduce pipelines that operate in parallel on seperate genomic regions.
+					For example, we have found this useful for joining data into chromosomes after imputing genome-wide.</dd>
+				<dt><A href="https://bitbucket.org/gavinband/bgen/wiki/edit-bgen"><code>edit-bgen</code></a></dt>
+				<dd>A tool to (destructively) edit the BGEN header data.</dd>
+			<dt><a href="http://bitbucket.org/gavinband/bgen/wiki/rbgen"><code>rbgen</code></a></dt>
+				<dd>An R package that can be used to load data from an <code>bgenix</code>-indexed BGEN file into <a href="">R</a>.</dd>
+		</dl>
 		<p>
-			In addition, bgen support has been implemented in several other software packages:
+			In addition a set of example files and example programs, intended to demonstrate the API, are provided.
 		</p>
-		<ul>
-			<li><a href="http://www.well.ox.ac.uk/~gav/qctool"><code>QCTOOL</code></a> can be used to read and write BGEN files and to convert between
-			BGEN and other formats.</li>
-			<li><a href="https://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html"><code>SNPTEST</code></a> has supported BGEN v1.1 since
-			version 2.4.0, and BGEN v1.2 since version 2.5.1.</li>
-			<li><a href="https://www.cog-genomics.org/plink2"><code>PLINK</code></a> v1.9 now includes <a href="https://www.cog-genomics.org/plink2/input#oxford">support for BGEN</a>.</li>
-			<li><a href="https://watson.hgen.pitt.edu/docs/mega2_html/mega2.html"><code>Mega2</code></a> now includes <a href="https://watson.hgen.pitt.edu/docs/mega2_html/mega2.html">support for BGEN</a>.</li>
-		</ul>
+		<p>
+			Bgen support has been also implemented in several other software packages, click on the links below for more information.
+		</p>
+		<div class="logo_container">
+			<a href="http://www.well.ox.ac.uk/~gav/qctool"><span style="font-family: Ariel, Helvetica, Tahoma">qctool v2</span></a>
+			<a href="http://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html"><code>SNPTEST</code></a>
+			<a href="http://www.cog-genomics.org/plink2"><code>PLINK</code></a>
+			<a href="http://watson.hgen.pitt.edu/mega2.html"><code>Mega2</code></a>
+			<a href="http://www.christianbenner.com/"><img src="images/ldstore.png" alt="LDSTORE" height=20></a>
+			<a href="http://www.geenivaramu.ee/en/tools/regscan"><img src="images/regscan.png" height=25 alt="REGSCAN"></a>
+			<a href="http://jmarchini.org/bgenie/"><code>BGENIE</code></a>
+			<a href="http://hail.is"><img src="images/hail-logo-cropped.png" alt = "Hail"  height=20></a>
+			<a href="http://data.broadinstitute.org/alkesgroup/BOLT-LMM/"><code>BOLT-LMM</code></a>
+		</div>
 		<p>
 			(Please contact me if your software supports BGEN and you'd like it added to this list.)
 		</p>
