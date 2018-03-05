@@ -19,15 +19,14 @@
 // and will assert() if not.
 struct DosageSetter {
 	typedef std::vector< double > Data ;
-	DosageSetter( Data* result ):
-		m_result( result ),
+	DosageSetter():
 		m_sample_i(0)
 	{}
 		
 	// Called once allowing us to set storage.
 	void initialise( std::size_t number_of_samples, std::size_t number_of_alleles ) {
-		m_result->clear() ;
-		m_result->resize( number_of_samples ) ;
+		m_result = 0 ;
+		m_n = 0 ;
 	}
 	
 	// If present with this signature, called once after initialise()
@@ -57,28 +56,28 @@ struct DosageSetter {
 		assert( ploidy == 2 ) ;
 		assert( number_of_entries == 3 ) ;
 
-		(*m_result)[ m_sample_i ] = 0 ;
-		m_entry_i = 0 ;
+		++m_n ;
 	}
 
 	// Called once for each genotype (or haplotype) probability per sample.
 	void set_value( uint32_t entry_i, double value ) {
-		(*m_result)[ m_sample_i ] += entry_i * value ;
+		m_result += entry_i * value ;
 	}
 
 	// Ditto, but called if data is missing for this sample.
 	void set_value( uint32_t, genfile::MissingValue value ) {
-		// Here we encode missing probabilities with -1
-		(*m_result)[ m_sample_i ] = -1 ;
 	}
 
 	// If present with this signature, called once after all data has been set.
 	void finalise() {
 		// nothing to do in this implementation.
+		m_result /= m_n ;
 	}
 
+	double const& result() const { return m_result ; }
 private:
-	Data* m_result ;
+	double m_result ;
+	std::size_t m_n ;
 	std::size_t m_sample_i ;
 	std::size_t m_entry_i ;
 } ;
@@ -91,18 +90,33 @@ std::vector< double > compute_lookup_table() ;
 // and outputs it as a VCF file.
 int main( int argc, char** argv ) {
 	std::ios_base::sync_with_stdio( false ) ;
-	if( argc != 2 ) {
+	if( argc < 2 ) {
 		std::cerr << "You must supply an argument, the name of the bgen file to process.\n" ;
+		std::cerr << "Usage: compute_expected_dosage <bgen filename> [<method>]\n" ;
+		std::cerr << "Where <method> can be \"default\" or \"lookup-table\".\n" ;
+		exit(-1) ;
+	}
+	if( argc > 3 ) {
+		std::cerr << "Usage: compute_expected_dosage <bgen filename> [<method>]\n" ;
+		std::cerr << "Where <method> can be \"default\" or \"lookup-table\".\n" ;
+		std::cerr << "The lookup-table method is only implemented for 8-bit BGEN files.\n" ;
 		exit(-1) ;
 	}
 	std::string const filename = argv[1] ;
+	std::string mode = "default" ;
+	if( argc == 3 ) {
+		mode = argv[2] ;
+	}
 	try {
 		genfile::bgen::View view( filename ) ;
-#if 0
-		process_data_using_dosage_setter( view ) ;
-#else
-		process_data_using_lookup_table( view ) ;
-#endif
+		if( mode == "default" ) {
+			process_data_using_dosage_setter( view ) ;
+		} else if( mode == "lookup-table" ) {
+			process_data_using_lookup_table( view ) ;
+		} else {
+			std::cerr << "method \"" + mode + "\" is not supported.  Use \"default\" or \"lookup-table\".\n" ;
+			exit(-1) ;
+		}
 	}
 	catch( std::invalid_argument const& e ) {
 		std::cerr << "!! Error: " << e.what() << ".\n" ;
@@ -126,18 +140,10 @@ void process_data_using_dosage_setter( genfile::bgen::View& view ) {
 		) ;
 		assert( success ) ;
 		
-		DosageSetter dc( &m_data ) ;
+		DosageSetter dc ;
 		view.read_genotype_data_block( dc ) ;
 		
-		for( std::size_t j = 0; j < m_data.size(); ++j ) {
-			if( m_data[j] == -1.0 ) {
-				std::cout << ((j>0) ? " NA" : "NA") ;
-			} else {
-				std::cout << ((j>0) ? " " : "") << m_data[j] ;
-				
-			}
-		}
-		std::cout << "\n" ;
+		std::cout << rsid << ": " << dc.result() << "\n" ;	
 	}
 }
 
@@ -162,19 +168,18 @@ void process_data_using_lookup_table( genfile::bgen::View& view ) {
 		assert( pack.ploidyExtent[1] == 2 ) ;
 		assert( pack.phased == false ) ;
 		assert( pack.bits == 8 ) ;
-		
+	
+		std::size_t n = 0 ;
+		double totalDosage = 0.0 ;
 		genfile::byte_t const* buffer = pack.buffer ;
 		genfile::byte_t const* ploidy = pack.ploidy ;
-		for( ; buffer < pack.end; buffer += 2, ++ploidy ) {
-			if( *ploidy & 0x80 ) {
-				std::cout << ((buffer == pack.buffer) ? "NA" : " NA") ;
-			} else {
-				std::cout
-					<< ((buffer == pack.buffer) ? "" : " ")
-					<< lookup_table[ *reinterpret_cast< uint16_t const* >( buffer ) ] ;
+		for( int sample = 0; buffer < pack.end; buffer += 2, ++ploidy, ++sample ) {
+			if( !(*ploidy & 0x80 )) {
+				totalDosage += lookup_table[ *reinterpret_cast< uint16_t const* >( buffer ) ] ;
+				++n ;
 			}
 		}
-		std::cout << "\n" ;
+		std::cout << rsid << ": " << (totalDosage / n) << "\n" ;
 	}
 }
 
