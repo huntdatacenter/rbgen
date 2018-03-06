@@ -82,6 +82,16 @@ or, for more recent versions:
 
 If all goes well a message like `All tests passed` should be printed.
 
+If you have [Robot Test Framework](http://robotframework.org/) installed, you can instead run the full suite of unit and functional tests like so:
+```sh
+./test/functional/run_tests.sh
+```
+Test results will be placed in the directory `build/test/functional/test-reports`.
+
+
+Trying an example
+=====
+
 The example program `bgen_to_vcf` reads a bgen file (v1.1 or v1.2) and outputs it as a VCF file to stdout.  You can try running it
 by typing
 ```sh
