@@ -1,0 +1,41 @@
+*** Variables ***
+${BASEDIR}	${CURDIR}/../..
+${TMPDIR}	${BASEDIR}/../../build/test/functional/tmp
+${HOME}	%{HOME}
+${BUILDDIR}	${BASEDIR}/build
+${BGENIX}	${BUILDDIR}/apps/bgenix
+${TEST}	${BUILDDIR}/test/unit/test_bgen
+
+*** Settings ***
+Library	OperatingSystem
+Library	String
+Library	Process
+Library	Collections
+
+*** Test cases ***
+Bgen unit tests
+	${result}=	Run process	${TEST}
+	Should be equal as integers	${result.rc}	0
+
+Computes bgenix index
+	Copy file	${BASEDIR}/example/example.16bits.bgen	${TMPDIR}/example.16bits.bgen
+	Run process	${BGENIX}	-g	${TMPDIR}/example.16bits.bgen	-index
+	File should exist	${TMPDIR}/example.16bits.bgen.bgi
+
+Bgenix converts to vcf
+	Run process	${BGENIX}	-g	${TMPDIR}/example.16bits.bgen	-vcf	stdout=${TMPDIR}/example.16bits.vcf
+	File should exist	${TMPDIR}/example.16bits.vcf
+	File should not be empty	${TMPDIR}/example.16bits.vcf
+	${contents}=	Get File	${TMPDIR}/example.16bits.vcf
+	@{lines}=	Split to lines	${contents}
+	${length}=	Get length	${lines}
+	Should be equal as integers	${length}	204
+
+Bgenix lists variants
+	Run process	${BGENIX}	-g	${TMPDIR}/example.16bits.bgen	-list	stdout=${TMPDIR}/example.16bits.list
+	File should exist	${TMPDIR}/example.16bits.list
+	File should not be empty	${TMPDIR}/example.16bits.list
+	${contents}=	Get File	${TMPDIR}/example.16bits.list
+	@{lines}=	Split to lines	${contents}
+	${length}=	Get length	${lines}
+	Should be equal as integers	${length}	202
