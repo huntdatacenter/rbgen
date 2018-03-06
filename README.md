@@ -75,6 +75,11 @@ BGEN's tests can be run by typing
 ```sh
 ./build/test/test_bgen
 ```
+or, for more recent versions:
+```sh
+./build/test/unit/test_bgen
+```
+
 If all goes well a message like `All tests passed` should be printed.
 
 The example program `bgen_to_vcf` reads a bgen file (v1.1 or v1.2) and outputs it as a VCF file to stdout.  You can try running it
