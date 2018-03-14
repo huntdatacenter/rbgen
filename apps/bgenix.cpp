@@ -805,66 +805,70 @@ private:
 		EncodingTables encoding_tables ;
 		
 	
-		for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
-			bool success = bgenView.read_variant(
-				&SNPID, &rsid, &chromosome, &position, &alleles
-			) ;
-			assert( success ) ;
-			assert( alleles.size() > 1 ) ;
-			std::cout << chromosome
-				<< "\t" << position
-				<< "\t" << rsid << "," << SNPID
-				<< "\t" << alleles[0]
-				<< "\t" ;
-			for( std::size_t j = 1; j < alleles.size(); ++j ) {
-				std::cout << ((j==1)?"":",") << alleles[j] ;
-			}
-			std::cout
-				<< "\t"
-				<< ".\t" // QUAL
-				<< ".\t" // FILTER
-				<< ".\t" // INFO
-				<< "GT:GP" // FORMAT
-			;
-
-			if( inputLayout == genfile::bgen::e_Layout2 ) {
-				// Inspect data and use faster method if available
-				// Currently this works for 8-bit encoded data only.
-				genfile::bgen::v12::GenotypeDataBlock pack ;
-				bgenView.read_and_unpack_v12_genotype_data_block( &pack ) ;
-				if( (pack.bits == 1 || pack.bits == 2 || pack.bits == 4 || pack.bits == 8 ) && pack.ploidyExtent[0] == 2 && pack.ploidyExtent[1] == 2 && pack.phased == false ) {
-					EncodingTables::const_iterator table_i = encoding_tables.find( pack.bits ) ;
-					if( table_i == encoding_tables.end() ) {
-						std::pair< EncodingTables::const_iterator, bool > inserted = encoding_tables.insert( std::make_pair( pack.bits, compute_vcf_encoding_table( pack.bits )) ) ;
-						assert( inserted.second ) ;
-						table_i = inserted.first ;
-					}
-					std::pair< std::size_t, std::string > const& vcf_encoding_table = table_i->second ;
-					for( std::size_t i = 0; i < pack.numberOfSamples; ++i ) {
-						if( pack.ploidy[i] & 0x80 ) {
-							std::cout << "\t./." ;
-						} else {
-							// Find bytes encoding this sample
-							std::size_t genotype = extract_encoded_genotype( pack.buffer, pack.end, i, pack.bits ) ;
-
-							std::cout
-								<< "\t" ;
-							std::copy(
-								vcf_encoding_table.second.begin() + genotype*vcf_encoding_table.first, 
-								vcf_encoding_table.second.begin() + (genotype+1)*vcf_encoding_table.first, 
-								std::ostream_iterator< char >( std::cout )
-							) ;
-						}
-					}
-					std::cout << "\n" ;
-				} else {
-					VCFProbWriter writer( std::cout ) ;
-					genfile::bgen::v12::parse_probability_data( pack, writer ) ;
+		{
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( bgenView.number_of_variants() ) + " variants" ) ;
+			for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
+				bool success = bgenView.read_variant(
+					&SNPID, &rsid, &chromosome, &position, &alleles
+				) ;
+				assert( success ) ;
+				assert( alleles.size() > 1 ) ;
+				std::cout << chromosome
+					<< "\t" << position
+					<< "\t" << rsid << "," << SNPID
+					<< "\t" << alleles[0]
+					<< "\t" ;
+				for( std::size_t j = 1; j < alleles.size(); ++j ) {
+					std::cout << ((j==1)?"":",") << alleles[j] ;
 				}
-			} else {
-				// Use generic, possibly slow method
-				VCFProbWriter writer( std::cout ) ;
-				bgenView.read_genotype_data_block( writer ) ;
+				std::cout
+					<< "\t"
+					<< ".\t" // QUAL
+					<< ".\t" // FILTER
+					<< ".\t" // INFO
+					<< "GT:GP" // FORMAT
+				;
+
+				if( inputLayout == genfile::bgen::e_Layout2 ) {
+					// Inspect data and use faster method if available
+					// Currently this works for 1, 2, 4 or 8-bit encoded data.
+					genfile::bgen::v12::GenotypeDataBlock pack ;
+					bgenView.read_and_unpack_v12_genotype_data_block( &pack ) ;
+					if( (pack.bits == 1 || pack.bits == 2 || pack.bits == 4 || pack.bits == 8 ) && pack.ploidyExtent[0] == 2 && pack.ploidyExtent[1] == 2 && pack.phased == false ) {
+						EncodingTables::const_iterator table_i = encoding_tables.find( pack.bits ) ;
+						if( table_i == encoding_tables.end() ) {
+							std::pair< EncodingTables::const_iterator, bool > inserted = encoding_tables.insert( std::make_pair( pack.bits, compute_vcf_encoding_table( pack.bits )) ) ;
+							assert( inserted.second ) ;
+							table_i = inserted.first ;
+						}
+						std::pair< std::size_t, std::string > const& vcf_encoding_table = table_i->second ;
+						for( std::size_t i = 0; i < pack.numberOfSamples; ++i ) {
+							if( pack.ploidy[i] & 0x80 ) {
+								std::cout << "\t./." ;
+							} else {
+								// Find bytes encoding this sample
+								std::size_t genotype = extract_encoded_genotype( pack.buffer, pack.end, i, pack.bits ) ;
+
+								std::cout
+									<< "\t" ;
+								std::copy(
+									vcf_encoding_table.second.begin() + genotype*vcf_encoding_table.first, 
+									vcf_encoding_table.second.begin() + (genotype+1)*vcf_encoding_table.first, 
+									std::ostream_iterator< char >( std::cout )
+								) ;
+							}
+						}
+						std::cout << "\n" ;
+					} else {
+						VCFProbWriter writer( std::cout ) ;
+						genfile::bgen::v12::parse_probability_data( pack, writer ) ;
+					}
+				} else {
+					// Use generic, possibly slow method
+					VCFProbWriter writer( std::cout ) ;
+					bgenView.read_genotype_data_block( writer ) ;
+				}
+				progress_context( i+1, bgenView.number_of_variants() ) ;
 			}
 		}
 	}
