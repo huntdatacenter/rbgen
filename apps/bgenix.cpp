@@ -893,15 +893,15 @@ private:
 		int dps = 0 ;
 		switch( bits ) {
 			case 1: dps = 0; break ;
-			case 2: dps = 1; break ;
-			case 4: dps = 2; break ;
-			case 8: dps = 3; break ;
+			case 2: dps = 2; break ;
+			case 4: dps = 3; break ;
+			case 8: dps = 4; break ;
 		}
 		int const valueSize = 3 + 3 + 3*(dps+((dps>0)?2:1)) ;
 		std::size_t const numberOfDistinctProbs = 1 << bits ;
 		uint16_t const maxProb = numberOfDistinctProbs - 1 ;
 		
-		std::string const formatString = ( boost::format( "%%s:%%.%df,%%.%df,%%.%df" ) % dps % dps % dps ).str() ;
+		std::string const formatString = ( boost::format( "%%s:%%.%dg,%%.%dg,%%.%dg" ) % dps % dps % dps ).str() ;
 		// For 8 bit encoding, probs are to 3 dps i.e. x.xxx, gt is ./. 
 		// max length of a field is 3 + (3*5) + 3 = 21.
 		std::string storage( valueSize * numberOfDistinctProbs * numberOfDistinctProbs, ' ' ) ;
