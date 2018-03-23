@@ -106,7 +106,7 @@ class ReleaseBuilder:
 	def build_rbgen( self ):
 		import os, tempfile, shutil, subprocess, platform
 		tempdir = tempfile.mkdtemp()
-		release_stub = self.create_pkgname_stub( 'rbgen', includePlatform = FALSE )
+		release_stub = self.create_pkgname_stub( 'rbgen', includePlatform = False )
 		rbgen_dir = os.path.join( tempdir, release_stub )
 		shutil.copytree( 'R/package/', rbgen_dir )
 		os.makedirs( os.path.join( rbgen_dir, "src", "include" ))
