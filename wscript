@@ -74,7 +74,7 @@ class ReleaseBuilder:
 				stub = '%s-osx' % stub
 			elif platform.system() == 'Linux':
 				distro = platform.linux_distribution()
-				stub = '-%s%s-%s' % ( stub, distro[0], distro[1], platform.machine() )
+				stub = '%s-%s%s-%s' % ( stub, distro[0], distro[1], platform.machine() )
 		return stub
 	
 	def build_bgen( self ):
