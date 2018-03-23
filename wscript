@@ -127,7 +127,7 @@ class ReleaseBuilder:
 		for filename in glob( 'db/src/*.cpp' ):
 			shutil.copy( filename, os.path.join( rbgen_dir, "src", "db", os.path.basename( filename ) ) )
 
-		for filename in glob( '3rd_party/sqlite3/sqlite3/*.c' ):
+		for filename in glob( '3rd_party/sqlite3/sqlite3/sqlite3.c' ):
 			shutil.copy( filename, os.path.join( rbgen_dir, "src", "sqlite3", os.path.basename( filename ) ) )
 
 		for filename in glob( '3rd_party/zstd-1.1.0/lib/common/*.c' ) + glob( '3rd_party/zstd-1.1.0/lib/compress/*.c' ) + glob( '3rd_party/zstd-1.1.0/lib/decompress/*.c' ):
