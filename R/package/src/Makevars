@@ -1,5 +1,3 @@
-CXX_STD = CXX11
-
 PKG_CPPFLAGS = \
 -I include/genfile/include \
 -I include/db/include \
