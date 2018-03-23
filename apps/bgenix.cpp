@@ -784,6 +784,8 @@ private:
 	void process_selection_transcode_bgen_vcf(
 		genfile::bgen::View& bgenView
 	) const {
+		uint32_t const inputLayout = bgenView.context().flags & genfile::bgen::e_Layout ;
+
 		std::cout << "##fileformat=VCFv4.2\n"
 			<< "##FORMAT=<ID=GT,Type=String,Number=1,Description=\"Threshholded genotype call\">\n"
 			<< "##FORMAT=<ID=GP,Type=Float,Number=G,Description=\"Genotype call probabilities\">\n"
@@ -799,30 +801,134 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
-		for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
-			bool success = bgenView.read_variant(
-				&SNPID, &rsid, &chromosome, &position, &alleles
-			) ;
-			assert( success ) ;
-			assert( alleles.size() > 1 ) ;
-			std::cout << chromosome
-				<< "\t" << position
-				<< "\t" << rsid << "," << SNPID
-				<< "\t" << alleles[0]
-				<< "\t" ;
-			for( std::size_t j = 1; j < alleles.size(); ++j ) {
-				std::cout << ((j==1)?"":",") << alleles[j] ;
+		typedef std::map< std::size_t, std::pair< std::size_t, std::string > > EncodingTables ;
+		EncodingTables encoding_tables ;
+		
+	
+		{
+			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( bgenView.number_of_variants() ) + " variants" ) ;
+			for( std::size_t i = 0; i < bgenView.number_of_variants(); ++i ) {
+				bool success = bgenView.read_variant(
+					&SNPID, &rsid, &chromosome, &position, &alleles
+				) ;
+				assert( success ) ;
+				assert( alleles.size() > 1 ) ;
+				std::cout << chromosome
+					<< "\t" << position
+					<< "\t" << rsid << "," << SNPID
+					<< "\t" << alleles[0]
+					<< "\t" ;
+				for( std::size_t j = 1; j < alleles.size(); ++j ) {
+					std::cout << ((j==1)?"":",") << alleles[j] ;
+				}
+				std::cout
+					<< "\t"
+					<< ".\t" // QUAL
+					<< ".\t" // FILTER
+					<< ".\t" // INFO
+					<< "GT:GP" // FORMAT
+				;
+
+				if( inputLayout == genfile::bgen::e_Layout2 ) {
+					// Inspect data and use faster method if available
+					// Currently this works for 1, 2, 4 or 8-bit encoded data.
+					genfile::bgen::v12::GenotypeDataBlock pack ;
+					bgenView.read_and_unpack_v12_genotype_data_block( &pack ) ;
+					if( (pack.bits == 1 || pack.bits == 2 || pack.bits == 4 || pack.bits == 8 ) && pack.ploidyExtent[0] == 2 && pack.ploidyExtent[1] == 2 && pack.phased == false ) {
+						EncodingTables::const_iterator table_i = encoding_tables.find( pack.bits ) ;
+						if( table_i == encoding_tables.end() ) {
+							std::pair< EncodingTables::const_iterator, bool > inserted = encoding_tables.insert( std::make_pair( pack.bits, compute_vcf_encoding_table( pack.bits )) ) ;
+							assert( inserted.second ) ;
+							table_i = inserted.first ;
+						}
+						std::pair< std::size_t, std::string > const& vcf_encoding_table = table_i->second ;
+						for( std::size_t i = 0; i < pack.numberOfSamples; ++i ) {
+							if( pack.ploidy[i] & 0x80 ) {
+								std::cout << "\t./." ;
+							} else {
+								// Find bytes encoding this sample
+								std::size_t genotype = extract_encoded_genotype( pack.buffer, pack.end, i, pack.bits ) ;
+
+								std::cout
+									<< "\t" ;
+								std::copy(
+									vcf_encoding_table.second.begin() + genotype*vcf_encoding_table.first, 
+									vcf_encoding_table.second.begin() + (genotype+1)*vcf_encoding_table.first, 
+									std::ostream_iterator< char >( std::cout )
+								) ;
+							}
+						}
+						std::cout << "\n" ;
+					} else {
+						VCFProbWriter writer( std::cout ) ;
+						genfile::bgen::v12::parse_probability_data( pack, writer ) ;
+					}
+				} else {
+					// Use generic, possibly slow method
+					VCFProbWriter writer( std::cout ) ;
+					bgenView.read_genotype_data_block( writer ) ;
+				}
+				progress_context( i+1, bgenView.number_of_variants() ) ;
 			}
-			std::cout
-				<< "\t"
-				<< ".\t" // QUAL
-				<< ".\t" // FILTER
-				<< ".\t" // INFO
-				<< "GT:GP" // FORMAT
-			;
-			VCFProbWriter writer( std::cout ) ;
-			bgenView.read_genotype_data_block( writer ) ;
 		}
+	}
+
+	uint16_t extract_encoded_genotype(
+		byte_t const* buffer,
+		byte_t const* end,
+		std::size_t i,
+		int const bits
+	) const {
+		uint16_t const* encoding_p = reinterpret_cast< uint16_t const* >( buffer + (2*i*bits) / 8 ) ;
+		uint16_t const encodingMask = uint16_t( 0xFFFFFF ) >> (16 - (2 * bits)) ;
+		int encodingShift = 
+			(bits >= 4 )
+				? 0 
+				: (2*bits) * (i % (4 / bits)) ;
+		return ((*encoding_p) >> encodingShift ) & encodingMask ;
+	}
+	
+	std::pair< std::size_t, std::string > compute_vcf_encoding_table( int const bits ) const {
+		assert( bits == 1 || bits == 2 || bits == 4 || bits == 8 ) ;
+		int dps = 0 ;
+		switch( bits ) {
+			case 1: dps = 0; break ;
+			case 2: dps = 2; break ;
+			case 4: dps = 3; break ;
+			case 8: dps = 4; break ;
+		}
+		int const valueSize = 3 + 3 + 3*(dps+((dps>0)?2:1)) ;
+		std::size_t const numberOfDistinctProbs = 1 << bits ;
+		uint16_t const maxProb = numberOfDistinctProbs - 1 ;
+		
+		std::string const formatString = ( boost::format( "%%s:%%.%dg,%%.%dg,%%.%dg" ) % dps % dps % dps ).str() ;
+		// For 8 bit encoding, probs are to 3 dps i.e. x.xxx, gt is ./. 
+		// max length of a field is 3 + (3*5) + 3 = 21.
+		std::string storage( valueSize * numberOfDistinctProbs * numberOfDistinctProbs, ' ' ) ;
+		std::string gt ;
+		for( uint16_t x = 0; x <= maxProb; ++x ) {
+			for( uint16_t y = 0; y <= maxProb-x; ++y ) {
+				uint16_t z = maxProb-x-y ;
+				uint16_t key = (y<<bits) | x ;
+				double const p0 = x/double(maxProb) ;
+				double const p1 = y/double(maxProb) ;
+				double const p2 = z/double(maxProb) ;
+				if( p0 > 0.9 ) {
+					gt = "0/0" ;
+				} else if( p1 > 0.9 ) {
+					gt = "0/1" ;
+				} else if( p2 > 0.9 ) {
+					gt = "1/1" ;
+				} else {
+					gt = "./." ;
+				}
+				std::size_t storageIndex = key * valueSize ;
+				std::string const value = ( boost::format( formatString ) % gt % p0 % p1 % p2 ).str() ;
+				assert( value.size() == valueSize ) ;
+				std::copy( value.begin(), value.end(), &storage[0] + storageIndex ) ;
+			}
+		}
+		return std::make_pair( valueSize, storage ) ;
 	}
 	
 	// This function implements an efficient transcode from a specific type of BGEN file
@@ -862,7 +968,7 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
-		std::vector< uint64_t > probability_encoding_table = compute_probability_encoding_table() ;
+		std::vector< uint64_t > probability_encoding_table = compute_bgen_v11_probability_encoding_table() ;
 
 		int const compressionLevel = options().get< int >( "-compression-level" ) ;
 
@@ -953,7 +1059,7 @@ private:
 		std::cerr << boost::format( "# %s: success, total %d variants.\n" ) % globals::program_name % bgenView.number_of_variants() ;
 	}
 	
-	std::vector< uint64_t > compute_probability_encoding_table() const {
+	std::vector< uint64_t > compute_bgen_v11_probability_encoding_table() const {
 		// In bgen v1.2 8 bit encoding,
 		// Each sample is encoded with 2 bytes.
 		// First byte = prob1 * 255
@@ -987,7 +1093,7 @@ private:
 		pieces.push_back( spec.substr( 0, colon_pos )) ;
 		pieces.push_back( spec.substr( colon_pos+1, spec.size() )) ;
 
-		if ( pieces.size() != 2 ) {
+		if( pieces.size() != 2 ) {
 			throw std::invalid_argument( "spec=\"" + spec + "\"" ) ;
 		}
 

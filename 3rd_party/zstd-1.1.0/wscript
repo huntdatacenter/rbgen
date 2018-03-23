@@ -1,4 +1,5 @@
 import os.path
+
 def build( bld ):
 	sources = [
 		'lib/common/zstd_common.c',
@@ -21,6 +22,3 @@ def build( bld ):
 		includes = [ 'lib', 'lib/common', 'lib/compress', 'lib/decompress' ],
 		export_includes = 'lib/'
 	)
-	# Copy files into rbgen package directory
-	for source in sources:
-		bld( rule = 'cp ${SRC} ${TGT}', source = source, target = '../../R/rbgen/src/zstd-1.1.0/' + os.path.basename( source ), always = True )
