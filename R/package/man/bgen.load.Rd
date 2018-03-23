@@ -45,9 +45,10 @@ A list with several members:
 \examples{
 D = bgen.load( "example/example.16bits.bgen", rsids = c( "RSID_101", "RSID_40" ))
 print( D$data[,'sample_001',] )
-D = bgen.load( "example/example.16bits.bgen", rsids = c( "RSID_101", "RSID_40" ), samples = c( "sample_001", "sample_101"))
-print( D$data )
-bgen.load( "example/example.16bits.bgen", ranges = data.frame( chromosome = '01', start = 0, end = 500 ))
-bgen.load( "example/complex.bgen", ranges = data.frame( chromosome = '01', start = 0, end = 1000 ), max_entries_per_sample = 20 )
+print( D$data[ 'RSID_40',, ] )
+bgen.load( "example/example.16bits.bgen", rsids = c( "RSID_101", "RSID_40" ), samples = c( "sample_001", "sample_101"))
+bgen.load( "example/example.16bits.bgen", ranges = data.frame( chromosome = '01', start = 0, end = 5000 ))
+D = bgen.load( "example/complex.bgen", ranges = data.frame( chromosome = '01', start = 0, end = 1000 ), max_entries_per_sample = 40 )
+D$data[4,,]
 }
 \keyword{bgen}
