@@ -1,6 +1,8 @@
 % File src/library/base/man/load.Rd
 \name{bgen.load}
 \alias{bgen.load}
+\alias{bgen}
+\alias{rbgen}
 \title{Load genotype data from an indexed BGEN file}
 \author{Gavin Band}
 \description{
@@ -25,12 +27,9 @@ bgen.load(
   \item{samples}{A character vector specifying the IDs of samples to load data for.}
   \item{index.filename}{The name of the index file, if different from the default.}
 }
-\description{
-  bgen.load() loads data for the specified regions, or specified variants, from the given BGEN file.
-}
 \details{
-bgen.load() first opens the specified BGEN file and its corresponding index file.  It then uses the index file
-to locate the data for the specified ranges and rsids.  Then it loads data 
+First, the specified BGEN file and its corresponding index file are opened.  Then the index file
+is used to locate the data for the specified ranges and rsids.  Then the genotype data is loaded.
 }
 \value{
 A list with several members:
