@@ -68,12 +68,13 @@ class ReleaseBuilder:
 
 	def create_pkgname_stub( self, packageName, includePlatform = True ):
 		import platform
-		import platform
-		if platform.system() == 'Darwin':
-			stub = '%s_v%s-osx' % ( packageName, self.VERSION )
-		elif platform.system() == 'Linux':
-			distro = platform.linux_distribution()
-			stub = '%s_v%s-%s%s-%s' % ( packageName, self.VERSION, distro[0], distro[1], platform.machine() )
+		stub = '%s_v%s' % ( packageName, self.VERSION )
+		if includePlatform:
+			if platform.system() == 'Darwin':
+				stub = '%s-osx' % stub
+			elif platform.system() == 'Linux':
+				distro = platform.linux_distribution()
+				stub = '-%s%s-%s' % ( stub, distro[0], distro[1], platform.machine() )
 		return stub
 	
 	def build_bgen( self ):
@@ -196,7 +197,7 @@ def release( bld ):
 	print "Created %s release tarball in \"%s\"" % ( 'bgen', result )
 
 def build_rbgen( bld ):
-	print "Building rbgen package tarball..."
+	print "Building rbgen source package tarball..."
 	release = ReleaseBuilder( APPNAME, VERSION )
 	result = release.build_rbgen()
 	print "Created %s release tarball in \"%s\"" % ( 'rbgen', result )
