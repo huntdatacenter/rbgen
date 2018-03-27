@@ -266,7 +266,7 @@ private:
 	}
 	
 	db::Connection::UniquePtr create_bgen_index_direct( std::string const& bgen_filename, std::string const& index_filename ) {
-		db::Connection::UniquePtr connection = db::Connection::create( index_filename, "rw" ) ;
+		db::Connection::UniquePtr connection = db::Connection::create( "file:" + index_filename + "?nolock=1", "rw" ) ;
 
 		connection->run_statement( "PRAGMA locking_mode = EXCLUSIVE ;" ) ;
 		connection->run_statement( "PRAGMA journal_mode = MEMORY ;" ) ;
