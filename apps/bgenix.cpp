@@ -900,14 +900,16 @@ private:
 		int const valueSize = 3 + 3 + 3*(dps+((dps>0)?2:1)) ;
 		std::size_t const numberOfDistinctProbs = 1 << bits ;
 		uint16_t const maxProb = numberOfDistinctProbs - 1 ;
-		
-		std::string const formatString = ( boost::format( "%%s:%%.%df,%%.%df,%%.%df" ) % dps % dps % dps ).str() ;
+
+		std::ostringstream formatter ;
+		formatter << std::fixed << std::setprecision( dps ) ;
 		// For 8 bit encoding, probs are to 3 dps i.e. x.xxx, gt is ./. 
 		// max length of a field is 3 + (3*5) + 3 = 21.
 		std::string storage( valueSize * numberOfDistinctProbs * numberOfDistinctProbs, ' ' ) ;
 		std::string gt ;
 		for( uint16_t x = 0; x <= maxProb; ++x ) {
 			for( uint16_t y = 0; y <= maxProb-x; ++y ) {
+				formatter.str("") ;
 				uint16_t z = maxProb-x-y ;
 				uint16_t key = (y<<bits) | x ;
 				double const p0 = x/double(maxProb) ;
@@ -923,7 +925,8 @@ private:
 					gt = "./." ;
 				}
 				std::size_t storageIndex = key * valueSize ;
-				std::string const value = ( boost::format( formatString ) % gt % p0 % p1 % p2 ).str() ;
+				formatter << gt << ":" << p0 << "," << p1 << "," << p2 ; 
+				std::string const value = formatter.str() ;
 				assert( value.size() == valueSize ) ;
 				std::copy( value.begin(), value.end(), &storage[0] + storageIndex ) ;
 			}
