@@ -901,7 +901,7 @@ private:
 		std::size_t const numberOfDistinctProbs = 1 << bits ;
 		uint16_t const maxProb = numberOfDistinctProbs - 1 ;
 		
-		std::string const formatString = ( boost::format( "%%s:%%.%dg,%%.%dg,%%.%dg" ) % dps % dps % dps ).str() ;
+		std::string const formatString = ( boost::format( "%%s:%%.%df,%%.%df,%%.%df" ) % dps % dps % dps ).str() ;
 		// For 8 bit encoding, probs are to 3 dps i.e. x.xxx, gt is ./. 
 		// max length of a field is 3 + (3*5) + 3 = 21.
 		std::string storage( valueSize * numberOfDistinctProbs * numberOfDistinctProbs, ' ' ) ;
