@@ -11,7 +11,7 @@ Library	OperatingSystem
 Library	String
 Library	Process
 Library	Collections
-Test Setup	Create Directory	${TMPDIR}
+Test Setup	Create Empty Temp Directory
 Test Teardown	Run Process	rm	-f	${TMPDIR}/*
 
 *** Test cases ***
@@ -21,14 +21,10 @@ Bgen unit tests
 	Should be equal as integers	${result.rc}	0
 
 Computes bgenix index
-	Copy file	${BASEDIR}/example/example.16bits.bgen	${TMPDIR}/example.16bits.bgen
 	Run process	${BGENIX}	-g	${TMPDIR}/example.16bits.bgen	-index
 	File should exist	${TMPDIR}/example.16bits.bgen.bgi
 
 Bgenix converts to vcf 8bit
-	Copy file	${BASEDIR}/example/example.8bits.bgen	${TMPDIR}/example.8bits.bgen
-	Copy file	${BASEDIR}/example/example.8bits.bgen.bgi	${TMPDIR}/example.8bits.bgen.bgi
-	File should exist	${TMPDIR}/example.8bits.bgen
 	Run process	${BGENIX}	-g	${TMPDIR}/example.8bits.bgen	-vcf	stdout=${TMPDIR}/example.8bits.vcf
 	File should exist	${TMPDIR}/example.8bits.vcf
 	File should not be empty	${TMPDIR}/example.8bits.vcf
@@ -38,8 +34,6 @@ Bgenix converts to vcf 8bit
 	Should be equal as integers	${length}	204
 
 Bgenix converts to vcf 16bit
-	Copy file	${BASEDIR}/example/example.16bits.bgen	${TMPDIR}/example.16bits.bgen
-	Copy file	${BASEDIR}/example/example.16bits.bgen.bgi	${TMPDIR}/example.16bits.bgen.bgi
 	Run process	${BGENIX}	-g	${TMPDIR}/example.16bits.bgen	-vcf	stdout=${TMPDIR}/example.16bits.vcf
 	File should exist	${TMPDIR}/example.16bits.vcf
 	File should not be empty	${TMPDIR}/example.16bits.vcf
@@ -57,3 +51,13 @@ Bgenix lists variants
 	${length}=	Get length	${lines}
 	Should be equal as integers	${length}	202
 
+*** Keywords ***
+
+Create empty temp directory
+	Run Process	rm  -rf  ${TMPDIR}
+	Create Directory    ${TMPDIR}
+	Copy file	${BASEDIR}/example/example.8bits.bgen	${TMPDIR}/example.1bits.bgen
+	Copy file	${BASEDIR}/example/example.8bits.bgen	${TMPDIR}/example.8bits.bgen
+	Run process	${BGENIX}	-g	${TMPDIR}/example.8bits.bgen	-index
+	Copy file	${BASEDIR}/example/example.16bits.bgen	${TMPDIR}/example.16bits.bgen
+	Run process	${BGENIX}	-g	${TMPDIR}/example.16bits.bgen	-index
