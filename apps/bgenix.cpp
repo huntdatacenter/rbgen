@@ -801,6 +801,7 @@ private:
 		uint32_t position ;
 		std::vector< std::string > alleles ;
 
+		// Map from bit sizes to vcf encoding tables
 		typedef std::map< std::size_t, std::pair< std::size_t, std::string > > EncodingTables ;
 		EncodingTables encoding_tables ;
 		
@@ -835,27 +836,19 @@ private:
 					genfile::bgen::v12::GenotypeDataBlock pack ;
 					bgenView.read_and_unpack_v12_genotype_data_block( &pack ) ;
 					if( (pack.bits == 1 || pack.bits == 2 || pack.bits == 4 || pack.bits == 8 ) && pack.ploidyExtent[0] == 2 && pack.ploidyExtent[1] == 2 && pack.phased == false ) {
-						EncodingTables::const_iterator table_i = encoding_tables.find( pack.bits ) ;
-						if( table_i == encoding_tables.end() ) {
-							std::pair< EncodingTables::const_iterator, bool > inserted = encoding_tables.insert( std::make_pair( pack.bits, compute_vcf_encoding_table( pack.bits )) ) ;
-							assert( inserted.second ) ;
-							table_i = inserted.first ;
-						}
-						std::pair< std::size_t, std::string > const& vcf_encoding_table = table_i->second ;
+						typedef std::pair< std::string::const_iterator, std::string::const_iterator > EncodedRange ;
+						typedef std::pair< std::size_t, std::string > VcfEncodingTable ;
+						VcfEncodingTable const& vcf_encoding_table = get_vcf_encoding_table( encoding_tables, pack.bits ) ;
 						for( std::size_t i = 0; i < pack.numberOfSamples; ++i ) {
 							if( pack.ploidy[i] & 0x80 ) {
 								std::cout << "\t./." ;
 							} else {
 								// Find bytes encoding this sample
 								std::size_t genotype = extract_encoded_genotype( pack.buffer, pack.end, i, pack.bits ) ;
-
+								EncodedRange const& encoding = extract_vcf_encoding( vcf_encoding_table, genotype ) ;
 								std::cout
 									<< "\t" ;
-								std::copy(
-									vcf_encoding_table.second.begin() + genotype*vcf_encoding_table.first, 
-									vcf_encoding_table.second.begin() + (genotype+1)*vcf_encoding_table.first, 
-									std::ostream_iterator< char >( std::cout )
-								) ;
+								std::copy( encoding.first, encoding.second, std::ostream_iterator< char >( std::cout ) ) ;
 							}
 						}
 						std::cout << "\n" ;
@@ -871,6 +864,28 @@ private:
 				progress_context( i+1, bgenView.number_of_variants() ) ;
 			}
 		}
+	}
+
+	typedef std::map< std::size_t, std::pair< std::size_t, std::string > > EncodingTables ;
+	std::pair< std::size_t, std::string > const& get_vcf_encoding_table( EncodingTables& encoding_tables, int bits ) const {
+		EncodingTables::const_iterator table_i = encoding_tables.find( bits ) ;
+		if( table_i == encoding_tables.end() ) {
+			std::pair< EncodingTables::const_iterator, bool > inserted = encoding_tables.insert( std::make_pair( bits, compute_vcf_encoding_table( bits )) ) ;
+			assert( inserted.second ) ;
+			table_i = inserted.first ;
+		}
+		std::pair< std::size_t, std::string > const& result = table_i->second ;
+		return result ;
+	}
+
+	std::pair< std::string::const_iterator, std::string::const_iterator > extract_vcf_encoding(
+		std::pair< std::size_t, std::string > const& vcf_encoding_table,
+		std::size_t genotype 
+	) const {
+		return std::make_pair(
+			vcf_encoding_table.second.begin() + genotype*vcf_encoding_table.first, 
+			vcf_encoding_table.second.begin() + (genotype+1)*vcf_encoding_table.first
+		) ;
 	}
 
 	uint16_t extract_encoded_genotype(
@@ -900,14 +915,16 @@ private:
 		int const valueSize = 3 + 3 + 3*(dps+((dps>0)?2:1)) ;
 		std::size_t const numberOfDistinctProbs = 1 << bits ;
 		uint16_t const maxProb = numberOfDistinctProbs - 1 ;
-		
-		std::string const formatString = ( boost::format( "%%s:%%.%df,%%.%df,%%.%df" ) % dps % dps % dps ).str() ;
+
+		std::ostringstream formatter ;
+		formatter << std::fixed << std::setprecision( dps ) ;
 		// For 8 bit encoding, probs are to 3 dps i.e. x.xxx, gt is ./. 
 		// max length of a field is 3 + (3*5) + 3 = 21.
 		std::string storage( valueSize * numberOfDistinctProbs * numberOfDistinctProbs, ' ' ) ;
 		std::string gt ;
 		for( uint16_t x = 0; x <= maxProb; ++x ) {
 			for( uint16_t y = 0; y <= maxProb-x; ++y ) {
+				formatter.str("") ;
 				uint16_t z = maxProb-x-y ;
 				uint16_t key = (y<<bits) | x ;
 				double const p0 = x/double(maxProb) ;
@@ -923,7 +940,8 @@ private:
 					gt = "./." ;
 				}
 				std::size_t storageIndex = key * valueSize ;
-				std::string const value = ( boost::format( formatString ) % gt % p0 % p1 % p2 ).str() ;
+				formatter << gt << ":" << p0 << "," << p1 << "," << p2 ; 
+				std::string const value = formatter.str() ;
 				assert( value.size() == valueSize ) ;
 				std::copy( value.begin(), value.end(), &storage[0] + storageIndex ) ;
 			}
