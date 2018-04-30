@@ -4,7 +4,7 @@ ${HOME}	%{HOME}
 ${BUILDDIR}	${BASEDIR}/build
 ${TMPDIR}	${BUILDDIR}/test/functional/tmp
 ${BGENIX}	${BUILDDIR}/apps/bgenix
-${QCTOOL}	qctool_v2.0-rc9
+${QCTOOL}	qctool
 ${UNITTEST}	${BUILDDIR}/test/unit/test_bgen
 
 *** Settings ***

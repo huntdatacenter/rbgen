@@ -6,6 +6,8 @@ pipelines:
           - apt-get install --assume-yes zlib1g-dev
           - apt-get install --assume-yes python-pip
           - python -m pip install robotframework
+          - wget http://www.well.ox.ac.uk/~gav/resources/qctool_v2.0-rc9-CentOS6.8-x86_64.tgz && tar -xzf qctool_v2.0-rc9-CentOS6.8-x86_64.tgz
+          - export PATH="qctool_v2.0-rc9-CentOS6.8-x86_64/":${PATH}
           - ./waf configure
           - ./waf
           - cd test/functional
