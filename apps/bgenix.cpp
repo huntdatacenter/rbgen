@@ -804,7 +804,7 @@ private:
 		// Map from bit sizes to vcf encoding tables
 		typedef std::map< std::size_t, std::pair< std::size_t, std::string > > EncodingTables ;
 		EncodingTables encoding_tables ;
-		
+		std::vector< char > buffer ;
 	
 		{
 			auto progress_context = ui().get_progress_context( "Processing " + std::to_string( bgenView.number_of_variants() ) + " variants" ) ;
@@ -837,21 +837,28 @@ private:
 					bgenView.read_and_unpack_v12_genotype_data_block( &pack ) ;
 					if( (pack.bits == 1 || pack.bits == 2 || pack.bits == 4 || pack.bits == 8 ) && pack.ploidyExtent[0] == 2 && pack.ploidyExtent[1] == 2 && pack.phased == false ) {
 						typedef std::pair< std::string::const_iterator, std::string::const_iterator > EncodedRange ;
+						// First is the size of each entry, second is the data itself.
 						typedef std::pair< std::size_t, std::string > VcfEncodingTable ;
 						VcfEncodingTable const& vcf_encoding_table = get_vcf_encoding_table( encoding_tables, pack.bits ) ;
+						buffer.resize( pack.numberOfSamples * (1+vcf_encoding_table.first) + 1 ) ;
+						char* buffer_p = &buffer[0] ;
 						for( std::size_t i = 0; i < pack.numberOfSamples; ++i ) {
 							if( pack.ploidy[i] & 0x80 ) {
-								std::cout << "\t./." ;
+								*buffer_p++ = '\t' ;
+								*buffer_p++ = '.' ;
+								*buffer_p++ = '/' ;
+								*buffer_p++ = '.' ;
 							} else {
 								// Find bytes encoding this sample
 								std::size_t genotype = extract_encoded_genotype( pack.buffer, pack.end, i, pack.bits ) ;
 								EncodedRange const& encoding = extract_vcf_encoding( vcf_encoding_table, genotype ) ;
-								std::cout
-									<< "\t" ;
-								std::copy( encoding.first, encoding.second, std::ostream_iterator< char >( std::cout ) ) ;
+								*buffer_p++ = '\t' ;
+								buffer_p = std::copy( encoding.first, encoding.second, buffer_p ) ;
 							}
 						}
-						std::cout << "\n" ;
+						*buffer_p++ = '\n' ;
+						
+						std::cout.write( &buffer[0], (buffer_p - &buffer[0]) ) ;
 					} else {
 						VCFProbWriter writer( std::cout ) ;
 						genfile::bgen::v12::parse_probability_data( pack, writer ) ;
