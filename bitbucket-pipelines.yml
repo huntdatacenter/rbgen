@@ -8,6 +8,7 @@ pipelines:
           - python -m pip install robotframework
           - wget http://www.well.ox.ac.uk/~gav/resources/qctool_v2.0-rc9-CentOS6.8-x86_64.tgz && tar -xzf qctool_v2.0-rc9-CentOS6.8-x86_64.tgz
           - cp qctool_v2.0-rc9-CentOS6.8-x86_64/qctool /usr/bin/
+          - qctool -g example/example.16bits.bgen -og /tmp/x.vcf
           - ./waf configure
           - ./waf
           - cd test/functional
