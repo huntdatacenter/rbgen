@@ -12,32 +12,54 @@ An example program, `bgen_to_vcf`, is also provided; as the name suggests it con
 **!! Important note on the UK Biobank data**
 
 The UK Biobank has released [imputed genotype data](http://www.ukbiobank.ac.uk/scientists-3/genetic-data/) for almost half a million individuals
-in BGEN format, with accompanying bgenix index files.  However, the original release of this data ("version 2") had an issue with
-naming of the index files.  Please see [here](https://bitbucket.org/gavinband/bgen/wiki/Using the UK Biobank full release index files) for information on working around this.
-
-The more recent version of this data (version 3) does not have this issue.
+in BGEN format, with accompanying bgenix index files.  The original release of this data (version 2) had an issue with
+naming of the index files.  Please see [here](https://bitbucket.org/gavinband/bgen/wiki/Using the UK Biobank full release index files) for information on working around this.  The more recent version of this data (version 3) does not have this issue.
 
 ---
 
-Applications
+Citing BGEN
 =====
 
-The following programs are built with the BGEN repository.
+If you make use of the BGEN library, its tools or example programs, please cite:
+
+Band, G. and Marchini, J., "*BGEN: a binary file format for imputed genotype and haplotype data*", bioArxiv bioRxiv 308296; doi: https://doi.org/10.1101/308296
+
+Thanks!
+
+What's included?
+=====
+
+Apart from the library itself, a number of tools built using the library are also included in this repository:
 
 * [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
 * [edit-bgen](https://bitbucket.org/gavinband/bgen/wiki/edit-bgen) - a tool to edit BGEN file metadata.
-
-R package
-========
-
-An experimental R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  See the [rbgen wiki page](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more information on using this package.
+* An R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  See the [rbgen wiki page](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more information on using this package.
 
 License
 ========
 This BGEN implementation is released under the Boost Software License v1.0.  This is a relatively permissive open-source license that is compatible with many other open-source licenses.  See [this page](http://www.boost.org/users/license.html) and the file [LICENSE_1_0.txt](https://bitbucket.org/gavinband/bgen/src/tip/LICENSE_1_0.txt) for full details.
 
 This repository also contains code from  the [sqlite](www.sqlite.org), [boost](www.boost.org), and [zstandard](http://www.zstd.net) libraries, which comes with their own respective licenses. (respectively, [public domain](http://www.sqlite.org/copyright.html), the boost software license, and the [BSD license](https://github.com/facebook/zstd/blob/dev/LICENSE).  These libraries are not used in the core BGEN implementation, but may be used in the example programs provided.
+
+Getting BGEN
+========
+
+In brief (see below for more details):
+
+```bash
+$ # get it
+$ http://bitbucket.org/gavinband/bgen/get/master.tar.gz
+$ cd master
+$ # compile it
+$ ./waf configure
+$ ./waf
+$ # test it
+$ ./build/test/unit/test_bgen
+$ ./build/apps/bgenix -g example/example.16bits.bgen -list
+```
+
+The following sections contains more information on this process.
 
 Download
 ========
