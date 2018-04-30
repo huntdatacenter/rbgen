@@ -50,7 +50,7 @@ In brief (see below for more details):
 ```bash
 $ # get it
 $ http://bitbucket.org/gavinband/bgen/get/master.tar.gz
-$ cd master
+$ cd bgen
 $ # compile it
 $ ./waf configure
 $ ./waf
