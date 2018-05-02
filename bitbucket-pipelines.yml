@@ -6,8 +6,8 @@ pipelines:
           - apt-get install --assume-yes zlib1g-dev
           - apt-get install --assume-yes python-pip
           - python -m pip install robotframework
-          - ./waf-1.8.13 configure
-          - ./waf-1.8.13
+          - ./waf configure
+          - ./waf
           - cd test/functional
           - mkdir -p test-reports
           - pybot -o NONE -l NONE -r NONE -d test-reports -x xunit.xml ./tests.txt

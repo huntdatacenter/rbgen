@@ -1,3 +1,4 @@
-import os, glob
+import os.path
+
 def build( bld ):
 	pass

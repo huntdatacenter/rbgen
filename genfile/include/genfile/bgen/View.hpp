@@ -55,7 +55,7 @@ namespace genfile {
 					}
 				} else {
 					for( std::size_t i = 0; i < m_context.number_of_samples; ++i ) {
-						setter( "(unknown_sample_" + to_string( i+1 ) + ")" ) ;
+						setter( "(anonymous_sample_" + to_string( i+1 ) + ")" ) ;
 					}
 				}
 			}

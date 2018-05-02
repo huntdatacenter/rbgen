@@ -959,7 +959,7 @@ namespace genfile {
 				GenotypeDataBlock() ;
 					
 				GenotypeDataBlock(
-					Context const& context,
+					Context const& context_,
 					byte_t const* buffer,
 					byte_t const* const end
 				) ;
@@ -971,6 +971,7 @@ namespace genfile {
 				) ;
 
 			public:
+				Context const* context ;
 				uint32_t numberOfSamples ;
 				uint16_t numberOfAlleles ;
 				byte_t ploidyExtent[2] ;
@@ -987,6 +988,7 @@ namespace genfile {
 			} ;
 			
 			inline GenotypeDataBlock::GenotypeDataBlock():
+				context(0),
 				numberOfSamples(0),
 				numberOfAlleles(0),
 				ploidy(0),
@@ -1005,37 +1007,40 @@ namespace genfile {
 			}
 
 			inline void GenotypeDataBlock::initialise(
-				Context const& context,
+				Context const& context_,
 				byte_t const* buffer,
 				byte_t const* const end
 			) {
 				if( end < buffer + 8 ) {
 					throw BGenError() ;
 				}
+
 				uint32_t N = 0 ;
 				buffer = read_little_endian_integer( buffer, end, &N ) ;
-				if( N != context.number_of_samples ) {
+				if( N != context_.number_of_samples ) {
 					throw BGenError() ;
 				}
 				if( end < buffer + N + 2 ) {
 					throw BGenError() ;
 				}
 
-				numberOfSamples = N ;
 				buffer = read_little_endian_integer( buffer, end, &numberOfAlleles ) ;
 				buffer = read_little_endian_integer( buffer, end, &ploidyExtent[0] ) ;
 				buffer = read_little_endian_integer( buffer, end, &ploidyExtent[1] ) ;
 
 				// Keep a pointer to the ploidy and move buffer past the ploidy information
-				ploidy = buffer ;
+				this->context = &context_ ;
+				this->numberOfSamples = N ;
+				this->ploidy = buffer ;
 				buffer += N ;
 				// Get the phased flag and number of bits
-				phased = ((*buffer++) & 0x1 ) ;
-				bits = *reinterpret_cast< byte_t const *>( buffer++ ) ;
+				this->phased = ((*buffer++) & 0x1 ) ;
+				this->bits = *reinterpret_cast< byte_t const *>( buffer++ ) ;
 				this->buffer = buffer ;
 				this->end = end ;
 			}
 			
+
 			template< typename Setter >
 			void parse_probability_data(
 				byte_t const* buffer,
@@ -1043,8 +1048,18 @@ namespace genfile {
 				Context const& context,
 				Setter& setter
 			) {
-				GenotypeDataBlock pack( context, buffer, end ) ;
-
+				parse_probability_data(
+					GenotypeDataBlock( context, buffer, end ),
+					setter
+				) ;
+			}
+			
+			template< typename Setter >
+			void parse_probability_data(
+				GenotypeDataBlock const& pack,
+				Setter& setter
+			) {
+				Context const& context = *(pack.context) ;
 				// We optimise the most common and simplest-to- parse cases.
 				// These are the case where all samples are diploid, and/or where
 				// the number of bits is a multiple of 8.

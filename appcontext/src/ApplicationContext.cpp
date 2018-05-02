@@ -6,11 +6,11 @@
 
 #include <memory>
 #include <string>
+#include <fstream>
 #include "appcontext/OptionProcessor.hpp"
 #include "appcontext/OstreamTee.hpp"
 #include "appcontext/progress_bar.hpp"
 #include "appcontext/ApplicationContext.hpp"
-#include "appcontext/FileUtil.hpp"
 #include "appcontext/null_ostream.hpp"
 #include "appcontext/ProgramFlow.hpp"
 
@@ -111,6 +111,19 @@ namespace appcontext {
 
 	ApplicationContext::~ApplicationContext() {
 		write_end_banner() ;
+	}
+
+	namespace {
+		std::auto_ptr< std::ostream > open_file_for_output( std::string const& filename ) {
+			std::ios_base::openmode open_mode = std::ios_base::out ;
+
+			std::auto_ptr< std::ostream > result( new std::ofstream( filename, open_mode )) ;
+			if( !(*result) ) {
+				throw std::runtime_error( "open_file_for_output(): could not open file \"" + filename + "\"." ) ;
+			}
+
+			return std::auto_ptr< std::ostream >( result.release() ) ;
+		}
 	}
 
 	void ApplicationContext::construct_logger( std::string const& log_option ) {
