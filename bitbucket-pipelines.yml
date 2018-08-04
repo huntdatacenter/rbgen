@@ -3,9 +3,9 @@ pipelines:
   default:
     - step:
         script:
-          - wget http://www.well.ox.ac.uk/~gav/resources/qctool_v2.0-rc9-Ubuntu14.04-x86_64.tgz
-          - tar -xzf qctool_v2.0-rc9-Ubuntu14.04-x86_64.tgz
-          - cp qctool_v2.0-rc9-Ubuntu14.04-x86_64/qctool /usr/bin/
+          - wget http://www.well.ox.ac.uk/~gav/resources/qctool_v2.0.1-Ubuntu14.04-x86_64.tgz
+          - tar -xzf qctool_v2.0.1-Ubuntu14.04-x86_64.tgz
+          - cp qctool_v2.0.1-Ubuntu14.04-x86_64/qctool /usr/bin/
           - qctool
           - apt-get install --assume-yes zlib1g-dev
           - apt-get install --assume-yes python-pip
