@@ -4,6 +4,7 @@ ${HOME}	%{HOME}
 ${BUILDDIR}	${BASEDIR}/build
 ${TMPDIR}	${BUILDDIR}/test/functional/tmp
 ${BGENIX}	${BUILDDIR}/apps/bgenix
+${RBGEN}	${BUILDDIR}/R/rbgen
 ${QCTOOL}	qctool
 ${UNITTEST}	${BUILDDIR}/test/unit/test_bgen
 
@@ -38,6 +39,9 @@ Bgenix lists variants
 	@{lines}=	Split to lines	${contents}
 	${length}=	Get length	${lines}
 	Should be equal as integers	${length}	202
+
+Rbgen loads data
+	Run process	./test_rbgen.sh	R	${RBGEN}
 
 *** Keywords ***
 
