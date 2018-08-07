@@ -1,20 +1,11 @@
-image: atlassian/default-image:latest
+image: gavinband/ubuntu-14.04-build
 pipelines:
   default:
     - step:
         script:
-          - wget http://www.well.ox.ac.uk/~gav/resources/qctool_v2.0.1-Ubuntu14.04-x86_64.tgz
-          - tar -xzf qctool_v2.0.1-Ubuntu14.04-x86_64.tgz
-          - cp qctool_v2.0.1-Ubuntu14.04-x86_64/qctool /usr/bin/
-          - qctool
-          - apt-get install --assume-yes zlib1g-dev
-          - apt-get install --assume-yes python-pip
-          - python -m pip install robotframework
-          - qctool -g example/example.16bits.bgen -og /tmp/x.vcf
           - ./waf configure
           - ./waf
           - cd test/functional
-          - mkdir -p test-reports/-o
-          
+          - mkdir -p test-reports/
           - pybot -o output.xml -l log.html -r report.html -d test-reports -x xunit.xml ./tests.txt
 
