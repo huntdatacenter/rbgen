@@ -4,9 +4,9 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<title>The BGEN format</title>
-	<link href="style.css" rel="stylesheet" type="text/css" />
-	<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
-	<script type="text/javascript" src="js/local.js"></script>
+	<link href="../style.css" rel="stylesheet" type="text/css" />
+	<script type="text/javascript" src="../js/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript" src="../js/local.js"></script>
 </head>
 
 <body>
@@ -21,185 +21,16 @@
   </div>
   <div class="main_text">
     <div id="overview">
-		<div class="version">v1.3</div>
+		<div class="version">v1.2</div>
 		<div class="version_overview">
-			<b>This page documents version 1.3 of the BGEN format.</b>
-			This version is backward-compatible with the
-			earlier <a href="bgen_format_v1.2.html">v1.2</a> and
-			<a href="bgen_format_v1.1.html">v1.1</a> format specs -
-			this means every v1.2-format or v1.1-format BGEN file is also a valid v1.3-format file.
-			The v1.3 spec adds the ability to compress using <a href="http://facebook.github.io/zstd/">zstandard</a>
-			instead of <a href="http://www.zlib.net">zlib</a>.
-			(See below for a full history of versions of this spec).
-			<p>
-				<b>Note:</b> The UK Biobank full release imputed genotype data will be released in BGEN format, using
-				using 8 bits per probability and zlib compression (so compatible with the <a href="bgen_format_v1.2.html">BGEN v1.2 format specification</a>).
-				Phased haplotype data has also been released in BGEN format.
-			</p>
-			<p>
-				The UK Biobank interim release imputed genotype data was released in <a href="bgen_format_v1.1.html">BGEN v1.1 format<a>.
-			</p>
+			<b>This page documents version 1.2 of the BGEN format.</b>
+				A more recent version of this specification is available - see
+				<a href="latest.html">here<a> for details<a>.
 		</div>
 	</div>
 
-	<div id = "introduction" class="section">
-    <h2>Introduction</h2>
-		<p>
-			Modern genetic association studies routinely employ data on tens to hundreds of thousands
-			of individuals, genotyped or imputed at tens of millions of markers genome-wide.  Traditional
-			data formats based on text representation of these data - such as
-			the <a href="http://www.stats.ox.ac.uk/%7Emarchini/software/gwas/file_format.html">GEN</a>
-			format output by <a href="https://mathgen.stats.ox.ac.uk/impute/impute_v2.html">IMPUTE</a>,
-			or the <a href="http://ga4gh.org/#/fileformats-team">Variant Call Format</a>
-			- are sometimes not well suited to these data quantities.  Indeed, for simple programs the time spent parsing
-			these formats can dominate program execution time.
-		</p>
-		<p>
-			This page describes a binary GEN file format (the "BGEN" format) which aims to address these problems.
-			BGEN is a robust format that has been designed to have a specific blend of features that we believe make it
-			useful for this type of study.  It is targetted for use with large, potentially imputed genetic datasets.
-			Key features include:
-			</ul>
-				<li>The ability store both directly typed and imputed data.</li>
-				<li>The ability to store both unphased genotypes and phased haplotype data.</li>
-				<li>Small file sizes through the use of efficient, variable-precision packed bit representations and compression.</li>
-				<li>The use of per-variant compression makes the format simple to index and easy to catalogue.</li>
-			</ul>
-		</p>
-		<p>
-			For example, the following plot shows the time taken to list variant identifying data - i.e. the genomic
-			position, ID fields and alleles - for various common formats (Y-axis), against file size (X axis), for a dataset
-			of 18,496 samples typed at 121,668 SNPs on chromosome 1.  Both variants of BGEN defined below are shown.
-		</p>
-		<div class="embedded_plot">
-			<center>
-				<img width = 400 height = 300 src="images/bgen_comparison.png"></img>
-			</center>
-		</div>
-		<p>
-			For <a href="https://www.cog-genomics.org/plink2/input#bed">PLINK binary (<code>.bed</code>) files</a>, identifying data is
-			stored in a separate file (the <span class="monospace"><code>.bim</code></span> file) so the time is effectively zero.
-			For text-based formats there is a significant trade-off between the use of file compression and
-			read performance.  BGEN stores
-			the entire dataset of 2,250 million genotypes in 334Mb, slightly over one bit per genotype, and in this test took 1.5s.
-		</p>
-		<p>
-			(Performance optimisation of all formats may of course be possible, so the above plot
-			will not represent the best possible timings, but should be regarded as illustrative.)
-		</p>
-		<p>
-			The BGEN format has been used in several major projects, including the
-			<a href="http://www.wtccc.org.uk/ccc2/">Wellcome Trust Case-Control Consortium 2</a>
-			and the <a href="https://www.malariagen.net/projects/host">MalariaGEN</a> project.
-			It has been adopted as the release format for genome-wide imputed genotypes
-			for the <a href="http://www.ukbiobank.ac.uk">UK Biobank</a>.
-		</p>
-	</div>
-	<div id = "contributors">
-		<strong>Acknowledgements.</strong> The following people contributed to the design and implementation of the BGEN format:
-        <ul>
-                <li>
-                    <a href="http://www.well.ox.ac.uk/~gav/">Gavin Band</a>
-                </li>
-                <li>
-                    <a href="http://www.stats.ox.ac.uk/~marchini/">Jonathan Marchini</a>
-                </li>
-			</ul>
-	</div>
-	<div id = "tools">
-		<h3>Software support</h3>
-		<p>A freely available C++ implementation of the BGEN format is available
-			<a href="http://bitbucket.org/gavinband/bgen">on bitbucket</a>.  This repository also contains a number of useful tools:
-		</p>
-		<dl>
-			<dt><a href="http://bitbucket.org/gavinband/bgen/wiki/bgenix"><code>bgenix</code></a><dt>
-				<dd>A tool which provides random access to data in a BGEN file by creating an index.</dd>
-			<dt><a href="http://bitbucket.org/gavinband/bgen/wiki/cat-bgen"><code>cat-bgen</code></a><dt>
-				<dd>A program to efficiently concatenate BGEN files.  Together with <code>bgenix</code> this effectively
-					enables map/reduce pipelines that operate in parallel on seperate genomic regions.
-					For example, we have found this useful for joining data into chromosomes after imputing genome-wide.</dd>
-				<dt><A href="https://bitbucket.org/gavinband/bgen/wiki/edit-bgen"><code>edit-bgen</code></a></dt>
-				<dd>A tool to (destructively) edit the BGEN header data.</dd>
-			<dt><a href="http://bitbucket.org/gavinband/bgen/wiki/rbgen"><code>rbgen</code></a></dt>
-				<dd>An R package that can be used to load data from an <code>bgenix</code>-indexed BGEN file into <a href="">R</a>.</dd>
-		</dl>
-		<p>
-			In addition a set of example files and example programs, intended to demonstrate the API, are provided.
-		</p>
-		<p>
-			Bgen support has been also implemented in several other software packages, click on the links below for more information.
-		</p>
-		<div class="logo_container">
-			<a href="http://www.well.ox.ac.uk/~gav/qctool"><span style="font-family: Ariel, Helvetica, Tahoma">qctool v2</span></a>
-			<a href="http://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html"><code>SNPTEST</code></a>
-			<a href="http://www.cog-genomics.org/plink2"><code>PLINK</code></a>
-			<a href="http://watson.hgen.pitt.edu/mega2.html"><code>Mega2</code></a>
-			<a href="http://www.christianbenner.com/"><img src="images/ldstore.png" alt="LDSTORE" height=20></a>
-			<a href="http://www.geenivaramu.ee/en/tools/regscan"><img src="images/regscan.png" height=25 alt="REGSCAN"></a>
-			<a href="http://jmarchini.org/bgenie/"><code>BGENIE</code></a>
-			<a href="http://hail.is"><img src="images/hail-logo-cropped.png" alt = "Hail"  height=20></a>
-			<a href="http://data.broadinstitute.org/alkesgroup/BOLT-LMM/"><code>BOLT-LMM</code></a>
-		</div>
-		<p>
-			(Please contact me if your software supports BGEN and you'd like it added to this list.)
-		</p>
-	</div>
-    <div id="history" anchor="history">
-      <h3>Change history</h3>
+	<div id="specification" class="section">
 
-	  <div class = "boxed">
-	  <dl>
-	  <p>
-		  A history of revisions of the BGEN format spec is as follows:
-	  </p>
-	  <ul>
-		  <dt>BGEN v1.3 (January 2017):</dt>
-		  <dd>
-			  <li>Support for the <a href="http://zstd.net">zstandard</a> compression library. 
-				 Tests indicate this has better performance both in terms of file size
-				 and speed of reading and writing.</li>
-		  </dd>
-		  <dt>BGEN v1.2 (March 2016):</dt>
-		  <dd>
-			  Major update extending the BGEN format to add:
-              <ul>
-                <li>Support for variable ploidy and explicit missing data.</li>
-
-                <li>Support for multi-allelic variants (e.g. complex structural
-                variants).</li>
-
-                <li>Allow for control over file size by supporting genotype probabilities
-                stored at configurable precision.</li>
-
-                <li>Support for storing sample identifiers.</li>
-              </ul>
-			  A draft version of this spec was published beginning May 2015.  The following changes have been made since the earlier draft:
-			  <ul>
-				  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in Layout 2 (v1.2-style) variant data blocks.</li>
-				  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
-					  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
-				  </ul>
-			  
-		  </dd>
-		  <dt>BGEN v1.1 (March 2012):</dt>
-		  <dd>
-              The first widely used version of the BGEN format.  The UK Biobank interim imputed data was released in this format.
-			  Relative to v1.0, this version is designed to cope with the long alleles present at indels and
-              structural variants in recent releases of the 1000 genomes project.  Features
-			  of this version are:
-              <ul>
-                <li>Support for biallelic SNPs and indels with alleles of arbitrary length (up to 2<sup>32</sup>-1).</li>
-                <li>Store probabilities to at least 4 decimal places worth' of accuracy</li>
-              </ul>
-		  </dd>
-		  <dt>BGEN v1.0 (2009):</dt>
-		  <dd>
-			  The original BGEN format.  <em>This version is now unsupported.</em>
-		  </dd>
-		</dl>
-	</div>
-	<div id="specification">
-    <h2>Detailed specification</h2>
 	    <h3>Overview</h3>
 
 	    <p>A BGEN file consists of a header block, giving general infomation about the file,
@@ -213,6 +44,8 @@
 			block.  Currently two formats are supported - Layout 1 blocks which are a direct translation to binary
 			of the GEN format; and Layout 2 blocks, which are both more space-efficient and more flexible, including
 			support for genotype and haplotype data, multi-allelic variants, and non-diploid samples.
+			An older format, used in the
+			v1.0 spec, is now deprecated and is no longer documented in this spec.
 		</p>
 
 	    <h3>Data types</h3>
@@ -326,7 +159,8 @@
     <h4>Header block -- flag definitions</h4>
 
     <p>The following flags can be contained in the <em>flags</em> field in the header
-    block. <b>Note</b>: bits and field values not specified here are reserved for possible future use.</p>
+    block. <b>Note</b>: bits and field values not specified here are reserved for possible future use;
+	they should be set to zero.</p>
 
     <table class="filespec">
       <tr>
@@ -361,16 +195,6 @@
       </tr>
 
       <tr>
-        <td></td>
-
-        <td></td>
-
-        <td>2</td>
-
-        <td>Indicates SNP block probability data is compressed using zstandard's ZSTD_compress() function.</td>
-      </tr>
-
-      <tr>
         <td>2-5</td>
 
         <td><em>Layout</em><br />
@@ -378,7 +202,10 @@
 
         <td>0</td>
 
-        <td>This value is not supported.</td>
+        <td>Indicates SNP blocks are layed out according to <b>Layout 0</b>, first used
+			in the <a href="bgen_format_v1.0.html">v1.0 spec</a>. This allows only single-character alleles.
+        <b>Use of this format is deprecated, in the sense that it should not be used for
+        new files.</b> We will remove this from a future version of the spec.</td>
       </tr>
 
       <tr>
@@ -388,9 +215,9 @@
 
         <td>1</td>
 
-        <td>Indicates SNP blocks are layed out according to Layout 1, i.e. as in the <a href=
-        "bgen_format_v1.1.html">v1.1 spec</a>. This allows for multiple characters in
-        alleles and is supported in SNPTEST from <a href=
+        <td>Indicates SNP blocks are layed out according to <b>Layout 1</b>, i.e. as in
+			the <a href= "bgen_format_v1.1.html">v1.1 spec</a>. This allows for
+			multiple characters in alleles and is supported in SNPTEST from <a href=
         "https://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html">version
         2.3.0</a>, and in <a href=
         "http://www.well.ox.ac.uk/~gav/qctool/qctool.html">QCTOOL</a> from version
@@ -404,8 +231,8 @@
 
         <td>2</td>
 
-        <td>Indicates SNP blocks are layed out according to Layout 2, introduced
-			in <a href="bgen_format_v1.2.html">version 1.2 of the spec</a>. This format supports multiple alleles, phased and
+        <td>Indicates SNP blocks are layed out according to <b>Layout 2</b>, introduced in version 1.2 of
+			the spec (i.e. in this document). This format supports multiple alleles, phased and
         unphased genotypes, explicit specification of ploidy and missing data, and
         configurable levels of compression.<br />
         It is recommended that all new files are stored with <em>Layout</em>=2.</td>
@@ -537,8 +364,8 @@
 
     <p>Following the header comes a sequence of <em>M</em> variant data blocks (where <em>M</em> is the number
 		specified in the header block).
-		This document describes SNP blocks for version 1.1 (specified by the <em>Layout</em>=1 flag) and 1.2
-    (<em>Layout</em>=2 flag) of the BGEN spec.
+		This document describes SNP blocks for spec versions 1.1 and above.
+		Version 1.0 is deprecated and should not be used in new files.
 
     <p>Variant data blocks are comprised of: a section of identifying data (containing variant IDs,
     position, and alleles), followed by a section containing the genotype probability
@@ -696,7 +523,7 @@
 			Otherwise this is <em>C</em> bytes which can be uncompressed
 			using <a href="http://www.zlib.net">zlib</a> to form <em>6N</em> bytes stored in the format described below.
 			(Zstandard compression, encoded by the value <em>CompressedSNPBlocks = 2</em>,
-			is not supported for Layout 1 blocks.)
+			is not supported for v1.1 style blocks.)
 		</td></tr>
 	</tbody>
 			<tfoot>
@@ -713,7 +540,6 @@
 				When <em>CompressedSNPBlocks</em> is not set, these 6 * <em>N</em> bytes are
 				stored in the file directly.  When <em>CompressedSNPBlocks>0</em>, these 6*<em>N</em>
 				bytes are first compressed using <a href="http://www.zlib.net/">zlib</a>
-				or <a href="http://www.zstd.org">zstandard</a>,
 				and the length of the compressed data is stored as the 4-byte integer <em>C</em>,
 				followed by the compressed data itself.
             </p>
@@ -778,9 +604,8 @@
 
 	          <td>Genotype probability data for the SNP for each of the <em>N</em> individuals in
 	            the cohort.  If <em>CompressedSNPBlocks = 0</em>, this is <em>D</em> bytes
-				stored in the format described below.  If <em>CompressedSNPBlocks</em> is nonzero, this is <em>C-4</em> bytes
-				which can be uncompressed to form <em>D</em> bytes in the format described below.
-				(Compression uses either zlib or zstd according to the value of <em>CompressedSNPBlocks</em>; see the header block documentation.
+				stored in the format described below.  If <em>CompressedSNPBlocks = 1</em>, this is <em>C-4</em> bytes
+				which can be uncompressed using zlib to form <em>D</em> bytes in the format described below.
 			</td>
 	        </tr>
 	      </tbody>
@@ -997,117 +822,6 @@
 	<p>
 		In practice we there may be some rounding error in probabilities input into the BGEN format.
 		We therefore renormalise input probabilities to sum to one.
-	</p>
-</div>
-<h2>Rationale and FAQ</h2>
-<div id = "rationale">
-	<p>
-	<b>Q.</b> Should I use BGEN v1.1, v1.2, or v.1.3?  Or something else?
-	</p>
-	<p>
-	<b>A.</b> The short answer is that we believe that for most purposes BGEN v1.2 and v1.3 is a
-	good choice for storage of hard-called or imputed genotypes.
-	</p>
-	<p>For a more detailed answer, the following table tabulates features of various different formats:
-	<table class = "filespec">
-		<tr><th></th>
-			<th>PLINK binary</th><th>GEN</th><th>BGEN v1.1</th><th>BGEN v1.2 / v1.3</th><th>VCF</th><th>BCF</th></tr>
-		<tr><td>Supports unphased genotype calls</td>
-			<td>&#10003;</td><td>&#10003;<sup>*</sup></td><td>&#10003;<sup>*</sup></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
-		<tr><td>Supports unphased genotype probabilities</td>
-			<td></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
-		<tr><td>Supports NULL/outlier probability<br /><small>e.g. NULL class from CHIAMO / GenoSNP</small></td>
-			<td></td><td>&#10003;</td><td>&#10003;</td><td></td><td>&#10003;</td><td>&#10003;</td></tr>
-		<tr><td>Supports non-diploid samples</td>
-			<td></td><td>&dagger;</td><td><sup>&dagger;</sup></td><td>&#10003;</td><td>&#10003;<sup>&Dagger;</sup></td><td>&#10003;<sup>&Dagger;</sup></td></tr>
-		<tr><td>Supports phased data?</td>
-			<td></td><td></td><td></td><td>&#10003;</td><td>&#10003;<sup>&Dagger;</sup></td><td>&#10003;<sup>&Dagger;</sup></td></tr>
-		<tr><td>Supports multi-allelic variants</td>
-			<td></td><td></td><td></td><td>&#10003;</td><td>&#10003;</td><td>&#10003;</td></tr>
-		<tr><td>Efficient representation?</td>
-			<td>&#10003;</td><td></td><td>&#10003;</td><td>&#10003;</td><td></td><td>&#10003;</td></tr>
-	</table>
-	<p>
-		<small>
-		<sup>*</sup>Hard-called genotypes are converted to probabilities in GEN and BGEN v1.1.
-		<sup>&dagger;</sup>By convention, males on the X chromosome are stored as homozygote females in GEN and BGEN v1.1.
-		<sup>&Dagger;</sup>At the time of writing, the storage of genotype likelihoods and probabilities for non-diploid samples
-		and/or phased data in VCF/BCF is not fully specified.
-	</small>
-	</p>
-	<p>
-		Thus BGEN v1.2 or v1.3 is appropriate except for storing genotype probabilities from cluster-based calles such as
-		<a href="https://mathgen.stats.ox.ac.uk/genetics_software/chiamo/chiamo.html"><code>CHIAMO</code></a>
-		or <a href="http://www.stats.ox.ac.uk/~giannoul/GenoSNP/"><code>GenoSNP</code></a>,
-		which can assign nonzero probability to a NULL or outlier class.  Use BGEN v1.1 or another format for these data.
-	<p>
-		Another consideration over what to use is tool support.  Support for BGEN v1.1 has been available for some time in
-		QCTOOL, SNPTEST and other packages including PLINK.  Support for BGEN v1.2 is becoming available across a range of tools
-		mid-2016.  We expect tool support for BGEN to continue to increase in future, driven in part by the use of
-		BGEN for the UK Biobank data releases and the <a href="http://bitbucket.org/gavinband/bgen">availability
-			of a reference implementation</a>.
-	</p>
-	<b>Q.</b> Why compress the data for each variant seperately?  Doesn't this end up using more space?
-	</p>
-	<p>
-	<b>A.</b> Compressing each variant seperately has the advantage that the variant identifying data fields -
-	which are stored uncompressed in BGEN - can be efficiently accessed without decompressing the whole file.
-	It's true that theoretically higher rates of compression could be acheived by compressing as much data as possible.
-	However, for large cohorts, each variant has plenty of data to compress, so the difference is expected to be small.
-	(Alternative indexing approaches - like <a href="bgzip">bgzip</a>, which
-		compresses data in blocks - also incur a size overhead.)
-	</p>
-	<p>
-	<b>Q.</b> Why store the number of individuals on each row?  Why store the number of alleles twice?  Doesn't this waste space?
-	</p>
-	<p>
-	<b>A.</b> Yes, each repeated field wastes 4 bytes per variant.  However, this is expected to be a tiny fraction of overall file size.
-	The inclusion of repeated fields makes parsing simpler (since parsers don't need to be stateful) and also provides a useful way
-	of testing that file structure is correct.
-	</p>
-	<p>
-	<b>Q.</b> (For Layout 2 variant data blocks) Why the choice of colex order of genotypes?
-	</p>
-	<p>
-	<b>A.</b> Several considerations motivated this choice - including simplicity of specification, ease of implementation,
-	and compatibility with established standards.
-	</p>
-	<p>
-		The colex order coincides with the order specified for 
-		<code>GL</code> and <code>GP</code> fields for diploid samples in the <a href="https://samtools.github.io/hts-specs/">VCF</a>.  (At the time of writing the VCF specification of this field
-		only applies to diploid samples).  This makes it easy to convert between BGEN and VCF formats.
-	</p>
-	<p>
-	The chosen order has a useful 'nesting' property: adding an allele does not change the order of probabilities for
-	genotypes not carrying the new allele.  More precisely, at a variant with <em>K+1</em> alleles, genotypes
-	carrying only alleles among the first <em>K</em> appear earlier in the ordering than
-	those carrying the <em>K</em>th allele - and with the same order as if the 'extra' allele wasn't present.
-	A practical consequence of this is that mapping of each genotype to the index of
-	the corresponding probability can be accomplished using a single lookup table that is independent of <em>K</em>
-	(though it does depend on the ploidy).  We used such a lookup table in the
-	<a href="https://bitbucket.org/gavinband/qctool/src/tip/genfile/src/ToGP.cpp">QCTOOL implementation</a> to convert hard-called
-	genotypes to probabilities. 
-	</p>
-	<p>
-	<b>Q.</b> (For Layout 2 variant data blocks) Why omit the last probability instead of the first?
-	</p>
-	<p>
-	<b>A.</b> The intention is to make parsing the file as simple and fast as possible.  If we omitted the first probability,
-	parsers would have to read and store all the other probabilities before computing and emitting
-	the first probability.  With the scheme described here, parsers can simply emit the probabilities as they are read from the file,
-	before finally emitting the last probability as one minus the sum of the stored probabilities.
-	</p>
-	<b>Q.</b> (For Layout 2 variant data blocks) Why store dummy zero data for samples with missing genotypes?
-    Doesn't this increase file size unneccessarily?
-	</p>
-	<p>
-	<b>A.</b>
- 		(Note this behaviour was changed in the beta version of the spec relative to the earlier draft.)
-		The intention is to make parsing the file as simple and fast as possible.  One option for loading genotypes
-		from a BGEN file is simply to load the uncompressed genotype data into memory.  Potentially, encoded genotypes could
-		then be used directly, e.g. as keys in a lookup table.  Storing placeholder data for missing samples
-		makes this simpler to implement by maintaining a predictable index for the data for each sample within the encoded
-		representation.  (We note this will be more complicated if ploidy varies across samples).
 	</p>
 </div>
 </body>

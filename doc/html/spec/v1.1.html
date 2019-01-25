@@ -3,8 +3,8 @@
   <HEAD> 
 	 <TITLE>Gavin Band's webspace at the Wellcome Trust Centre for Human Genetics</TITLE><META
 	 NAME="keywords" CONTENT="human genetics research"><LINK HREF="/styles/main.css"
-	 REL="stylesheet"><SCRIPT SRC="/scripts/random_images.js"></SCRIPT><SCRIPT SRC="/scripts/date.js"></SCRIPT> 
-	<LINK HREF="style.css" REL="stylesheet">
+	 REL="stylesheet"><SCRIPT SRC="../scripts/random_images.js"></SCRIPT><SCRIPT SRC="/scripts/date.js"></SCRIPT> 
+	<LINK HREF="../style.css" REL="stylesheet">
 </HEAD> 
 <body>
   <div class="header">
@@ -20,90 +20,9 @@
 		<div class="version">v1.1</div>
 		<div class="version_overview">
 			<b>This page documents version 1.1 of the BGEN format.</b>
-				A more recent version of this document is available - see
-				<a href="bgen_format.html">the latest BGEN specification<a>.
+				A more recent version of this specification is available - see
+				<a href="latest.html">here<a> for details<a>.
 		</div>
-	</div>
-		<div id="introduction" class="section">
-			<h2>Introduction</h2>
-			<h3>Background</h3>
-				<p>
-					Modern genetic association studies routinely employ data on tens to hundreds of thousands
-					of individuals, genotyped or imputed at tens of millions of markers genome-wide.  Traditional
-					data formats based on text representation of these data - such as
-					the <a href="http://www.stats.ox.ac.uk/%7Emarchini/software/gwas/file_format.html">GEN</a>
-					format output by <a href="https://mathgen.stats.ox.ac.uk/impute/impute_v2.html">IMPUTE</a>,
-					or the <a href="http://ga4gh.org/#/fileformats-team">Variant Call Format</a>
-					- are sometimes not well suited to these data quantities.  For simple programs the time spent parsing
-					these formats can dominate program execution time.
-				</p>
-				<p>
-					This page describes a binary GEN file format (the "BGEN" format) which aims to address these problems.
-					BGEN is a robust format that has been designed to have a specific blend of features that we believe make it
-					useful for this type of study.  It is targetted for use with large, potentially imputed genetic datasets.
-					Key features include:
-					</ul>
-						<li>The ability store both directly typed and imputed data.</li>
-						<li>Small file sizes through the use of an efficient representation of probability data and compression.</li>
-						<li>The use of per-variant compression makes the format simple to index and easy to catalogue.</li>
-					</ul>
-				</p>
-				 <p>
-					The BGEN format has been used in several major projects, including the
-					<a href="http://www.wtccc.org.uk/ccc2/">Wellcome Trust Case-Control Consortium 2</a>
-					and the <a href="https://www.malariagen.net/projects/host">MalariaGEN</a> project.
-					It will be the release format for genome-wide genotype data for
-					the <a href="http://www.ukbiobank.ac.uk">UK Biobank</a>.
-				</p>
-			</div>
-			<div id = "contributors">
-				<strong>Acknowledgements.</strong> The following people contributed to the design and implementation of the BGEN format:
-		        <ul>
-		                <li>
-		                    <a href="http://www.well.ox.ac.uk/~gav/">Gavin Band</a>
-		                </li>
-		                <li>
-		                    <a href="http://www.stats.ox.ac.uk/~marchini/">Jonathan Marchini</a>
-		                </li>
-					</ul>
-			</div>
-			<div id = "tools">
-				<h3>Tool support</h3>
-				<ul>
-					<li><a href="http://www.well.ox.ac.uk/~gav/qctool">QCTOOL</a> can be used to read and write
-					BGEN files, and to convert them to other formats.</li>
-					<li>We have written a tool <a href="http://www.well.ox.ac.uk/~gav/qctool">cat-bgen</a> which can be used to efficiently
-						concatenate BGEN files.  We found this useful for joining together chunks of imputed data after a genome-wide
-						imputation run.</li>
-					<li><a href="https://mathgen.stats.ox.ac.uk/genetics_software/snptest/snptest.html">SNPTEST</a> has supported BGEN since
-					version 2.4.0.</li>
-					<li><a href="">PLINK 1.9</a> now includes <a href="https://www.cog-genomics.org/plink2/input#oxford">support for BGEN</a>.</li>
-				</ul>
-				<p>A freely available C++ implementation of the BGEN format is available in the "genfile" sublibrary of QCTOOL,
-					available <a href="http://bitbucket.org/gavinband/qctool/">here</a>.</p>
-			</div>
-            <h3>Change history</h3>
-    <div id="history">
-
-	  <div class = "boxed">
-	  <dl>
-		  <dt>v1.1 (March 2012):</dt>
-		  <dd>
-              BGEN format that is designed to cope with the long alleles present at indels and
-              structural variants in recent releases of the 1000 genomes project.  Features
-			  of this version are:
-              <ul>
-                <li>Support for biallelic SNPs and indels with alleles of arbitrary length (up to 2<sup>32</sup>-1).</li>
-                <li>Store probabilities to at least 4 decimal places worth' of accuracy</li>
-              </ul>
-		  </dd>
-		  <dt>v1.0 (2009):</dt>
-		  <dd>
-			  The original BGEN format.  This version is now deprecated and will be removed
-			  from a future version of this spec; there probably aren't any files in the wild
-			  in this format.
-		  </dd>
-		</dl>
 	</div>
 				<h2>Detailed specification</h2>
 				<p>
