@@ -816,7 +816,7 @@ private:
 				assert( alleles.size() > 1 ) ;
 				std::cout << chromosome
 					<< "\t" << position
-					<< "\t" << rsid << "," << SNPID
+					<< "\t" << rsid << ";" << SNPID
 					<< "\t" << alleles[0]
 					<< "\t" ;
 				for( std::size_t j = 1; j < alleles.size(); ++j ) {
