@@ -67,7 +67,7 @@ namespace {
 
 		// Called once per sample to determine whether we want data for this sample
 		bool set_sample( std::size_t i ) {
-			if( m_requested_sample_i->first == i ) {
+			if( m_requested_sample_i != m_requested_samples.end() && m_requested_sample_i->first == i ) {
 				m_storage_i = m_requested_sample_i->second ;
 				++m_requested_sample_i ;
 #if DEBUG
