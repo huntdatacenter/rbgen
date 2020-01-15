@@ -1,6 +1,31 @@
 History
 ====
 
+15 January 2020
+----
+v1.1.5 release.  Changes are:
+
+- incorporate fix from Maarten Kooyman to build using Python 3.
+- fix issue #39 <https://bitbucket.org/gavinband/bgen/issues/39/rbgen-segfault-when-samples-are-given-in>
+
+7 August 2018
+----
+v1.1.4 release.  Update to fix sample subset issue with BGEN v1.1.
+
+2 May 2015
+-----
+v1.1.3 release.  The main changes are:
+
+- The rbgen R package, which gets data from indexed BGEN files into R, is has several improvements - it's easier to install, and has additional features (see below).
+- New, improved bgenix vcf output - now up to 50X faster.
+- Further performance improvements and resolution of a number of issues across the library.
+
+To accompany this we have written a paper which is now available on bioArxiv: https://doi.org/10.1101/308296. 
+
+13 July 2017
+----
+v1.0 release
+
 7 July 2016
 ----
 

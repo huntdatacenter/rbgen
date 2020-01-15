@@ -25,6 +25,34 @@ div.header {
 	font-size: 15px ;
 }
 
+nav {
+	clear: both ;
+	position: relative ;
+	font: sans-serif ;
+	font-size: 20px ;
+	padding: 0px ;
+	margin: 0px ;
+	background-color: #dddddd;
+	border-radius: 2px ;
+}
+
+nav > ul {
+	position: relative;
+	list-style: none ;
+	padding-top: 0px ;
+	padding-bottom: 0px ;
+	margin-top: 0px ;
+	margin-bottom: 0px ;
+	text-align: left ;
+}
+
+nav > ul > li {
+	display: inline-block ;
+	min-width: 5em ;
+	text-align: left ;
+	clear: none ;
+}
+
 #overview {
 	clear: both ;
 }
@@ -245,6 +273,3 @@ div.logo_container + p {
 	clear: both;
 	padding-top: 20px ;
 }
-
-
-

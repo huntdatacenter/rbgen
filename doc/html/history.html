@@ -1,0 +1,95 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<!-- Global Site Tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-16521993-10"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-16521993-10');
+	</script>
+	<title>The BGEN format</title>
+	<link href="style.css" rel="stylesheet" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript" src="js/local.js"></script>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header_text">
+      The BGEN format
+    </div>
+
+    <div class="header_subtext">
+      A compressed binary format for typed and imputed genotype data
+    </div>
+	<!-- navigation -->
+  </div>
+	<nav>
+		<ul>
+			<li><a href="index.html">home</a></li>
+			<li><a href="software.html">software</a></li>
+			<li><a href="history.html">history</a></li>
+			<li><a href="paper.html">paper</a></li>
+			<li><a href="spec/latest.html">specification</a></li>
+		</ul>
+	</nav>
+	  <div class = "boxed">
+			<h3>History of revisions</h3>
+	  <dl>
+	  <p>
+		  A history of revisions of the BGEN format specification is as follows:
+	  </p>
+	  <ul>
+		  <dt><b>BGEN v1.3</b> (January 2017): <a href="spec/v1.3.html">link to spec</a></dt>
+		  <dd>
+			  <li>Support for the <a href="http://zstd.net">zstandard</a> compression library. 
+				 Tests indicate this has better performance both in terms of file size
+				 and speed of reading and writing.</li>
+		  </dd>
+		  <dt><b>BGEN v1.2</b> (March 2016): <a href="spec/v1.2.html">link to spec</a></dt>
+		  <dd>
+			  Major update extending the BGEN format to add:
+              <ul>
+                <li>Support for variable ploidy and explicit missing data.</li>
+
+                <li>Support for multi-allelic variants (e.g. complex structural
+                variants).</li>
+
+                <li>Allow for control over file size by supporting genotype probabilities
+                stored at configurable precision.</li>
+
+                <li>Support for storing sample identifiers.</li>
+              </ul>
+			  A draft version of this spec was published beginning May 2015.  The following changes have been made since the earlier draft:
+			  <ul>
+				  <li><b>2015-11-05</b> (<code>v1.2 beta1</code>): modified the treatment of missing data in Layout 2 (v1.2-style) variant data blocks.</li>
+				  <li><b>2016-03-21</b> (<code>v1.2 beta2</code>): modified the order of stored probabilities for samples with ploidy greater than 2;
+					  clarified specification of the <code>phased</code> flag for samples with ploidy less than 2.</li>
+				  </ul>
+			  
+		  </dd>
+		  <dt><b>BGEN v1.1</b> (March 2012): <a href="spec/v1.1.html">link to spec</a></dt>
+		  <dd>
+              The first widely used version of the BGEN format.  The UK Biobank interim imputed data was released in this format.
+			  Relative to v1.0, this version is designed to cope with the long alleles present at indels and
+              structural variants in recent releases of the 1000 genomes project.  Features
+			  of this version are:
+              <ul>
+                <li>Support for biallelic SNPs and indels with alleles of arbitrary length (up to 2<sup>32</sup>-1).</li>
+                <li>Store probabilities to at least 4 decimal places worth' of accuracy</li>
+              </ul>
+		  </dd>
+		  <dt><b>BGEN v1.0</b> (2009):</dt>
+		  <dd>
+			  The original BGEN format.  <em>This version is now unsupported.</em>
+		  </dd>
+		</dl>
+	</div>
+
+</body>
+</html>
