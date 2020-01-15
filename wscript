@@ -2,7 +2,7 @@ import platform, os.path
  
 srcdir="."
 APPNAME = "bgen"
-VERSION = "1.2-dev"
+VERSION = "1.1.5"
 
 def options( opt ):
 	opt.load( 'compiler_cxx' )
@@ -30,7 +30,7 @@ def configure( cfg ):
 		cfg.check_cxx( lib='dl', uselib_store='dl', msg = 'dl' )
 
 def build( bld ):
-	print "Creating %s build..." % bld.options.mode
+	print ("Creating %s build..." % bld.options.mode )
 	bld(
 		rule = """printf '#ifndef BGEN_REVISION_HPP\n#define BGEN_REVISION_HPP\nnamespace globals {\n\tchar const* bgen_version = \"%%s\" ;\n\tchar const* const bgen_revision = \"%%s\" ;\n}\n#endif\n' `echo """ + VERSION + "` `hg parents --template={node}` > ${TGT}""",
 		always = True,
@@ -63,7 +63,7 @@ class ReleaseBuilder:
 	def makedirs( self, path ):
 		try:
 			os.makedirs( path )
-		except os.error, e:
+		except os.error as  e:
 			pass
 
 	def create_pkgname_stub( self, packageName, includePlatform = True ):
@@ -99,9 +99,9 @@ class ReleaseBuilder:
 		tarballPath = os.path.join( workingdir, tarball )
 		process = subprocess.Popen( [ 'tar', '-czf', tarball, source ], cwd = workingdir )
 		process.wait()
-		print 'Created %s release tarball in "%s"' % ( name, tarball )
-		print "Contents are:"
-		print subprocess.Popen( [ 'tar', '-tzf',tarballPath ], stdout = subprocess.PIPE ).communicate()[0]
+		print ('Created %s release tarball in "%s"' % ( name, tarball ))
+		print ("Contents are:")
+		print (subprocess.Popen( [ 'tar', '-tzf',tarballPath ], stdout = subprocess.PIPE ).communicate()[0])
 		return tarball
 		
 	def build_rbgen( self ):
@@ -191,13 +191,13 @@ class ReleaseBuilder:
 		
 
 def release( bld ):
-	print "Building bgen release tarball..."
+	print ("Building bgen release tarball...")
 	release = ReleaseBuilder( APPNAME, VERSION )
 	result = release.build_bgen()
-	print "Created %s release tarball in \"%s\"" % ( 'bgen', result )
+	print ("Created %s release tarball in \"%s\"" % ( 'bgen', result ))
 
 def build_rbgen( bld ):
-	print "Building rbgen source package tarball..."
+	print ("Building rbgen source package tarball...")
 	release = ReleaseBuilder( APPNAME, VERSION )
 	result = release.build_rbgen()
-	print "Created %s release tarball in \"%s\"" % ( 'rbgen', result )
+	print ("Created %s release tarball in \"%s\"" % ( 'rbgen', result ))
