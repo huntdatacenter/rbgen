@@ -270,6 +270,7 @@ private:
 
 		connection->run_statement( "PRAGMA locking_mode = EXCLUSIVE ;" ) ;
 		connection->run_statement( "PRAGMA journal_mode = MEMORY ;" ) ;
+		connection->run_statement( "PRAGMA synchronous = OFF;" ) ;
 		
 		db::Connection::ScopedTransactionPtr transaction = connection->open_transaction( 240 ) ;
 		setup_index_file( *connection ) ;
