@@ -5,16 +5,16 @@ Cheat Sheet
 
 Here's a quick list of common bgenix command lines and what they do:
 
-| Command line or option | What it does |
+| :Command line or option | :What it does |
 | ----- | ------------ |
-| `bgenix -help` | Print help on the various options bgenix supports |
-| `bgenix -g file.bgen -index` | Don't output data; instead create an index file for the given bgen file.  It will be named `file.bgen.bgi` | `bgenix -g file.bgen` | Output data from file.bgen (which must be already indexed); data is written to stdout in the same format as in the input file in the order specified by the index. |
-| `bgenix -g file.bgen` | Output genotype data in the same format as file.bgen but ordered as in the index. |
-| `bgenix -g file.bgen -incl-rsids rs1` | Restrict the output to variants with the specified rsid |
-| `bgenix -g file.bgen -incl-range 11:3500000-6500000` | Restrict to variants in the given genomic range. |
-| `bgenix -g file.bgen -vcf` | Transcode data to VCF format. |
-| `bgenix -g file.bgen -v11` | Transcode data to BGEN v1.1 format. |
-| `bgenix -g file.bgen -list` | Don't output genotype data, just list the variants in the index. |
+| :`bgenix -help` 											| :Print help on the various options bgenix supports |
+| :`bgenix -g file.bgen -index` 							| :Don't output data; instead create an index file for the given bgen file.  It will be named `file.bgen.bgi`
+| :`bgenix -g file.bgen` 									| :Output data from file.bgen (which must be already indexed) in the same format as file.bgen but ordered as in the index. |
+| :`bgenix -g file.bgen -incl-rsids rs1` 					| :Restrict the output to variants with the specified rsid |
+| :`bgenix -g file.bgen -incl-range 11:3500000-6500000` 	| :Restrict to variants in the given genomic range. |
+| :`bgenix -g file.bgen -vcf` 								| :Transcode data to VCF format. |
+| :`bgenix -g file.bgen -v11` 								| :Transcode data to BGEN v1.1 format. |
+| :`bgenix -g file.bgen -list`								| :Don't output genotype data, just list the variants in the index. |
 
 Query options and output format options can of course be combined, e.g. the command
 ```
@@ -59,7 +59,7 @@ If the `-list` option is given, bgenix will list variants instead of outputting 
 
 produces this output:
 ```
-# bgenix: started 2016-07-06 09:01:15
+\# bgenix: started 2016-07-06 09:01:15
 alternate_ids	rsid	chromosome	position	number_of_alleles	first_allele
 .	V1	01	1	2	A	G
 V2.1	V2	01	2	2	A	G
@@ -71,7 +71,7 @@ V2.1	V2	01	2	2	A	G
 .	M8	01	8	7	A	G,GT,GTT,GTTT,GTTTT,GTTTTT
 .	M9	01	9	8	A	G,GT,GTT,GTTT,GTTTT,GTTTTT,GTTTTTT
 .	M10	01	10	2	A	G
-# bgenix: success, total 10 variants.
+\# bgenix: success, total 10 variants.
 ```
 
 As described below, another way to list variants is to query the index directly using `sqlite3`, e.g.:
