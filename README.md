@@ -11,7 +11,7 @@ and a number of example programs (e.g. [bgen_to_vcf](example/bgen_to_vcf.cpp)) t
 
 In addition, a number of utilities built using the library are also included in this repository:
 
-* [bgenix](https://bitbucket.org/gavinband/bgen/wiki/bgenix) - a tool to index and efficiently retrieve subsets of a BGEN file. 
+* [/doc/tip/master/doc/wiki/bgenix.md|bgenix] - a tool to index and efficiently retrieve subsets of a BGEN file. 
 * [cat-bgen](https://bitbucket.org/gavinband/bgen/wiki/cat-bgen) - a tool to efficiently concatenate BGEN files.
 * [edit-bgen](https://bitbucket.org/gavinband/bgen/wiki/edit-bgen) - a tool to edit BGEN file metadata.
 * An R package called [rbgen](https://bitbucket.org/gavinband/bgen/wiki/rbgen) is also constructed in the build directory.  See the [rbgen wiki page](https://bitbucket.org/gavinband/bgen/wiki/rbgen) for more information on using this package.
