@@ -1,6 +1,17 @@
 History
 ====
 
+27 June 2020
+----
+- Transition repository to code.enkre.net/bgen
+
+13 March 2020
+----
+v1.1.6 release.  Changes are:
+
+- use PRAGMA synchronous=OFF when connecting to the index db.  This speeds up indexing
+operations (`bgenix -index`) substantially on some network filesystems.
+
 15 January 2020
 ----
 v1.1.5 release.  Changes are:

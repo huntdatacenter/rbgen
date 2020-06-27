@@ -1,4 +1,4 @@
-[bgenix](https://bitbucket.org/gavinband/bgen/src/default/apps/bgenix.cpp) is a tool to create an index of variants in a bgen file and to use that index for efficient retrieval of data for specific variants or regions.  
+[bgenix](https://code.enkre.net/bgen.org/gavinband/bgen/src/default/apps/bgenix.cpp) is a tool to create an index of variants in a bgen file and to use that index for efficient retrieval of data for specific variants or regions.  
 
 Cheat Sheet
 ====
