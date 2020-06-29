@@ -2,7 +2,7 @@ import platform, os.path
  
 srcdir="."
 APPNAME = "bgen"
-VERSION = "1.1.6"
+VERSION = "1.1.7"
 
 def options( opt ):
 	opt.load( 'compiler_cxx' )
