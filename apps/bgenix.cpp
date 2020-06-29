@@ -511,7 +511,6 @@ private:
 		bgen::write_offset( std::cout, offset ) ;
 		bgen::write_header_block( std::cout, context ) ;
 		std::istreambuf_iterator< char > inIt( bgen_file ) ;
-		std::istreambuf_iterator< char > endInIt ;
 		std::ostreambuf_iterator< char > outIt( std::cout ) ;
 
 		// Copy everything else up to the start of the data
