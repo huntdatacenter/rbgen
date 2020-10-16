@@ -35,7 +35,7 @@ def configure(cfg):
     else:
         raise Exception("Unknown value for --mode, please specify --mode=debug or --mode=release")
 
-    # cfg.check_cxx(lib='z', uselib_store='zlib', msg='zlib')
+    cfg.check_cxx(lib='z', uselib_store='zlib', msg='zlib')
     cfg.check_cxx(lib='boost_iostreams', uselib_store='boost', msg='boost_iostreams')
     cfg.check_cxx(lib='boost_system', uselib_store='boost', msg='boost_system')
     cfg.check_cxx(lib='boost_filesystem', uselib_store='boost', msg='boost_filesystem')
