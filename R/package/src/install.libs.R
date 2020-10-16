@@ -14,8 +14,8 @@ if(file.exists("symbols.rds"))
 headers <- list.files("include", pattern = "\\.(hpp|h|a)$", recursive = TRUE, full.names = TRUE, include.dirs = TRUE, no.. = TRUE)
 if (any(file.exists(headers))){
     for (header in headers) {
-        dest <- dirname(file.path(R_PACKAGE_DIR, header))
-        dir.create(dest, recursive = TRUE, showWarnings = FALSE)
-        file.copy(from = header, to = dest, overwrite = TRUE, recursive = TRUE)
+      dest <- dirname(file.path(R_PACKAGE_DIR, header))
+      dir.create(dest, recursive = TRUE, showWarnings = FALSE)
+      file.copy(from = header, to = dest, overwrite = TRUE, recursive = TRUE)
     }
 }
