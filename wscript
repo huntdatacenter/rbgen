@@ -21,10 +21,10 @@ def configure(cfg):
     cfg.load('compiler_c')
     cfg.load('compiler_cxx')
     cfg.env.CXXFLAGS = [
-        '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long',
+        '-Wall', '-pedantic', '-Wno-unused-local-typedefs',  # '-Wno-c++11-long-long',
         '-Wno-deprecated-declarations', '-Wno-long-long', '-fPIC']
     cfg.env.CFLAGS = [
-        '-Wall', '-pedantic', '-Wno-unused-local-typedefs', '-Wno-c++11-long-long',
+        '-Wall', '-pedantic', '-Wno-unused-local-typedefs',  # '-Wno-c++11-long-long',
         'Wno-deprecated-declarations', '-Wno-long-long', '-fPIC']
     if cfg.options.mode == 'release':
         cfg.env.CXXFLAGS += ['-O3']
@@ -35,7 +35,16 @@ def configure(cfg):
     else:
         raise Exception("Unknown value for --mode, please specify --mode=debug or --mode=release")
 
-    cfg.check_cxx(lib='z', uselib_store='zlib', msg='zlib')
+    # cfg.check_cxx(lib='z', uselib_store='zlib', msg='zlib')
+    cfg.check_cxx(lib='boost_iostreams', uselib_store='boost', msg='boost_iostreams')
+    cfg.check_cxx(lib='boost_system', uselib_store='boost', msg='boost_system')
+    cfg.check_cxx(lib='boost_filesystem', uselib_store='boost', msg='boost_filesystem')
+    cfg.check_cxx(lib='boost_thread', uselib_store='boost', msg='boost_thread')
+    cfg.check_cxx(lib='boost_timer', uselib_store='boost', msg='boost_timer')
+    cfg.check_cxx(lib='boost_chrono', uselib_store='boost', msg='boost_chrono')
+    cfg.check_cxx(lib='boost_date_time', uselib_store='boost', msg='boost_date_time')
+    cfg.check_cxx(lib='sqlite3', uselib_store='sqlite3', msg='sqlite3')
+    cfg.check_cxx(lib='zstd', uselib_store='zstd', msg='zstd')
     if platform.system() != "Darwin":
         cfg.check_cxx(lib='rt', uselib_store='rt', msg='rt')
         cfg.check_cxx(lib='pthread', uselib_store='pthread', msg='pthread')
@@ -59,10 +68,10 @@ def build(bld):
         source=bgen_sources,
         target='bgen',
         includes='genfile/include',
-        use='zlib zstd sqlite3 db',
+        use='db sqlite3 boost zstd',
         export_includes='genfile/include'
     )
-    bld.recurse(['3rd_party', 'appcontext', 'genfile', 'db', 'apps', 'example', 'test', 'R'])
+    bld.recurse(['appcontext', 'genfile', 'db', 'apps', 'example', 'test', 'R'])
     # Copy files into rbgen package directory
     for source in bgen_sources:
         bld(
@@ -119,7 +128,7 @@ class ReleaseBuilder:
         process.wait()
         print('Created {} release tarball in "{}"'.format(name, tarball))
         print("Contents are:")
-        print(subprocess.Popen(['tar', '-tzf', tarballPath], stdout=subprocess.PIPE).communicate()[0])
+        print(subprocess.Popen(['tar', '-tzf', tarballPath], stdout=subprocess.PIPE).communicate()[0].decode('utf-8'))
         return tarball
 
     def build_rbgen(self):
@@ -128,14 +137,8 @@ class ReleaseBuilder:
         rbgen_dir = os.path.join(tempdir, release_stub)
         shutil.copytree('R/package/', rbgen_dir)
         os.makedirs(os.path.join(rbgen_dir, "src", "include"))
-        os.makedirs(os.path.join(rbgen_dir, "src", "include", "boost"))
-        os.makedirs(os.path.join(rbgen_dir, "src", "include", "zstd-1.1.0"))
         os.makedirs(os.path.join(rbgen_dir, "src", "db"))
         os.makedirs(os.path.join(rbgen_dir, "src", "bgen"))
-        os.makedirs(os.path.join(rbgen_dir, "src", "boost"))
-        os.makedirs(os.path.join(rbgen_dir, "src", "sqlite3"))
-        os.makedirs(os.path.join(rbgen_dir, "src", "zstd-1.1.0"))
-
         # Copy source files in
         for filename in glob('src/*.cpp'):
             shutil.copy(filename, os.path.join(rbgen_dir, "src", "bgen", os.path.basename(filename)))
@@ -143,49 +146,10 @@ class ReleaseBuilder:
         for filename in glob('db/src/*.cpp'):
             shutil.copy(filename, os.path.join(rbgen_dir, "src", "db", os.path.basename(filename)))
 
-        for filename in glob('3rd_party/sqlite3/sqlite3/sqlite3.c'):
-            shutil.copy(filename, os.path.join(rbgen_dir, "src", "sqlite3", os.path.basename(filename)))
-
-        for filename in glob('3rd_party/zstd-1.1.0/lib/common/*.c') + glob('3rd_party/zstd-1.1.0/lib/compress/*.c') + glob('3rd_party/zstd-1.1.0/lib/decompress/*.c'):  # noqa
-            shutil.copy(filename, os.path.join(rbgen_dir, "src", "zstd-1.1.0", os.path.basename(filename)))
-
-        boostGlobs = [
-            'libs/system/src/*.cpp',
-            'libs/thread/src/*.cpp',
-            'libs/thread/src/*.inl',
-            'libs/thread/src/pthread/once_atomic.cpp',
-            'libs/thread/src/pthread/thread.cpp',
-            'libs/thread/src/pthread/timeconv.inl',
-            'libs/filesystem/src/*.cpp',
-            'libs/date_time/src/posix_time/*.cpp',
-            'libs/timer/src/*.cpp',
-            'libs/chrono/src/*.cpp',
-        ]
-
-        for pattern in boostGlobs:
-            for filename in glob('3rd_party/boost_1_55_0/{}'.format(pattern)):
-                shutil.copy(filename, os.path.join(rbgen_dir, "src", "boost", os.path.basename(filename)))
-
         include_paths = [
-            "3rd_party/boost_1_55_0/boost/",
-            "3rd_party/zstd-1.1.0/",
-            "3rd_party/sqlite3/",
             "genfile/include/genfile",
             "db/include/db"
         ]
-
-        # boostHeaderLibs = [
-        #     'system',
-        #     'thread',
-        #     'filesystem',
-        #     'date_time',
-        #     'timer',
-        #     'chrono',
-        #     'preprocessor',
-        #     'function',
-        #     'optional',
-        #     'mpl'
-        # ]
 
         for include_path in include_paths:
             for root, path, filenames in os.walk(include_path):

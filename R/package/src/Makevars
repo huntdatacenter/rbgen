@@ -11,13 +11,13 @@ PKG_CPPFLAGS = \
 -Wno-unused-local-typedefs \
 -fPIC -O3
 
-PKG_LIBS = -lsqlite3 -lboost_iostreams -lboost_system -lboost_filesystem -lboost_thread -lboost_timer -lboost_chrono -lboost_date_time -lzstd
+PKG_LIBS = -lsqlite3 -lboost_iostreams -lboost_system -lboost_filesystem -lboost_thread -lboost_timer -lboost_chrono -lboost_date_time -lzstd -pthread -lpthread
 
 LIBDB_SOURCES = $(wildcard db/*.cpp)
 LIBDB_OBJECTS = $(patsubst %.cpp,%.o,$(LIBDB_SOURCES))
 CXX_SOURCES = $(wildcard bgen/*.cpp) $(LIBDB_SOURCES)
 CXX_OBJECTS = $(patsubst %.cpp,%.o,$(CXX_SOURCES))
-OBJECTS = RcppExports.o load.o $(CXX_OBJECTS)
+OBJECTS = RcppExports.o load.o $(CXX_OBJECTS) $(C_OBJECTS)
 
 $(info $(C_OBJECTS))
 $(info $(CXX_OBJECTS))
