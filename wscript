@@ -132,7 +132,7 @@ class ReleaseBuilder:
         return tarball
 
     def build_rbgen(self):
-        tempdir = tempfile.mkdtemp()
+        tempdir = os.environ.get('GITHUB_PATH', tempfile.mkdtemp())
         release_stub = self.create_pkgname_stub('rbgen', includePlatform=False)
         rbgen_dir = os.path.join(tempdir, release_stub)
         shutil.copytree('R/package/', rbgen_dir)
