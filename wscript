@@ -69,7 +69,8 @@ def build(bld):
         target='bgen',
         includes='genfile/include',
         use='db sqlite3 boost zstd',
-        export_includes='genfile/include'
+        export_includes='genfile/include',
+        install_path='${PREFIX}/lib'
     )
     bld.recurse(['appcontext', 'genfile', 'db', 'apps', 'example', 'test', 'R'])
     # Copy files into rbgen package directory
