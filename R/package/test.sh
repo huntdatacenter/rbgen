@@ -3,7 +3,7 @@ R="$1"
 if [[ ${R} == '' ]]; then
   R='R'
 fi
-${R} CMD INSTALL build/R/rbgen
+# ${R} CMD INSTALL build/R/rbgen
 ${R} --vanilla << HERE_DOC
 library( rbgen )
 
