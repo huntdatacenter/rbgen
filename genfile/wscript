@@ -1,2 +1,9 @@
 def build(bld):
-    pass
+    genfile_headers = bld.path.ant_glob('include/genfile/**/*.hpp')
+    print(genfile_headers)
+    bld.install_files(
+        '${PREFIX}',
+        genfile_headers,
+        cwd=bld.path,
+        relative_trick=True
+    )
