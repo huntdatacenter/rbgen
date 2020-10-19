@@ -84,6 +84,8 @@ namespace db {
 	
 	void SQLite3Connection::open_db_connection( std::string const& filename, bool overwrite, std::string const& mode ) {
 		int flags = 0 ;
+		// Force uri filenames when SQLITE_USE_URI is not enabled during compilation
+		flags |= SQLITE_OPEN_URI ;
 		if( mode == "r" ) {
 			flags |= SQLITE_OPEN_READONLY ;
 		} else if( mode == "rw" ) {
