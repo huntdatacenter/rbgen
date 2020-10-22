@@ -26,4 +26,4 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: bgen
-          path: bgen-*.tag.bz2
+          path: bgen-*.tar.bz2
