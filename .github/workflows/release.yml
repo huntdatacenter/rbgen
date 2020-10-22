@@ -5,7 +5,8 @@ name: CI
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the upstream branch
 on:
-  push:
+  release:
+    types: [published]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -19,10 +20,10 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      - name: Create rbgen package
-        run: ./waf build_rbgen
+      - name: Create bgen package
+        run: ./waf dist
 
       - uses: actions/upload-artifact@v2
         with:
-          name: rbgen
-          path: rbgen_v*.tgz
+          name: bgen
+          path: bgen-*.tag.bz2
