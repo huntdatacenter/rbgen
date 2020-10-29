@@ -1,12 +1,19 @@
-import os.path
-
-def build( bld ):
-	sources = bld.path.ant_glob( 'src/*.cpp' )
-	bld.stlib(
-		target = 'db',
-		source = sources,
-		includes='./include',
-		cxxflags = [],
-		use = 'boost sqlite3',
-		export_includes = './include'
-	)
+def build(bld):
+    sources = bld.path.ant_glob('src/*.cpp')
+    bld.stlib(
+        target='db',
+        source=sources,
+        includes='./include',
+        cxxflags=[],
+        use='boost sqlite3',
+        export_includes='./include',
+        install_path='${PREFIX}/lib'
+    )
+    db_headers = bld.path.ant_glob('include/db/**/*.hpp')
+    # print(db_headers)
+    bld.install_files(
+        '${PREFIX}',
+        db_headers,
+        cwd=bld.path,
+        relative_trick=True
+    )
