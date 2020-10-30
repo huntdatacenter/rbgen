@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <string>
+#define BOOST_OPTIONAL_USE_OLD_DEFINITION_OF_NONE
+#include <boost/optional.hpp>
 #include "appcontext/OstreamTee.hpp"
 #include "appcontext/progress_bar.hpp"
 #include "appcontext/CmdLineUIContext.hpp"

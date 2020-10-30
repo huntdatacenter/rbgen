@@ -9,7 +9,7 @@
 #include <string>
 #include <exception>
 #include <boost/lexical_cast.hpp>
-#include "sqlite3/sqlite3.h"
+#include <sqlite3.h>
 #include "db/SQLite3Connection.hpp"
 #include "db/SQLStatement.hpp"
 #include "db/SQLite3Statement.hpp"
