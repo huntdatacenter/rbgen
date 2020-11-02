@@ -1,0 +1,24 @@
+From 769c392cff39de7bc53973d22d5032b0e922e1d0 Mon Sep 17 00:00:00 2001
+From: Matus Kosut <matus.kosut@ntnu.no>
+Date: Fri, 30 Oct 2020 08:26:53 +0100
+Subject: [PATCH 6/8] saige patch
+
+---
+ genfile/include/genfile/bgen/View.hpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/genfile/include/genfile/bgen/View.hpp b/genfile/include/genfile/bgen/View.hpp
+index 84f09ab0..dee15aa6 100644
+--- a/genfile/include/genfile/bgen/View.hpp
++++ b/genfile/include/genfile/bgen/View.hpp
+@@ -115,6 +115,7 @@ namespace genfile {
+ 			// Open the bgen file, read header data and gather metadata.
+ 			void setup( std::string const& filename ) ;
+ 
++                public:
+ 			// Utility function to read and uncompress variant genotype probability data
+ 			// without further processing.
+ 			std::vector< byte_t > const& read_and_uncompress_genotype_data_block() ;
+-- 
+2.28.0
+

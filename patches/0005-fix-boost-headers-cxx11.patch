@@ -1,0 +1,42 @@
+From 5005b9e06ec15970067abb3ec689e9a4262e2a19 Mon Sep 17 00:00:00 2001
+From: Matus Kosut <matus.kosut@ntnu.no>
+Date: Fri, 30 Oct 2020 08:25:05 +0100
+Subject: [PATCH 5/8] fix boost headers cxx11
+
+---
+ appcontext/src/CmdLineUIContext.cpp | 2 ++
+ src/View.cpp                        | 4 ++++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/appcontext/src/CmdLineUIContext.cpp b/appcontext/src/CmdLineUIContext.cpp
+index 842fa04d..e0735365 100644
+--- a/appcontext/src/CmdLineUIContext.cpp
++++ b/appcontext/src/CmdLineUIContext.cpp
+@@ -6,6 +6,8 @@
+ 
+ #include <memory>
+ #include <string>
++#define BOOST_OPTIONAL_USE_OLD_DEFINITION_OF_NONE
++#include <boost/optional.hpp>
+ #include "appcontext/OstreamTee.hpp"
+ #include "appcontext/progress_bar.hpp"
+ #include "appcontext/CmdLineUIContext.hpp"
+diff --git a/src/View.cpp b/src/View.cpp
+index 7e02b4a7..ea525845 100644
+--- a/src/View.cpp
++++ b/src/View.cpp
+@@ -12,7 +12,11 @@
+ #include <boost/tuple/tuple.hpp>
+ #include <boost/format.hpp>
+ #include <boost/bind.hpp>
++#define BOOST_NO_SCOPED_ENUMS
++#define BOOST_NO_CXX11_SCOPED_ENUMS
+ #include <boost/filesystem.hpp>
++#undef BOOST_NO_CXX11_SCOPED_ENUMS
++#undef BOOST_NO_SCOPED_ENUMS
+ #include "genfile/bgen/bgen.hpp"
+ #include "genfile/bgen/IndexQuery.hpp"
+ #include "genfile/bgen/View.hpp"
+-- 
+2.28.0
+
