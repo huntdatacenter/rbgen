@@ -1,0 +1,81 @@
+From 6e6d7154238aa30f76c4df62300a506c4da5a9fd Mon Sep 17 00:00:00 2001
+From: Matus Kosut <matus.kosut@ntnu.no>
+Date: Thu, 29 Oct 2020 23:07:04 +0100
+Subject: [PATCH 4/8] patch sqlite3 headers
+
+---
+ db/include/db/SQLStatement.hpp      | 2 +-
+ db/include/db/SQLite3Connection.hpp | 2 +-
+ db/include/db/SQLite3Statement.hpp  | 2 +-
+ db/src/SQLStatement.cpp             | 2 +-
+ db/src/SQLite3Statement.cpp         | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/db/include/db/SQLStatement.hpp b/db/include/db/SQLStatement.hpp
+index e107bd28..7ae9f8f6 100644
+--- a/db/include/db/SQLStatement.hpp
++++ b/db/include/db/SQLStatement.hpp
+@@ -12,7 +12,7 @@
+ #include <vector>
+ #include <exception>
+ #include <stdint.h>
+-#include "sqlite3/sqlite3.h"
++#include <sqlite3.h>
+ #include "db/SQLite3Connection.hpp"
+ 
+ namespace db {
+diff --git a/db/include/db/SQLite3Connection.hpp b/db/include/db/SQLite3Connection.hpp
+index b4bd2196..6110ff03 100644
+--- a/db/include/db/SQLite3Connection.hpp
++++ b/db/include/db/SQLite3Connection.hpp
+@@ -10,7 +10,7 @@
+ #include <cassert>
+ #include <string>
+ #include <exception>
+-#include "sqlite3/sqlite3.h"
++#include <sqlite3.h>
+ #include "db/Connection.hpp"
+ #include "db/Transaction.hpp"
+ #include "db/Error.hpp"
+diff --git a/db/include/db/SQLite3Statement.hpp b/db/include/db/SQLite3Statement.hpp
+index d41a710a..a80bf6a5 100644
+--- a/db/include/db/SQLite3Statement.hpp
++++ b/db/include/db/SQLite3Statement.hpp
+@@ -11,7 +11,7 @@
+ #include <string>
+ #include <exception>
+ 
+-#include "sqlite3/sqlite3.h"
++#include <sqlite3.h>
+ #include "db/SQLite3Connection.hpp"
+ #include "db/SQLStatement.hpp"
+ 
+diff --git a/db/src/SQLStatement.cpp b/db/src/SQLStatement.cpp
+index 60168c6c..39642fe5 100644
+--- a/db/src/SQLStatement.cpp
++++ b/db/src/SQLStatement.cpp
+@@ -7,7 +7,7 @@
+ #include <cassert>
+ #include <string>
+ #include <stdint.h>
+-#include "sqlite3/sqlite3.h"
++#include <sqlite3.h>
+ #include "db/SQLStatement.hpp"
+ 
+ namespace db {
+diff --git a/db/src/SQLite3Statement.cpp b/db/src/SQLite3Statement.cpp
+index 84e06580..36f9762a 100644
+--- a/db/src/SQLite3Statement.cpp
++++ b/db/src/SQLite3Statement.cpp
+@@ -9,7 +9,7 @@
+ #include <string>
+ #include <exception>
+ #include <boost/lexical_cast.hpp>
+-#include "sqlite3/sqlite3.h"
++#include <sqlite3.h>
+ #include "db/SQLite3Connection.hpp"
+ #include "db/SQLStatement.hpp"
+ #include "db/SQLite3Statement.hpp"
+-- 
+2.28.0
+

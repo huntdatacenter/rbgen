@@ -1,0 +1,27 @@
+From 4536f62468be61e556de9c37e1c7d3616e1d9d70 Mon Sep 17 00:00:00 2001
+From: Matus Kosut <matus.kosut@ntnu.no>
+Date: Thu, 29 Oct 2020 22:31:09 +0100
+Subject: [PATCH 3/8] fix version in R description
+
+---
+ R/package/DESCRIPTION | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/R/package/DESCRIPTION b/R/package/DESCRIPTION
+index 94c8b454..0ffe8420 100644
+--- a/R/package/DESCRIPTION
++++ b/R/package/DESCRIPTION
+@@ -1,8 +1,8 @@
+ Package: rbgen
+ Type: Package
+ Title: R interface to BGEN files
+-Version: 0.1
+-Date: 2017-05-15
++Version: 1.1.7
++Date: 2020-06-29
+ Author: Gavin Band
+ Maintainer: Gavin Band <gavin.band@well.ox.ac.uk>
+ Description: This package provides functions to load data from an indexed BGEN file.
+-- 
+2.28.0
+
