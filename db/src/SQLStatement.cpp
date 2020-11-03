@@ -7,7 +7,7 @@
 #include <cassert>
 #include <string>
 #include <stdint.h>
-#include "sqlite3/sqlite3.h"
+#include <sqlite3.h>
 #include "db/SQLStatement.hpp"
 
 namespace db {
