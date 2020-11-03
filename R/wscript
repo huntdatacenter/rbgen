@@ -1,3 +1,2 @@
-import os, glob
-def build( bld ):
-	pass
+def build(bld):
+    pass
