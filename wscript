@@ -183,3 +183,4 @@ def build_rbgen(bld):
     release = ReleaseBuilder(APPNAME, VERSION)
     result = release.build_rbgen()
     print("Created {} release tarball in \"{}\"".format('rbgen', result))
+
