@@ -12,7 +12,11 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/format.hpp>
 #include <boost/bind.hpp>
+#define BOOST_NO_SCOPED_ENUMS
+#define BOOST_NO_CXX11_SCOPED_ENUMS
 #include <boost/filesystem.hpp>
+#undef BOOST_NO_CXX11_SCOPED_ENUMS
+#undef BOOST_NO_SCOPED_ENUMS
 #include "genfile/bgen/bgen.hpp"
 #include "genfile/bgen/IndexQuery.hpp"
 #include "genfile/bgen/View.hpp"
