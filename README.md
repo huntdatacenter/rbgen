@@ -24,6 +24,6 @@ then follow with builds for available versions.
 
 ## Patched releases
 
-- 1.1.4
-- 1.1.7
+- 1.1.4: [Source](https://github.com/huntdatacenter/rbgen/releases/tag/1.1.4)
+- 1.1.7: [Source](https://github.com/huntdatacenter/rbgen/releases/tag/1.1.7)
 
